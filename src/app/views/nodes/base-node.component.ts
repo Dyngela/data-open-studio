@@ -9,18 +9,18 @@ export abstract class BaseNodeComponent {
   @Input() node!: Node;
   @Output() nodeMove = new EventEmitter<{ id: string, x: number, y: number }>();
   @Output() nodeRightClick = new EventEmitter<{ nodeId: string, x: number, y: number }>();
-  @Output() inputDrop = new EventEmitter<{ event: MouseEvent, node: Node }>();
-  @Output() outputDrag = new EventEmitter<{ event: MouseEvent, node: Node }>();
+  @Output() inputDrop = new EventEmitter<{ event: MouseEvent, node: Node, connectorId: string }>();
+  @Output() outputDrag = new EventEmitter<{ event: MouseEvent, node: Node, connectorId: string }>();
 
   private offset = { x: 0, y: 0 };
   private dragging = false;
 
-  onInputMouseUp($event: MouseEvent) {
-    this.outputDrag.emit({ event: $event, node: this.node })
+  onInputMouseUp($event: MouseEvent, connectorId: string) {
+    this.outputDrag.emit({ event: $event, node: this.node, connectorId: connectorId })
   }
 
-  onOutputMouseDown($event: MouseEvent) {
-    this.inputDrop.emit({ event: $event, node: this.node })
+  onOutputMouseDown($event: MouseEvent, connectorId: string) {
+    this.inputDrop.emit({ event: $event, node: this.node, connectorId: connectorId })
   }
 
   @HostListener('mousedown', ['$event'])

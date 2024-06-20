@@ -1,34 +1,54 @@
-import {Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild} from '@angular/core';
 import {Graph} from "../../models/graph.model";
 import {Node} from "../../models/node.model";
 import {ContextMenuItem} from "../../models/context-menu.model";
+import {Position} from "../../models/math.model";
 
 @Component({
   selector: 'app-node-graph',
   templateUrl: './node-graph.component.html',
   styleUrls: ['./node-graph.component.css']
 })
-export class NodeGraphComponent implements OnInit {
+export class NodeGraphComponent implements AfterViewInit, OnInit {
+
+
   graph: Graph = {
     nodes: [],
   };
 
   @ViewChild('svgContainer', { static: true }) svgContainer!: ElementRef<SVGElement>;
 
-  connections: { from: Node; to: Node; path: string }[] = [];
+  connections: { from: Node; to: Node; fromConnectorId: string, toConnectorId: string, path: string }[] = [];
   draggingConnection = false;
+  currentStartConnector: { node: Node, connectorId: string } | null = null;
   startX = 0;
   startY = 0;
   currentX = 0;
   currentY = 0;
-  startNode: Node | null = null;
   startOutputElement: HTMLElement | null = null;
 
-  contextMenuPosition: { x: number, y: number } | null = null;
+  contextMenuPosition: Position | null = null;
   contextMenuItems: ContextMenuItem[] = []
+
 
   ngOnInit(): void {
     this.initializeGraph();
+  }
+  ngAfterViewInit(): void {
+    const s = this.getPortPosition('output1')
+    const e = this.getPortPosition('2input2')
+    if (s == null || e == null) {
+      console.log(s, e)
+      return
+    }
+    this.connections.push({
+      from: this.graph.nodes[0],
+      to: this.graph.nodes[1],
+      fromConnectorId: 'output1',
+      toConnectorId: '2input2',
+      path: this.calculatePath(s.x, s.y, e.x, e.y)
+    })
+    this.updateAllConnections()
   }
 
   initializeGraph() {
@@ -36,61 +56,84 @@ export class NodeGraphComponent implements OnInit {
       {
         id: '1',
         name: 'Start Node',
-        inputs: [{ id: 'input1', type: 'input' }, { id: 'input2', type: 'input'}, { id: 'input2', type: 'input'}, { id: 'input2', type: 'input'}],
-        outputs: [{ id: 'output1', type: 'output' }, { id: 'output2', type: 'output' }, { id: 'output2', type: 'output' }, { id: 'output2', type: 'output' }],
+        inputs: [],
+        outputs: [{ id: 'output1', type: 'output', connectedTo: ['2input2']}],
         position: { x: 100, y: 100 },
         type: 'start'
       },
       {
         id: '2',
         name: 'Connection Node',
-        inputs: [{ id: 'input2', type: 'input' }],
-        outputs: [{ id: 'output2', type: 'output' }],
+        inputs: [{ id: '2input2', type: 'input', connectedTo: ['output1']}],
+        outputs: [],
         position: { x: 500, y: 500 },
         type: 'start'
       }
     );
+
+
   }
 
-  onOutputMouseDown(event: MouseEvent, node: Node) {
-    event.stopPropagation();
+  onOutputMouseDown(event: { event: MouseEvent, node: Node, connectorId: string }) {
+    event.event.stopPropagation();
     this.draggingConnection = true;
-    this.startNode = node;
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    this.currentStartConnector = {node: event.node, connectorId: event.connectorId};
+
+    const targetElement = event.event.target as HTMLElement;
+    const rect = targetElement.getBoundingClientRect();
     const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
-    this.startX = rect.left + rect.width / 2 - svgRect.left + window.scrollX;
-    this.startY = rect.top + rect.height / 2 - svgRect.top + window.scrollY;
+
+    // Calculate the starting positions
+    this.startX = rect.left + rect.width / 2 - svgRect.left;
+    this.startY = rect.top + rect.height / 2 - svgRect.top;
+
     this.currentX = this.startX;
     this.currentY = this.startY;
   }
 
-  onInputMouseUp(event: MouseEvent, node: Node) {
-    event.stopPropagation();
-    if (this.draggingConnection && this.startNode) {
-      const rect = (event.target as HTMLElement).getBoundingClientRect();
+  onInputMouseUp(event: { event: MouseEvent, node: Node, connectorId: string }) {
+    event.event.stopPropagation();
+    if (this.draggingConnection && this.currentStartConnector) {
+      const targetElement = event.event.target as HTMLElement;
+      const rect = targetElement.getBoundingClientRect();
       const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
-      const endX = rect.left + rect.width / 2 - svgRect.left + window.scrollX;
-      const endY = rect.top + rect.height / 2 - svgRect.top + window.scrollY;
-      console.log('End dragging at:', endX, endY);
-      this.createConnection(this.startNode, node, { x: this.startX, y: this.startY }, { x: endX, y: endY });
+
+      // Calculate end position relative to the SVG container
+      const endX = rect.left + rect.width / 2 - svgRect.left;
+      const endY = rect.top + rect.height / 2 - svgRect.top;
+
+      this.createConnection(
+        this.currentStartConnector,
+        { node: event.node, connectorId: event.connectorId },
+        { x: this.startX, y: this.startY },
+        { x: endX, y: endY }
+      );
     }
     this.resetDraggingState();
   }
 
-  createConnection(fromNode: Node, toNode: Node, start: { x: number; y: number }, end: { x: number; y: number }) {
+  createConnection(from: { node: Node, connectorId: string }, to: { node: Node, connectorId: string }, start: Position, end: Position) {
     const path = this.calculatePath(start.x, start.y, end.x, end.y);
-    this.connections.push({ from: fromNode, to: toNode, path });
+    let input = from.node.outputs.find(output => output.id === from.connectorId);
+    let output = to.node.inputs.find(input => input.id === to.connectorId);
+    if (input && output) {
+      input.connectedTo = input.connectedTo || [];
+      input.connectedTo.push(output.id);
+      output.connectedTo = output.connectedTo || [];
+      output.connectedTo.push(input.id);
+      this.connections.push({ from: from.node, to: to.node, fromConnectorId: from.connectorId, toConnectorId: to.connectorId, path: path });
+  }
   }
 
   calculatePath(startX: number, startY: number, endX: number, endY: number): string {
-    const dx = (endX - startX) / 2;
-    const dy = (endY - startY) / 2;
-    return `M ${startX},${startY} C ${startX + dx},${startY} ${endX - dx},${endY} ${endX},${endY}`;
-  }
+    const dx = endX - startX;
+    const controlOffset = dx * 0.5; // Adjust curve intensity as needed
 
+    return `M${startX},${startY} C ${startX + controlOffset},${startY} ${endX - controlOffset},${endY} ${endX},${endY}`;
+  }
   resetDraggingState() {
     this.draggingConnection = false;
-    this.startNode = null;
+    this.currentStartConnector = null;
     this.startOutputElement = null;
     this.startX = 0;
     this.startY = 0;
@@ -122,16 +165,39 @@ export class NodeGraphComponent implements OnInit {
     }
   }
 
+  updateAllConnections() {
+    this.connections.forEach(connection => {
+      const fromPosition = this.getPortPosition(connection.fromConnectorId);
+      const toPosition = this.getPortPosition(connection.toConnectorId);
+      if (fromPosition && toPosition) {
+        connection.path = this.calculatePath(fromPosition.x, fromPosition.y, toPosition.x, toPosition.y);
+      }
+    });
+  }
+
   updateConnectionPaths(node: Node) {
     this.connections.forEach(connection => {
       if (connection.from.id === node.id || connection.to.id === node.id) {
-        const startX = connection.from.position.x + 28; // Adjust based on the node width/height
-        const startY = connection.from.position.y + 28; // Adjust based on the node width/height
-        const endX = connection.to.position.x + 28; // Adjust based on the node width/height
-        const endY = connection.to.position.y + 28; // Adjust based on the node width/height
-        connection.path = this.calculatePath(startX, startY, endX, endY);
+        const start : { x: number, y: number } | null = this.getPortPosition(connection.fromConnectorId);
+        const end : { x: number, y: number } | null = this.getPortPosition(connection.toConnectorId);
+        if (start && end) {
+          connection.path = this.calculatePath(start?.x + 28, start?.y, end.x + 28, end?.y);
+        }
       }
     });
+  }
+
+  getPortPosition(portId: string): { x: number, y: number } | null {
+    const portElement = document.getElementById(portId);
+    if (portElement) {
+      const rect = portElement.getBoundingClientRect();
+      const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2 - svgRect.left + window.scrollX,
+        y: rect.top + rect.height / 2 - svgRect.top + window.scrollY
+      };
+    }
+    return null;
   }
 
   onRightClick(event: MouseEvent) {

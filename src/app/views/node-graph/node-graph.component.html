@@ -6,7 +6,7 @@
     <path *ngIf="draggingConnection" [attr.d]="calculatePath(startX, startY, currentX, currentY)" stroke="white" stroke-width="20" fill="none"></path>
   </svg>
   <ng-container *ngFor="let node of graph.nodes">
-    <app-start-node (inputDrop)="onOutputMouseDown($event.event, $event.node)" (outputDrag)="onInputMouseUp($event.event, $event.node)" *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-start-node>
+    <app-start-node (inputDrop)="onOutputMouseDown($event)" (outputDrag)="onInputMouseUp($event)" *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-start-node>
     <app-db-conn-node *ngIf="node.type === 'db-conn'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-db-conn-node>
   </ng-container>
   <app-context-menu [items]="contextMenuItems" [position]="contextMenuPosition"></app-context-menu>

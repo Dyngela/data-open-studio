@@ -6,7 +6,7 @@
     <div class="flex items-center justify-between w-full">
       <div>
         <div class="flex mb-4" *ngFor="let input of node.inputs">
-          <div (mouseup)="onInputMouseUp($event)" class="triangle-right"></div>
+          <div (mouseup)="onInputMouseUp($event, input.id)" class="triangle-right" [id]="input.id"></div>
           <div class="port-label text-sm ml-2">Input 1</div>
         </div>
       </div>
@@ -14,7 +14,7 @@
       <div>
         <div class="flex mb-4" *ngFor="let output of node.outputs">
           <div class="port-label text-sm mr-2">output 1</div>
-          <div (mousedown)="onOutputMouseDown($event)" class="triangle-right"></div>
+          <div (mousedown)="onOutputMouseDown($event, output.id)" class="triangle-right" [id]="output.id"></div>
         </div>
       </div>
     </div>
