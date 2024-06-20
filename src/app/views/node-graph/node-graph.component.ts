@@ -25,17 +25,19 @@ export class NodeGraphComponent implements OnInit {
     this.graph.nodes.push(
       {
         id: '1',
-        name: 'Node 1',
-        inputs: [{ id: 'input1', type: 'input' }],
-        outputs: [{ id: 'output1', type: 'output' }],
-        position: { x: 100, y: 100 }
+        name: 'Start Node',
+        inputs: [{ id: 'input1', type: 'input' }, { id: 'input2', type: 'input'}, { id: 'input2', type: 'input'}, { id: 'input2', type: 'input'}],
+        outputs: [{ id: 'output1', type: 'output' }, { id: 'output2', type: 'output' }, { id: 'output2', type: 'output' }, { id: 'output2', type: 'output' }],
+        position: { x: 100, y: 100 },
+        type: 'start'
       },
       {
         id: '2',
-        name: 'Node 2',
+        name: 'Connection Node',
         inputs: [{ id: 'input2', type: 'input' }],
         outputs: [{ id: 'output2', type: 'output' }],
-        position: { x: 300, y: 300 }
+        position: { x: 300, y: 300 },
+        type: 'start'
       }
     );
   }
@@ -102,7 +104,8 @@ export class NodeGraphComponent implements OnInit {
       name,
       inputs: [{ id: `${Date.now()}-input`, type: 'input' }],
       outputs: [{ id: `${Date.now()}-output`, type: 'output' }],
-      position: { x: position.x - 75, y: position.y - 50 } // Centered on click position
+      position: { x: position.x - 75, y: position.y - 50 }, // Centered on click position
+      type: 'start'
     };
     this.graph.nodes.push(newNode);
     this.contextMenuPosition = null; // Hide the context menu

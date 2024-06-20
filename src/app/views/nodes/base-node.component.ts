@@ -1,11 +1,11 @@
-import {Component, Input, Output, EventEmitter, HostListener} from '@angular/core';
-import { Node } from 'src/app/models/node.model';
+import {Component, EventEmitter, HostListener, Input, OnInit, Output} from '@angular/core';
+import {Node} from "../../models/node.model";
+
 @Component({
-  selector: 'app-node',
-  templateUrl: './node.component.html',
-  styleUrls: ['./node.component.css']
+  template: '' // This will be an abstract base class, so no template
 })
-export class NodeComponent {
+export abstract class BaseNodeComponent {
+
   @Input() node!: Node;
   @Output() nodeMove = new EventEmitter<{ id: string, x: number, y: number }>();
   @Output() nodeRightClick = new EventEmitter<{ nodeId: string, x: number, y: number }>();
@@ -15,6 +15,14 @@ export class NodeComponent {
 
   @HostListener('mousedown', ['$event'])
   onMouseDown(event: MouseEvent) {
+
+    const target = event.target as HTMLElement;
+
+    // Check if the target is a triangle
+    if (target.closest('.triangle-right')) {
+      return; // Do not initiate drag if the target is a triangle
+    }
+
     if (event.button === 0) { // Left mouse button
       this.offset = {
         x: event.clientX - this.node.position.x,
@@ -50,4 +58,5 @@ export class NodeComponent {
     // Emit event with the node ID
     this.nodeRightClick.emit({ nodeId: this.node.id, x: event.clientX, y: event.clientY });
   }
+
 }

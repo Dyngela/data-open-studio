@@ -1,18 +1,3 @@
-<!--<div class="node-graph" (contextmenu)="onRightClick($event)">-->
-<!--  <svg class="connections" xmlns="http://www.w3.org/2000/svg">-->
-<!--    <line *ngFor="let conn of graph.connections"-->
-<!--          [attr.x1]="getNode(conn.fromNode).position.x + 75"-->
-<!--    [attr.y1]="getNode(conn.fromNode).position.y + 10"-->
-<!--    [attr.x2]="getNode(conn.toNode).position.x + 75"-->
-<!--    [attr.y2]="getNode(conn.toNode).position.y + 10"-->
-<!--    stroke="black" stroke-width="2" />-->
-<!--  </svg>-->
-<!--  <app-node *ngFor="let node of graph.nodes"-->
-<!--            [node]="node"-->
-<!--            (nodeMove)="onNodeMove($event)">-->
-<!--  </app-node>-->
-<!--</div>-->
-
 <div class="node-graph" (contextmenu)="onRightClick($event)">
   <svg class="connections" xmlns="http://www.w3.org/2000/svg">
     <line *ngFor="let conn of graph.connections"
@@ -22,10 +7,9 @@
     [attr.y2]="getNode(conn.toNode).position.y + 10"
     stroke="black" stroke-width="2" />
   </svg>
-  <app-node *ngFor="let node of graph.nodes"
-            [node]="node"
-            (nodeMove)="onNodeMove($event)"
-            (nodeRightClick)="onNodeRightClick($event)">
-  </app-node>
+  <ng-container *ngFor="let node of graph.nodes">
+    <app-start-node *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-start-node>
+    <app-db-conn-node *ngIf="node.type === 'db-conn'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-db-conn-node>
+  </ng-container>
   <app-context-menu [items]="contextMenuItems" [position]="contextMenuPosition"></app-context-menu>
 </div>

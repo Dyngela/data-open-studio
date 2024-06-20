@@ -4,6 +4,7 @@ export interface Node {
   inputs: Connector[];
   outputs: Connector[];
   position: { x: number; y: number };
+  type: string;
 }
 
 export interface Connector {

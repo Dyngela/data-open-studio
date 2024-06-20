@@ -1,0 +1,7 @@
+<div class="node" [ngStyle]="{ 'left.px': node.position.x, 'top.px': node.position.y }">
+  <div class="node-header">{{ node.name }}</div>
+  <div class="node-ports">
+    <div *ngFor="let input of node.inputs" class="port">{{ input.type }}</div>
+    <div *ngFor="let output of node.outputs" class="port">{{ output.type }}</div>
+  </div>
+</div>

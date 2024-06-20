@@ -1,0 +1,23 @@
+<div class="node w-56" [ngStyle]="{ 'left.px': node.position.x, 'top.px': node.position.y }">
+  <div class="header bg-gray-900 text-white px-2 py-1 rounded-t-md font-semibold text-sm">
+    InputMap
+  </div>
+  <div class="body bg-gray-700 text-gray-300 px-2 py-2 rounded-b-md">
+    <div class="flex items-center justify-between w-full">
+      <div>
+        <div class="flex mb-4" *ngFor="let input of node.inputs">
+          <div class="triangle-right"></div>
+          <div class="port-label text-sm ml-2">Input 1</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex mb-4" *ngFor="let output of node.outputs">
+          <div #triangle class="port-label text-sm mr-2">output 1</div>
+          <div (click)="onTriangleClick($event)" class="triangle-right"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
