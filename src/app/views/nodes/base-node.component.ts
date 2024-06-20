@@ -9,15 +9,23 @@ export abstract class BaseNodeComponent {
   @Input() node!: Node;
   @Output() nodeMove = new EventEmitter<{ id: string, x: number, y: number }>();
   @Output() nodeRightClick = new EventEmitter<{ nodeId: string, x: number, y: number }>();
+  @Output() inputDrop = new EventEmitter<{ event: MouseEvent, node: Node }>();
+  @Output() outputDrag = new EventEmitter<{ event: MouseEvent, node: Node }>();
 
   private offset = { x: 0, y: 0 };
   private dragging = false;
 
+  onInputMouseUp($event: MouseEvent) {
+    this.outputDrag.emit({ event: $event, node: this.node })
+  }
+
+  onOutputMouseDown($event: MouseEvent) {
+    this.inputDrop.emit({ event: $event, node: this.node })
+  }
+
   @HostListener('mousedown', ['$event'])
   onMouseDown(event: MouseEvent) {
-
     const target = event.target as HTMLElement;
-
     // Check if the target is a triangle
     if (target.closest('.triangle-right')) {
       return; // Do not initiate drag if the target is a triangle
@@ -38,8 +46,8 @@ export abstract class BaseNodeComponent {
     if (this.dragging) {
       const newX = event.clientX - this.offset.x;
       const newY = event.clientY - this.offset.y;
+      this.node.position = { x: newX, y: newY };
       this.nodeMove.emit({ id: this.node.id, x: newX, y: newY });
-      event.preventDefault();
     }
   }
 

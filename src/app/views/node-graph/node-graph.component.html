@@ -1,14 +1,12 @@
+<button (click)="logtest()">LOG IT</button>
+
 <div class="node-graph" (contextmenu)="onRightClick($event)">
-  <svg class="connections" xmlns="http://www.w3.org/2000/svg">
-    <line *ngFor="let conn of graph.connections"
-          [attr.x1]="getNode(conn.fromNode).position.x + 75"
-    [attr.y1]="getNode(conn.fromNode).position.y + 10"
-    [attr.x2]="getNode(conn.toNode).position.x + 75"
-    [attr.y2]="getNode(conn.toNode).position.y + 10"
-    stroke="black" stroke-width="2" />
+  <svg class="absolute inset-0 pointer-events-none" #svgContainer>
+    <path *ngFor="let connection of connections" [attr.d]="connection.path" stroke="yellow" stroke-width="2" fill="none"></path>
+    <path *ngIf="draggingConnection" [attr.d]="calculatePath(startX, startY, currentX, currentY)" stroke="white" stroke-width="20" fill="none"></path>
   </svg>
   <ng-container *ngFor="let node of graph.nodes">
-    <app-start-node *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-start-node>
+    <app-start-node (inputDrop)="onOutputMouseDown($event.event, $event.node)" (outputDrag)="onInputMouseUp($event.event, $event.node)" *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-start-node>
     <app-db-conn-node *ngIf="node.type === 'db-conn'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="onNodeRightClick($event)"></app-db-conn-node>
   </ng-container>
   <app-context-menu [items]="contextMenuItems" [position]="contextMenuPosition"></app-context-menu>

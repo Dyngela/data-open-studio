@@ -1,4 +1,4 @@
-import {Component, HostListener} from '@angular/core';
+import {Component, EventEmitter, HostListener, OnInit, Output} from '@angular/core';
 import {BaseNodeComponent} from "../base-node.component";
 
 @Component({
@@ -8,13 +8,11 @@ import {BaseNodeComponent} from "../base-node.component";
 })
 export class StartNodeComponent extends BaseNodeComponent {
 
+
+
   constructor() {
     super();
   }
 
-  @HostListener('click', ['$event'])
-  onTriangleClick(event: MouseEvent) {
-    event.stopPropagation();
-  }
 
 }

@@ -6,15 +6,15 @@
     <div class="flex items-center justify-between w-full">
       <div>
         <div class="flex mb-4" *ngFor="let input of node.inputs">
-          <div class="triangle-right"></div>
+          <div (mouseup)="onInputMouseUp($event)" class="triangle-right"></div>
           <div class="port-label text-sm ml-2">Input 1</div>
         </div>
       </div>
 
       <div>
         <div class="flex mb-4" *ngFor="let output of node.outputs">
-          <div #triangle class="port-label text-sm mr-2">output 1</div>
-          <div (click)="onTriangleClick($event)" class="triangle-right"></div>
+          <div class="port-label text-sm mr-2">output 1</div>
+          <div (mousedown)="onOutputMouseDown($event)" class="triangle-right"></div>
         </div>
       </div>
     </div>
