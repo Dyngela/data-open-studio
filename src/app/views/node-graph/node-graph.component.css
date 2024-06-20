@@ -1,0 +1,19 @@
+.node-graph {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+}
+
+.connections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.port {
+  cursor: pointer;
+}

@@ -1,0 +1,8 @@
+<div *ngIf="position" class="context-menu" [ngStyle]="{ 'left.px': position.x, 'top.px': position.y - 30 }">
+  <input #searchBox type="text" placeholder="Search..." class="search-bar" (input)="filterItems($event)" />
+  <ul class="menu-list">
+    <li *ngFor="let item of filteredItems" (click)="onSelect(item)">
+      {{ item.label }}
+    </li>
+  </ul>
+</div>

@@ -1,0 +1,32 @@
+.context-menu {
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  width: 200px;
+  z-index: 1000;
+}
+
+.search-bar {
+  width: calc(100% - 20px);
+  margin: 5px;
+  padding: 5px;
+}
+
+.menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.menu-list li {
+  padding: 5px;
+  cursor: pointer;
+}
+
+.menu-list li:hover {
+  background-color: #f0f0f0;
+}
