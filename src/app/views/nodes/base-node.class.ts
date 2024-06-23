@@ -4,7 +4,7 @@ import {Node} from "../../models/node.model";
 @Component({
   template: '' // This will be an abstract base class, so no template
 })
-export abstract class BaseNodeComponent {
+export abstract class BaseNodeClass {
 
   @Input() node!: Node;
   @Output() nodeMove = new EventEmitter<{ id: string, x: number, y: number }>();

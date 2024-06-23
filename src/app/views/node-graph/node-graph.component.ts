@@ -3,22 +3,21 @@ import {Graph} from "../../models/graph.model";
 import {Node} from "../../models/node.model";
 import {ContextMenuItem} from "../../models/context-menu.model";
 import {Position} from "../../models/math.model";
+import {ContextMenuClass} from "./context-menu.class";
+import {GraphService} from "../../services/graph.service";
+import {RendererClass} from "./renderer.class";
 
 @Component({
   selector: 'app-node-graph',
   templateUrl: './node-graph.component.html',
   styleUrls: ['./node-graph.component.css']
 })
-export class NodeGraphComponent implements AfterViewInit, OnInit {
+export class NodeGraphComponent implements AfterViewInit {
 
-
-  graph: Graph = {
-    nodes: [],
-  };
-
+  graph: Graph = { nodes: [] };
+  contextMenu: ContextMenuClass;
+  renderer: RendererClass;
   @ViewChild('svgContainer', { static: true }) svgContainer!: ElementRef<SVGElement>;
-
-  connections: { from: Node; to: Node; fromConnectorId: string, toConnectorId: string, path: string }[] = [];
   draggingConnection = false;
   currentStartConnector: { node: Node, connectorId: string } | null = null;
   startX = 0;
@@ -27,20 +26,20 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
   currentY = 0;
   startOutputElement: HTMLElement | null = null;
 
-  contextMenuPosition: Position | null = null;
-  contextMenuItems: ContextMenuItem[] = []
-
-
-  ngOnInit(): void {
+  constructor(graphService: GraphService) {
+    this.contextMenu = new ContextMenuClass(graphService);
+    this.renderer = new RendererClass();
+    this.graph = graphService.getGraph();
     this.initializeGraph();
   }
+
   ngAfterViewInit(): void {
     const s = this.getPortPosition('output1')
     const e = this.getPortPosition('2input2')
     if (s == null || e == null) {
       return
     }
-    this.connections.push({
+    this.renderer.connections.push({
       from: this.graph.nodes[0],
       to: this.graph.nodes[1],
       fromConnectorId: 'output1',
@@ -76,18 +75,20 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
   onOutputMouseDown(event: { event: MouseEvent, node: Node, connectorId: string }) {
     event.event.stopPropagation();
     this.draggingConnection = true;
-    this.currentStartConnector = {node: event.node, connectorId: event.connectorId};
+    this.currentStartConnector = { node: event.node, connectorId: event.connectorId };
 
     const targetElement = event.event.target as HTMLElement;
     const rect = targetElement.getBoundingClientRect();
     const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
 
-    // Calculate the starting positions
-    this.startX = rect.left + rect.width / 2 - svgRect.left;
-    this.startY = rect.top + rect.height / 2 - svgRect.top;
+    // Calculate the starting positions relative to the SVG container
+    this.startX = rect.left + rect.width / 2 - svgRect.left + this.svgContainer.nativeElement.scrollLeft;
+    this.startY = rect.top + rect.height / 2 - svgRect.top + this.svgContainer.nativeElement.scrollTop;
 
     this.currentX = this.startX;
     this.currentY = this.startY;
+
+    // Debugging output to verify initial coordinates
   }
 
   onInputMouseUp(event: { event: MouseEvent, node: Node, connectorId: string }) {
@@ -97,9 +98,9 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
       const rect = targetElement.getBoundingClientRect();
       const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
 
-      // Calculate end position relative to the SVG container
-      const endX = rect.left + rect.width / 2 - svgRect.left;
-      const endY = rect.top + rect.height / 2 - svgRect.top;
+      // Calculate the ending positions relative to the SVG container
+      const endX = rect.left + rect.width / 2 - svgRect.left + this.svgContainer.nativeElement.scrollLeft;
+      const endY = rect.top + rect.height / 2 - svgRect.top + this.svgContainer.nativeElement.scrollTop;
 
       this.createConnection(
         this.currentStartConnector,
@@ -107,6 +108,8 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
         { x: this.startX, y: this.startY },
         { x: endX, y: endY }
       );
+
+      // Debugging output to verify end coordinates
     }
     this.resetDraggingState();
   }
@@ -120,15 +123,19 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
       input.connectedTo.push(output.id);
       output.connectedTo = output.connectedTo || [];
       output.connectedTo.push(input.id);
-      this.connections.push({ from: from.node, to: to.node, fromConnectorId: from.connectorId, toConnectorId: to.connectorId, path: path });
+      this.renderer.connections.push({ from: from.node, to: to.node, fromConnectorId: from.connectorId, toConnectorId: to.connectorId, path: path });
   }
   }
 
   calculatePath(startX: number, startY: number, endX: number, endY: number): string {
     const dx = endX - startX;
-    const controlOffset = dx * 0.5; // Adjust curve intensity as needed
+    const dy = endY - startY;
 
-    return `M${startX},${startY} C ${startX + controlOffset},${startY} ${endX - controlOffset},${endY} ${endX},${endY}`;
+    // Use the absolute difference to adjust the control point for a smoother curve
+    const curveFactor = Math.abs(dx) * 0.3; // Adjust this factor to control the curve smoothness
+
+    // Create a smooth Bézier curve with appropriate control points
+    return `M${startX},${startY} C ${startX + curveFactor},${startY} ${endX - curveFactor},${endY} ${endX},${endY}`;
   }
 
   resetDraggingState() {
@@ -145,8 +152,8 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
   onDocumentMouseMove(event: MouseEvent) {
     if (this.draggingConnection) {
       const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
-      this.currentX = event.clientX - svgRect.left + window.scrollX;
-      this.currentY = event.clientY - svgRect.top + window.scrollY;
+      this.currentX = event.clientX - svgRect.left;
+      this.currentY = event.clientY - svgRect.top;
     }
   }
 
@@ -166,7 +173,7 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
   }
 
   updateAllConnections() {
-    this.connections.forEach(connection => {
+    this.renderer.connections.forEach(connection => {
       const fromPosition = this.getPortPosition(connection.fromConnectorId);
       const toPosition = this.getPortPosition(connection.toConnectorId);
       if (fromPosition && toPosition) {
@@ -176,7 +183,7 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
   }
 
   updateConnectionPaths(node: Node) {
-    this.connections.forEach(connection => {
+    this.renderer.connections.forEach(connection => {
       if (connection.from.id === node.id || connection.to.id === node.id) {
         const start : { x: number, y: number } | null = this.getPortPosition(connection.fromConnectorId);
         const end : { x: number, y: number } | null = this.getPortPosition(connection.toConnectorId);
@@ -200,69 +207,19 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
     return null;
   }
 
-  onRightClick(event: MouseEvent) {
-    event.preventDefault();
-    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
-    this.showGraphContextMenu();
-  }
-
-  onNodeRightClick(event: { nodeId: string, x: number, y: number }) {
-    this.contextMenuPosition = { x: event.x, y: event.y };
-    this.showNodeContextMenu(event.nodeId);
-  }
-
-  showGraphContextMenu() {
-    this.contextMenuItems = [
-      {
-        label: 'Add Node A',
-        action: () => this.addNode('Node A', this.contextMenuPosition)
-      },
-      {
-        label: 'Add Node B',
-        action: () => this.addNode('Node B', this.contextMenuPosition)
-      },
-      {
-        label: 'Add Node C',
-        action: () => this.addNode('Node C', this.contextMenuPosition)
-      }
-    ];
-  }
-
-  showNodeContextMenu(nodeId: string) {
-    this.contextMenuItems = [
-      { label: 'Edit Node', action: () => console.log('Edit Node ' + nodeId) },
-      { label: 'Delete Node', action: () => console.log('Delete Node ' + nodeId) },
-      { label: 'Duplicate Node', action: () => console.log('Duplicate Node ' + nodeId) }
-    ];
-  }
-
-  addNode(name: string, position: { x: number, y: number } | null) {
-    if (!position) return;
-    const newNode: Node = {
-      id: `${Date.now()}`, // Simple unique ID
-      name,
-      inputs: [{ id: `${Date.now()}-input`, type: 'input' }],
-      outputs: [{ id: `${Date.now()}-output`, type: 'output' }],
-      position: { x: position.x - 75, y: position.y - 50 }, // Centered on click position
-      type: 'start'
-    };
-    this.graph.nodes.push(newNode);
-    this.contextMenuPosition = null; // Hide the context menu
-  }
-
   @HostListener('document:click', ['$event'])
   onDocumentClick() {
-    this.contextMenuPosition = null; // Close context menu on outside click
+    this.contextMenu.contextMenuPosition = null; // Close context menu on outside click
   }
 
   @HostListener('document:keydown', ['$event'])
   onDocumentKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
-      this.contextMenuPosition = null; // Close context menu on Escape key
+      this.contextMenu.contextMenuPosition = null; // Close context menu on Escape key
     }
   }
 
   logtest() {
-    console.log(this.connections)
+    console.log(this.renderer.connections)
   }
 }

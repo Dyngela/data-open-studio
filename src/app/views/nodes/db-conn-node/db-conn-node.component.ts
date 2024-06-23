@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
-import {BaseNodeComponent} from "../base-node.component";
+import {BaseNodeClass} from "../base-node.class";
 
 @Component({
   selector: 'app-db-conn-node',
   templateUrl: './db-conn-node.component.html',
   styleUrls: ['./db-conn-node.component.css']
 })
-export class DbConnNodeComponent extends BaseNodeComponent {
+export class DbConnNodeComponent extends BaseNodeClass {
   constructor() {
     super();
   }
