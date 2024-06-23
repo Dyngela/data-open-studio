@@ -3,10 +3,10 @@
 <div class="node-graph" (contextmenu)="contextMenu.onRightClick($event)">
   <svg class="absolute inset-0 pointer-events-none" #svgContainer>
     <path *ngFor="let connection of renderer.connections" [attr.d]="connection.path" stroke="yellow" stroke-width="2" fill="none"></path>
-    <path *ngIf="draggingConnection" [attr.d]="calculatePath(startX, startY, currentX, currentY)" stroke="white" stroke-width="20" fill="none"></path>
+    <path [id]="'connection-preview'" *ngIf="renderer.draggingConnection" [attr.d]="renderer.calculatePath(renderer.startX, renderer.startY, renderer.currentX, renderer.currentY)" stroke="white" stroke-width="20" fill="none"></path>
   </svg>
   <ng-container *ngFor="let node of graph.nodes">
-    <app-start-node (inputDrop)="onOutputMouseDown($event)" (outputDrag)="onInputMouseUp($event)" *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="contextMenu.onNodeRightClick($event)"></app-start-node>
+    <app-start-node (inputDrop)="renderer.onOutputMouseDown($event)" (outputDrag)="renderer.onInputMouseUp($event)" *ngIf="node.type === 'start'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="contextMenu.onNodeRightClick($event)"></app-start-node>
     <app-db-conn-node *ngIf="node.type === 'db-conn'" [node]="node" (nodeMove)="onNodeMove($event)" (nodeRightClick)="contextMenu.onNodeRightClick($event)"></app-db-conn-node>
   </ng-container>
   <app-context-menu [items]="contextMenu.contextMenuItems" [position]="contextMenu.contextMenuPosition"></app-context-menu>
