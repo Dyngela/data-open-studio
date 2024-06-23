@@ -1,11 +1,16 @@
-import {Component, ElementRef, HostListener} from "@angular/core";
+import {Component, ElementRef, inject} from "@angular/core";
 import {Node} from "../../models/node.model";
 import {Position} from "../../models/math.model";
+import {ContextMenuItem} from "../../models/context-menu.model";
+import {GraphService} from "../../services/graph.service";
+import {NodeTypes} from "../../enums/node.enum";
 
 @Component({
-  template: '' // This will be an abstract base class, so no template
+  template: ''
 })
 export class RendererClass {
+  graphService = inject(GraphService);
+
   connections: { from: Node; to: Node; fromConnectorId: string, toConnectorId: string, path: string }[] = [];
   draggingConnection = false;
   startX = 0;
@@ -14,10 +19,70 @@ export class RendererClass {
   currentY = 0;
   currentStartConnector: { node: Node, connectorId: string } | null = null;
   startOutputElement: HTMLElement | null = null;
-  svgContainer!: ElementRef<SVGElement>;
+  contextMenuPosition: Position | null = null;
+  contextMenuItems: ContextMenuItem[] = []
 
-  constructor(svg: ElementRef<SVGElement>) {
-    this.svgContainer = svg;
+  onRightClick(event: MouseEvent) {
+    event.preventDefault();
+    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
+    this.showGraphContextMenu();
+  }
+
+  onNodeRightClick(event: { nodeId: string, x: number, y: number }) {
+    this.contextMenuPosition = { x: event.x, y: event.y };
+    this.showNodeContextMenu(event.nodeId);
+  }
+
+  showGraphContextMenu() {
+    this.contextMenuItems = [
+      {
+        label: 'Add Start Node',
+        action: () => this.addNode('Node A', NodeTypes.START)
+      },
+      {
+        label: 'Add DB Connection Node',
+        action: () => this.addNode('Node B', NodeTypes.DB_CONNECTION)
+      },
+      {
+        label: 'Add End Node',
+        action: () => this.addNode('Node C', NodeTypes.END)
+      }
+    ];
+  }
+
+  showNodeContextMenu(nodeId: string) {
+    this.contextMenuItems = [
+      { label: 'Edit Node', action: () => this.editNode(nodeId) },
+      { label: 'Delete Node', action: () => this.deleteNode(nodeId) },
+      { label: 'Duplicate Node', action: () => console.log('Duplicate Node ' + nodeId) }
+    ];
+  }
+
+  private deleteNode(nodeId: string) {
+    this.connections = this.connections.filter(connection => connection.from.id !== nodeId && connection.to.id !== nodeId);
+    this.graphService.getGraph().nodes.forEach(node => {
+      node.inputs = node.inputs.filter(input => !input.connectedTo || !input.connectedTo.includes(nodeId));
+      node.outputs = node.outputs.filter(output => !output.connectedTo || !output.connectedTo.includes(nodeId));
+    });
+    this.graphService.getGraph().nodes = this.graphService.getGraph().nodes.filter(node => node.id !== nodeId);
+  }
+
+  editNode(node: Node | string) {
+    console.log('Edit Node ' + node);
+  }
+
+  addNode(name: string, type: NodeTypes) {
+    if (!this.contextMenuPosition) return;
+    const newNode: Node = {
+      id: `${Date.now()}`, // Simple unique ID
+      name,
+      inputs: [{ id: `${Date.now()}-input`, type: 'input' }],
+      outputs: [{ id: `${Date.now()}-output`, type: 'output' }],
+      position: { x: this.contextMenuPosition.x - 75, y: this.contextMenuPosition.y - 50 }, // Centered on click position
+      type: type
+    };
+    this.graphService.getGraph().nodes.push(newNode);
+    this.contextMenuPosition = null; // Hide the context menu
   }
 
   onOutputMouseDown(event: { event: MouseEvent, node: Node, connectorId: string }) {
@@ -27,11 +92,11 @@ export class RendererClass {
 
     const targetElement = event.event.target as HTMLElement;
     const rect = targetElement.getBoundingClientRect();
-    const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
+    const svgRect = this.graphService.getSvgContainer().nativeElement.getBoundingClientRect();
 
     // Calculate the starting positions relative to the SVG container
-    this.startX = rect.left + rect.width / 2 - svgRect.left + this.svgContainer.nativeElement.scrollLeft;
-    this.startY = rect.top + rect.height / 2 - svgRect.top + this.svgContainer.nativeElement.scrollTop;
+    this.startX = rect.left + rect.width / 2 - svgRect.left + this.graphService.getSvgContainer().nativeElement.scrollLeft;
+    this.startY = rect.top + rect.height / 2 - svgRect.top + this.graphService.getSvgContainer().nativeElement.scrollTop;
 
     this.currentX = this.startX;
     this.currentY = this.startY;
@@ -42,11 +107,9 @@ export class RendererClass {
     if (this.draggingConnection && this.currentStartConnector) {
       const targetElement = event.event.target as HTMLElement;
       const rect = targetElement.getBoundingClientRect();
-      const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
-
-      // Calculate the ending positions relative to the SVG container
-      const endX = rect.left + rect.width / 2 - svgRect.left + this.svgContainer.nativeElement.scrollLeft;
-      const endY = rect.top + rect.height / 2 - svgRect.top + this.svgContainer.nativeElement.scrollTop;
+      const svgRect = this.graphService.getSvgContainer().nativeElement.getBoundingClientRect();
+      const endX = rect.left + rect.width / 2 - svgRect.left + this.graphService.getSvgContainer().nativeElement.scrollLeft;
+      const endY = rect.top + rect.height / 2 - svgRect.top + this.graphService.getSvgContainer().nativeElement.scrollTop;
 
       this.createConnection(
         this.currentStartConnector,
@@ -54,8 +117,6 @@ export class RendererClass {
         { x: this.startX, y: this.startY },
         { x: endX, y: endY }
       );
-
-      // Debugging output to verify end coordinates
     }
     this.resetDraggingState();
   }
@@ -73,15 +134,9 @@ export class RendererClass {
     }
   }
 
-
   calculatePath(startX: number, startY: number, endX: number, endY: number): string {
     const dx = endX - startX;
-    const dy = endY - startY;
-
-    // Use the absolute difference to adjust the control point for a smoother curve
     const curveFactor = Math.abs(dx) * 0.3; // Adjust this factor to control the curve smoothness
-
-    // Create a smooth Bézier curve with appropriate control points
     return `M${startX},${startY} C ${startX + curveFactor},${startY} ${endX - curveFactor},${endY} ${endX},${endY}`;
   }
 
@@ -121,7 +176,7 @@ export class RendererClass {
     const portElement = document.getElementById(portId);
     if (portElement) {
       const rect = portElement.getBoundingClientRect();
-      const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
+      const svgRect = this.graphService.getSvgContainer().nativeElement.getBoundingClientRect();
       return {
         x: rect.left + rect.width / 2 - svgRect.left,
         y: rect.top + rect.height / 2 - svgRect.top
