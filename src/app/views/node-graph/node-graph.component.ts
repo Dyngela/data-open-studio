@@ -38,7 +38,6 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
     const s = this.getPortPosition('output1')
     const e = this.getPortPosition('2input2')
     if (s == null || e == null) {
-      console.log(s, e)
       return
     }
     this.connections.push({
@@ -46,7 +45,7 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
       to: this.graph.nodes[1],
       fromConnectorId: 'output1',
       toConnectorId: '2input2',
-      path: this.calculatePath(s.x, s.y, e.x, e.y)
+      path: ""
     })
     this.updateAllConnections()
   }
@@ -131,6 +130,7 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
 
     return `M${startX},${startY} C ${startX + controlOffset},${startY} ${endX - controlOffset},${endY} ${endX},${endY}`;
   }
+
   resetDraggingState() {
     this.draggingConnection = false;
     this.currentStartConnector = null;
@@ -181,7 +181,7 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
         const start : { x: number, y: number } | null = this.getPortPosition(connection.fromConnectorId);
         const end : { x: number, y: number } | null = this.getPortPosition(connection.toConnectorId);
         if (start && end) {
-          connection.path = this.calculatePath(start?.x + 28, start?.y, end.x + 28, end?.y);
+          connection.path = this.calculatePath(start?.x, start?.y, end.x, end?.y);
         }
       }
     });
@@ -193,8 +193,8 @@ export class NodeGraphComponent implements AfterViewInit, OnInit {
       const rect = portElement.getBoundingClientRect();
       const svgRect = this.svgContainer.nativeElement.getBoundingClientRect();
       return {
-        x: rect.left + rect.width / 2 - svgRect.left + window.scrollX,
-        y: rect.top + rect.height / 2 - svgRect.top + window.scrollY
+        x: rect.left + rect.width / 2 - svgRect.left,
+        y: rect.top + rect.height / 2 - svgRect.top
       };
     }
     return null;
