@@ -71,10 +71,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "blueprint-editor:build:production"
+              "buildTarget": "blueprint-editor:build:production"
             },
             "development": {
-              "browserTarget": "blueprint-editor:build:development"
+              "buildTarget": "blueprint-editor:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -82,7 +82,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "blueprint-editor:build"
+            "buildTarget": "blueprint-editor:build"
           }
         },
         "test": {
