@@ -1,0 +1,273 @@
+2024-08-21 03:45:54.955 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 03:45:54.994 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 24976 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 03:45:54.994 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 03:45:55.041 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 03:45:55.042 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 03:45:55.635 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 03:45:55.682 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 40 ms. Found 1 JPA repository interface.
+2024-08-21 03:45:56.099 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 03:45:56.107 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 03:45:56.108 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 03:45:56.108 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 03:45:56.147 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 03:45:56.147 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 1105 ms
+2024-08-21 03:45:56.250 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 03:45:56.310 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 03:45:56.364 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 03:45:56.661 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 03:45:56.687 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 03:45:56.837 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@7862307d
+2024-08-21 03:45:56.838 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 03:45:57.588 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 03:45:57.672 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 03:45:58.389 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 03:45:58.415 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 03:45:58.427 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 03:45:58.431 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 3.993 seconds (process running for 4.682)
+2024-08-21 04:11:07.674 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:11:07.676 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:11:07.678 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:11:11.960 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:11:11.982 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 25548 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:11:11.983 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:11:12.009 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:11:12.009 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:11:12.431 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:11:12.465 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 30 ms. Found 1 JPA repository interface.
+2024-08-21 04:11:12.796 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:11:12.803 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:11:12.804 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:11:12.804 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:11:12.834 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:11:12.835 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 826 ms
+2024-08-21 04:11:12.915 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:11:12.950 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:11:12.970 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:11:13.160 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:11:13.175 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:11:13.268 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@5f4489f5
+2024-08-21 04:11:13.269 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:11:13.829 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:11:13.865 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:11:14.393 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:11:14.419 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:11:14.431 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:11:14.436 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.764 seconds (process running for 3.124)
+2024-08-21 04:13:05.462 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:13:05.462 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:13:05.463 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2024-08-21 04:17:05.369 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:17:05.371 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:17:05.374 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:17:08.781 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:17:08.803 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 11076 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:17:08.804 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:17:08.832 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:17:08.832 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:17:09.260 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:17:09.298 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 33 ms. Found 1 JPA repository interface.
+2024-08-21 04:17:09.629 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:17:09.636 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:17:09.637 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:17:09.638 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:17:09.669 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:17:09.669 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 837 ms
+2024-08-21 04:17:09.760 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:17:09.793 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:17:09.815 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:17:10.071 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:17:10.094 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:17:10.188 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@6855aec5
+2024-08-21 04:17:10.189 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:17:10.785 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:17:10.818 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:17:11.357 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:17:11.383 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:17:11.394 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:17:11.398 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.905 seconds (process running for 3.261)
+2024-08-21 04:17:11.970 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:17:11.970 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:17:11.971 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2024-08-21 04:17:12.007 [http-nio-8080-exec-1] INFO  m.d.b.api.context.ContextHandler - createContext: mine.diy.bpeditor.api.context.request.CreateContext@6094ff0b
+2024-08-21 04:17:23.916 [http-nio-8080-exec-2] INFO  m.d.b.api.context.ContextHandler - createContext: mine.diy.bpeditor.api.context.request.CreateContext@76311fa0
+2024-08-21 04:17:40.908 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:17:40.910 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:17:40.916 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:17:44.919 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:17:44.939 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 14192 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:17:44.939 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:17:44.964 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:17:44.964 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:17:45.388 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:17:45.425 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 32 ms. Found 1 JPA repository interface.
+2024-08-21 04:17:45.724 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:17:45.732 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:17:45.733 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:17:45.733 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:17:45.766 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:17:45.766 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 801 ms
+2024-08-21 04:17:45.853 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:17:45.884 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:17:45.903 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:17:46.089 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:17:46.105 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:17:46.194 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@24debb
+2024-08-21 04:17:46.195 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:17:46.740 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:17:46.771 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:17:47.297 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:17:47.322 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:17:47.332 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:17:47.336 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.697 seconds (process running for 3.054)
+2024-08-21 04:17:54.552 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:17:54.552 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:17:54.552 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms
+2024-08-21 04:17:54.587 [http-nio-8080-exec-1] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=null, host=null, port=null, username=null, password=null, database=null)
+2024-08-21 04:18:15.243 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:18:15.245 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:18:15.248 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:18:17.346 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:18:17.367 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 20792 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:18:17.367 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:18:17.393 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:18:17.394 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:18:17.792 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:18:17.826 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 29 ms. Found 1 JPA repository interface.
+2024-08-21 04:18:18.155 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:18:18.161 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:18:18.162 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:18:18.162 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:18:18.193 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:18:18.193 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 799 ms
+2024-08-21 04:18:18.279 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:18:18.316 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:18:18.335 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:18:18.520 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:18:18.537 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:18:18.631 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1aa5fa3c
+2024-08-21 04:18:18.632 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:18:19.194 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:18:19.225 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:18:19.808 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:18:19.831 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:18:19.841 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:18:19.845 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.791 seconds (process running for 3.141)
+2024-08-21 04:18:19.962 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:18:19.962 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:18:19.963 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2024-08-21 04:18:19.993 [http-nio-8080-exec-1] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=null, host=null, port=null, username=null, password=null, database=null)
+2024-08-21 04:18:50.340 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:18:50.343 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:18:50.349 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:18:59.492 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:18:59.511 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 12136 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:18:59.512 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:18:59.535 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:18:59.535 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:18:59.935 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:18:59.967 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 28 ms. Found 1 JPA repository interface.
+2024-08-21 04:19:00.279 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:19:00.287 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:19:00.288 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:19:00.288 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:19:00.318 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:19:00.318 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 783 ms
+2024-08-21 04:19:00.403 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:19:00.436 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:19:00.457 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:19:00.632 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:19:00.647 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:19:00.738 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@51ddde21
+2024-08-21 04:19:00.740 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:19:01.347 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:19:01.379 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:19:01.928 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:19:01.951 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:19:01.963 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:19:01.967 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.746 seconds (process running for 3.105)
+2024-08-21 04:19:02.656 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:19:02.656 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:19:02.656 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms
+2024-08-21 04:19:02.682 [http-nio-8080-exec-1] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=null, host=null, port=null, username=null, password=null, database=null)
+2024-08-21 04:19:23.113 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:19:23.115 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:19:23.117 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:19:27.037 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:19:27.058 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 12252 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:19:27.059 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:19:27.085 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:19:27.085 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:19:27.487 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:19:27.523 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 31 ms. Found 1 JPA repository interface.
+2024-08-21 04:19:27.833 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:19:27.839 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:19:27.840 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:19:27.840 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:19:27.870 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:19:27.870 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 784 ms
+2024-08-21 04:19:27.952 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:19:27.983 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:19:28.002 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:19:28.197 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:19:28.213 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:19:28.303 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@1b19b0d2
+2024-08-21 04:19:28.304 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:19:28.901 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:19:28.933 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:19:29.516 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:19:29.541 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:19:29.551 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:19:29.556 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.803 seconds (process running for 3.152)
+2024-08-21 04:19:30.096 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:19:30.096 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:19:30.096 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms
+2024-08-21 04:19:30.166 [http-nio-8080-exec-1] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=qsd, host=localhost, port=5432, username=postgres, password=postgres, database=Postgres)
+2024-08-21 04:26:19.397 [http-nio-8080-exec-3] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=azeaze, port=5463, username=postgres, password=postgres, database=MySQL)
+2024-08-21 04:27:04.081 [http-nio-8080-exec-4] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=azeaze, port=5463, username=postgres, password=postgres, database=MySQL)
+2024-08-21 04:27:04.663 [http-nio-8080-exec-5] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=azeaze, port=5463, username=postgres, password=postgres, database=MySQL)
+2024-08-21 04:27:04.877 [http-nio-8080-exec-6] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=azeaze, port=5463, username=postgres, password=postgres, database=MySQL)
+2024-08-21 04:27:25.304 [http-nio-8080-exec-7] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=azeaze, port=5463, username=postgres, password=postgres, database=MySQL)
+2024-08-21 04:27:53.624 [http-nio-8080-exec-8] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=232, port=22, username=aze, password=aze, database=SQL Server)
+2024-08-21 04:29:00.538 [http-nio-8080-exec-10] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=232, port=22, username=aze, password=aze, database=SQL Server)
+2024-08-21 04:29:09.213 [http-nio-8080-exec-1] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=232, port=22, username=aze, password=aze, database=SQL Server)
+2024-08-21 04:29:49.773 [http-nio-8080-exec-2] INFO  m.d.b.api.context.ContextHandler - createContext: CreateContext(name=aze, host=232, port=22, username=aze, password=aze, database=SQL Server)
+2024-08-21 04:30:36.801 [SpringApplicationShutdownHook] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:30:36.803 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2024-08-21 04:30:36.806 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2024-08-21 04:30:40.671 [background-preinit] INFO  o.h.validator.internal.util.Version - HV000001: Hibernate Validator 8.0.1.Final
+2024-08-21 04:30:40.692 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Starting BpEditorApplication using Java 21.0.2 with PID 24092 (C:\dev\blueprint-editor\bp-editor\target\classes started by Ben Erwan in C:\dev\blueprint-editor\bp-editor)
+2024-08-21 04:30:40.692 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - The following 1 profile is active: "dev"
+2024-08-21 04:30:40.718 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2024-08-21 04:30:40.718 [restartedMain] INFO  o.s.b.d.e.DevToolsPropertyDefaultsPostProcessor - For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2024-08-21 04:30:41.123 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2024-08-21 04:30:41.157 [restartedMain] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 29 ms. Found 1 JPA repository interface.
+2024-08-21 04:30:41.469 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2024-08-21 04:30:41.474 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:30:41.475 [restartedMain] INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-08-21 04:30:41.475 [restartedMain] INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.26]
+2024-08-21 04:30:41.505 [restartedMain] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-08-21 04:30:41.505 [restartedMain] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 787 ms
+2024-08-21 04:30:41.601 [restartedMain] INFO  o.h.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2024-08-21 04:30:41.638 [restartedMain] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.5.2.Final
+2024-08-21 04:30:41.660 [restartedMain] INFO  o.h.c.i.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2024-08-21 04:30:41.858 [restartedMain] INFO  o.s.o.j.p.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2024-08-21 04:30:41.874 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2024-08-21 04:30:41.962 [restartedMain] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@23299b68
+2024-08-21 04:30:41.963 [restartedMain] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2024-08-21 04:30:42.555 [restartedMain] INFO  o.h.e.t.j.p.i.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2024-08-21 04:30:42.587 [restartedMain] INFO  o.s.o.j.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2024-08-21 04:30:43.125 [restartedMain] INFO  o.s.b.d.a.OptionalLiveReloadServer - LiveReload server is running on port 35729
+2024-08-21 04:30:43.148 [restartedMain] INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-08-21 04:30:43.158 [restartedMain] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
+2024-08-21 04:30:43.162 [restartedMain] INFO  m.diy.bpeditor.BpEditorApplication - Started BpEditorApplication in 2.765 seconds (process running for 3.126)
+2024-08-21 04:30:45.824 [http-nio-8080-exec-1] INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-08-21 04:30:45.824 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-08-21 04:30:45.825 [http-nio-8080-exec-1] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2024-08-21 04:30:45.923 [http-nio-8080-exec-1] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:31:27.490 [http-nio-8080-exec-2] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:31:53.185 [http-nio-8080-exec-4] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:33:20.759 [http-nio-8080-exec-3] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:33:38.550 [http-nio-8080-exec-5] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:35:09.754 [http-nio-8080-exec-8] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:35:23.834 [http-nio-8080-exec-7] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
+2024-08-21 04:35:40.231 [http-nio-8080-exec-9] WARN  o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver - Resolved [mine.diy.bpeditor.exceptions.ExceptionHandler: Error while creating context]
