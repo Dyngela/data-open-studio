@@ -1,0 +1,33 @@
+<div class="w-full">
+  <div class="relative">
+    <p-float-label variant="on">
+      <p-autocomplete
+        (onFocus)="onFocus($event)"
+        (onBlur)="onBlur($event)"
+        (completeMethod)="onComplete($event)"
+        [formControl]="control()"
+        [suggestions]="suggestions()"
+        [disabled]="disabled()"
+        inputId="floatInput"
+        [class]="'w-full'"
+        [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"
+      ></p-autocomplete>
+      <label for="floatInput"> {{ label() }} </label>
+    </p-float-label>
+  </div>
+
+  @if (control().touched && control().invalid) {
+    @switch (true) {
+      @case (control().hasError('required')) {
+        <p class="text-red-500 text-sm mt-1">{{ label() }} requis</p>
+      }
+      @case (control().hasError('custom')) {
+        <p class="text-red-500 text-sm mt-1">{{ control().getError('custom') }}</p>
+      }
+    }
+  }
+
+  @if (hint() && hint() != '') {
+    <p class="text-gray-500 text-sm mt-1">{{ hint() }}</p>
+  }
+</div>

@@ -1,0 +1,43 @@
+<div class="w-full">
+  <div class="relative">
+    <p-float-label variant="on">
+      <input
+        pInputText
+        (focus)="onFocus($event)"
+        (blur)="onBlur($event)"
+        [formControl]="control()"
+        [type]="type()"
+        [disabled]="disabled()"
+        [readonly]="readonly()"
+        id="floatInput"
+        class="w-full"
+        [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"
+      />
+      <label for="floatInput"> {{ label() }} </label>
+    </p-float-label>
+  </div>
+
+  @if (control().touched && control().invalid) {
+    @switch (true) {
+      @case (control().hasError('required')) {
+        <p class="text-red-500 text-sm mt-1">{{ label() }} requis</p>
+      }
+      @case (control().hasError('email')) {
+        <p class="text-red-500 text-sm mt-1">L'adresse email est invalide</p>
+      }
+      @case (control().hasError('minlength')) {
+        <p class="text-red-500 text-sm mt-1">La longueur minimale est {{ control().getError('minlength').requiredLength }} caractères</p>
+      }
+      @case (control().hasError('maxlength')) {
+        <p class="text-red-500 text-sm mt-1">La longueur maximale est {{ control().getError('maxlength').requiredLength }} caractères</p>
+      }
+      @case (control().hasError('custom')) {
+        <p class="text-red-500 text-sm mt-1">{{ control().getError('custom') }}</p>
+      }
+    }
+  }
+
+  @if (hint() && hint() != '') {
+    <p class="text-gray-500 text-sm mt-1">{{ hint() }}</p>
+  }
+</div>

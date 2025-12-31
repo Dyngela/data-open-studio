@@ -1,0 +1,45 @@
+<div class="w-full">
+  <div class="relative">
+    <p-float-label variant="on">
+      <p-inputNumber
+        (onFocus)="onFocus($event)"
+        (onBlur)="onBlur($event)"
+        (onClear)="onClear($event)"
+        [formControl]="control()"
+        [mode]="mode()"
+        [minFractionDigits]="minFractionDigits()"
+        [maxFractionDigits]="maxFractionDigits()"
+        [min]="min()"
+        [max]="max()"
+        [step]="step()"
+        [disabled]="disabled()"
+        [readonly]="readonly()"
+        inputId="floatInput"
+        class="w-full"
+        [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"
+      ></p-inputNumber>
+      <label for="floatInput"> {{ label() }} </label>
+    </p-float-label>
+  </div>
+
+  @if (control().touched && control().invalid) {
+    @switch (true) {
+      @case (control().hasError('required')) {
+        <p class="text-red-500 text-sm mt-1">{{ label() }} requis</p>
+      }
+      @case (control().hasError('min')) {
+        <p class="text-red-500 text-sm mt-1">La valeur minimum est {{ min() }}</p>
+      }
+      @case (control().hasError('max')) {
+        <p class="text-red-500 text-sm mt-1">La valeur maximum est {{ max() }}</p>
+      }
+      @case (control().hasError('custom')) {
+        <p class="text-red-500 text-sm mt-1">{{ control().getError('custom') }}</p>
+      }
+    }
+  }
+
+  @if (hint() && hint() != '') {
+    <p class="text-gray-500 text-sm mt-1">{{ hint() }}</p>
+  }
+</div>

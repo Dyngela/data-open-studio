@@ -1,0 +1,37 @@
+<div class="w-full">
+  <div class="relative">
+    <p-float-label variant="on">
+      <p-select
+        (onFocus)="onFocus($event)"
+        (onBlur)="onBlur($event)"
+        (onChange)="onChange($event)"
+        [formControl]="control()"
+        [options]="options()"
+        [optionLabel]="optionLabel()"
+        [optionValue]="optionValue()"
+        [filter]="filter()"
+        [showClear]="showClear()"
+        [disabled]="disabled()"
+        inputId="floatInput"
+        class="w-full"
+        [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"
+      ></p-select>
+      <label for="floatInput"> {{ label() }} </label>
+    </p-float-label>
+  </div>
+
+  @if (control().touched && control().invalid) {
+    @switch (true) {
+      @case (control().hasError('required')) {
+        <p class="text-red-500 text-sm mt-1">{{ label() }} requis</p>
+      }
+      @case (control().hasError('custom')) {
+        <p class="text-red-500 text-sm mt-1">{{ control().getError('custom') }}</p>
+      }
+    }
+  }
+
+  @if (hint() && hint() != '') {
+    <p class="text-gray-500 text-sm mt-1">{{ hint() }}</p>
+  }
+</div>

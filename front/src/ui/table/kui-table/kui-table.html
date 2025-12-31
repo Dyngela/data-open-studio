@@ -1,0 +1,83 @@
+<p-table
+  [value]="data()"
+  [columns]="columns()"
+  [paginator]="paginator()"
+  [rows]="rows()"
+  [showCurrentPageReport]="true"
+  [currentPageReportTemplate]="currentPageReportTemplate()"
+  [rowsPerPageOptions]="rowsPerPageOptions()"
+  [loading]="loading()"
+  [lazy]="lazy()"
+  [totalRecords]="totalRecords()"
+  [globalFilterFields]="globalFilterFields()"
+  [class]="'w-full ' + customClass()"
+  (onPage)="handlePage($event)"
+  (onSort)="handleSort($event)"
+>
+  <ng-template pTemplate="caption">
+    @if (caption()) {
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-semibold m-0">{{ caption() }}</h3>
+        @if (showGlobalFilter()) {
+          <span class="p-input-icon-left flex items-center">
+            <i class="pi pi-search mr-1"></i>
+            <input
+              pInputText
+              type="text"
+              [placeholder]="globalFilterPlaceholder()"
+              (input)="onGlobalFilter($event)"
+              class="w-full"
+            />
+          </span>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="header" let-columns>
+    <tr>
+      @for (col of columns; track col.field) {
+        <th [pSortableColumn]="col.sortable ? col.field : null">
+          {{ col.header }}
+          @if (col.sortable) {
+            <p-sortIcon [field]="col.field"/>
+          }
+        </th>
+      }
+      @if (actionsTemplate()) {
+        <th>Actions</th>
+      }
+    </tr>
+  </ng-template>
+
+  <ng-template pTemplate="body" let-rowData let-columns="columns">
+    <tr [pSelectableRow]="rowData">
+
+      @for (col of columns; track col.field) {
+        <td>
+          @if (col.template) {
+            <ng-container *ngTemplateOutlet="col.template; context: { $implicit: rowData }"/>
+          } @else {
+            {{ getNestedValue(rowData, col.field) }}
+          }
+        </td>
+      }
+      @if (actionsTemplate()) {
+        <td>
+          <ng-container *ngTemplateOutlet="actionsTemplate()!; context: { $implicit: rowData }"/>
+        </td>
+      }
+    </tr>
+  </ng-template>
+
+  <ng-template pTemplate="emptymessage">
+    <tr>
+      <td [attr.colspan]="getColspan()">
+        <div class="flex flex-col items-center justify-center py-8 text-gray-400">
+          <i class="pi pi-inbox text-6xl mb-3"></i>
+          <p class="m-0 text-lg">{{ emptyMessage() }}</p>
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+</p-table>

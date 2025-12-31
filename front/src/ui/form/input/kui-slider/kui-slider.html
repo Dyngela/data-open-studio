@@ -1,0 +1,34 @@
+<div class="w-full">
+  <label class="text-sm block mb-2">{{ label() }}: {{ control().value }}</label>
+  <p-slider
+    (onChange)="onChange($event)"
+    [formControl]="control()"
+    [min]="min()"
+    [max]="max()"
+    [step]="step()"
+    [disabled]="disabled()"
+    class="w-full"
+    [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"
+  ></p-slider>
+
+  @if (control().touched && control().invalid) {
+    @switch (true) {
+      @case (control().hasError('required')) {
+        <p class="text-red-500 text-sm mt-1">{{ label() }} requis</p>
+      }
+      @case (control().hasError('min')) {
+        <p class="text-red-500 text-sm mt-1">La valeur minimum est {{ min() }}</p>
+      }
+      @case (control().hasError('max')) {
+        <p class="text-red-500 text-sm mt-1">La valeur maximum est {{ max() }}</p>
+      }
+      @case (control().hasError('custom')) {
+        <p class="text-red-500 text-sm mt-1">{{ control().getError('custom') }}</p>
+      }
+    }
+  }
+
+  @if (hint() && hint() != '') {
+    <p class="text-gray-500 text-sm mt-1">{{ hint() }}</p>
+  }
+</div>

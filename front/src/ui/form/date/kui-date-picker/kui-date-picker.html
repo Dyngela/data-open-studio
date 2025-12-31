@@ -1,0 +1,14 @@
+<p-floatlabel variant="on">
+  <p-date-picker
+    [formControl]="control()"
+    [inputId]="inputId()"
+    [showIcon]="showIcon()"
+    [iconDisplay]="iconDisplay()"
+    [dateFormat]="dateFormat()"
+    [showButtonBar]="showButtonBar()"
+    [class]="customClass()"
+    (onSelect)="handleSelect($event)"
+    (onClear)="handleClear()"
+  />
+  <label [for]="inputId()">{{ label() }}</label>
+</p-floatlabel>

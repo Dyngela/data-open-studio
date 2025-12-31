@@ -1,0 +1,14 @@
+@if (visible()) {
+  <div class="flex items-center justify-center">
+    <div class="flex flex-col items-center gap-3">
+      <p-progress-spinner
+        [strokeWidth]="strokeWidth()"
+        [animationDuration]="animationDuration()"
+        [class]="'w-' + size() + ' h-' + size()"
+      />
+      @if (message()) {
+        <p class="text-gray-700 text-sm font-medium">{{ message() }}</p>
+      }
+    </div>
+  </div>
+}

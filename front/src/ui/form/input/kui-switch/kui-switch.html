@@ -1,0 +1,26 @@
+<div class="w-full">
+  <div class="flex items-center gap-3">
+    <p-toggle-switch
+      (onChange)="onChange($event)"
+      [formControl]="control()"
+      [disabled]="disabled()"
+      [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"
+    ></p-toggle-switch>
+    <label class="text-sm">{{ label() }}</label>
+  </div>
+
+  @if (control().touched && control().invalid) {
+    @switch (true) {
+      @case (control().hasError('required')) {
+        <p class="text-red-500 text-sm mt-1">{{ label() }} requis</p>
+      }
+      @case (control().hasError('custom')) {
+        <p class="text-red-500 text-sm mt-1">{{ control().getError('custom') }}</p>
+      }
+    }
+  }
+
+  @if (hint() && hint() != '') {
+    <p class="text-gray-500 text-sm mt-1">{{ hint() }}</p>
+  }
+</div>
