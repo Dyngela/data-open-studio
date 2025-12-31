@@ -1,0 +1,63 @@
+<div class="playground-container">
+  <app-node-panel></app-node-panel>
+
+  <div
+    #playgroundArea
+    class="playground-area"
+    cdkDropList
+    cdkDropListSortingDisabled
+    id="playground-area"
+    [cdkDropListConnectedTo]="['node-panel-list']"
+    (cdkDropListDropped)="onDrop($event)"
+    (mousedown)="onPlaygroundMouseDown($event)"
+    (mousemove)="onPlaygroundMouseMove($event)"
+    (mouseup)="onPlaygroundMouseUp($event)"
+    (click)="onPlaygroundClick($event)"
+    [class.panning]="isPanning()"
+  >
+
+    <svg
+      class="connections-layer"
+      [style.transform]="'translate(' + panOffset().x + 'px, ' + panOffset().y + 'px)'"
+    >
+      @for (connection of connections(); track connection.id) {
+        <path
+          [attr.d]="getConnectionPath(connection)"
+          class="connection"
+          fill="none"
+          stroke="#4CAF50"
+          stroke-width="3"
+        />
+      }
+
+      @if (tempConnection(); as temp) {
+        <path
+          [attr.d]="getTempConnectionPath()"
+          class="temp-connection"
+          fill="none"
+          stroke="#4CAF50"
+          stroke-width="3"
+          stroke-dasharray="5,5"
+        />
+      }
+    </svg>
+
+    @for (node of nodes(); track node.id) {
+      <app-node-instance
+        [node]="node"
+        [panOffset]="panOffset()"
+        [isPanning]="isPanning()"
+        (positionChanged)="onNodePositionChanged($event)"
+        (outputPortClick)="onOutputPortClick($event)"
+        (inputPortClick)="onInputPortClick($event)"
+      ></app-node-instance>
+    }
+
+    <app-minimap
+      [nodes]="nodes()"
+      [viewportWidth]="viewportWidth()"
+      [viewportHeight]="viewportHeight()"
+      [panOffset]="panOffset()"
+    ></app-minimap>
+  </div>
+</div>

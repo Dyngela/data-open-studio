@@ -1,0 +1,42 @@
+<div
+  class="node-instance"
+  cdkDrag
+  [cdkDragDisabled]="isPanning()"
+  (cdkDragEnded)="onDragEnded($event)"
+  [style.border-color]="node().type.color"
+  [style.left.px]="node().position.x + panOffset().x"
+  [style.top.px]="node().position.y + panOffset().y"
+>
+  <div class="node-header" [style.background-color]="node().type.color">
+    <i [class]="node().type.icon"></i>
+    <span class="node-title">{{ node().type.label }}</span>
+  </div>
+
+  <div class="node-body">
+    <div class="ports-container">
+      <div class="input-ports">
+        @for (portIndex of getInputPorts(); track portIndex) {
+          <div
+            class="port input-port"
+            [attr.data-node-id]="node().id"
+            [attr.data-port-index]="portIndex"
+            [attr.data-port-type]="'input'"
+            (click)="onInputPortClick(portIndex, $event)"
+          ></div>
+        }
+      </div>
+
+      <div class="output-ports">
+        @for (portIndex of getOutputPorts(); track portIndex) {
+          <div
+            class="port output-port"
+            [attr.data-node-id]="node().id"
+            [attr.data-port-index]="portIndex"
+            [attr.data-port-type]="'output'"
+            (click)="onOutputPortClick(portIndex, $event)"
+          ></div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

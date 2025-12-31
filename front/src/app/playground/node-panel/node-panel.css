@@ -1,0 +1,72 @@
+.node-panel {
+  width: 250px;
+  height: 100%;
+  background-color: #1e1e1e;
+  border-right: 1px solid #333;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.panel-title {
+  color: #fff;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.node-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  border-left: 4px solid;
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.node-item:hover {
+  background-color: #3d3d3d;
+  transform: translateX(4px);
+}
+
+.node-item:active {
+  cursor: grabbing;
+}
+
+.node-item i {
+  font-size: 1.25rem;
+}
+
+.node-label {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.node-item.cdk-drag-preview {
+  opacity: 0.8;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  border-left: 4px solid;
+}
+
+.node-item.cdk-drag-placeholder {
+  opacity: 0;
+}
+
+.node-list.cdk-drop-list-dragging .node-item:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
