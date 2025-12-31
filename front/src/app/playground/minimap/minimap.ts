@@ -101,8 +101,8 @@ export class Minimap {
     if (!bounds) return null;
 
     return {
-      x: (offset.x - bounds.minX) * scale,
-      y: (offset.y - bounds.minY) * scale,
+      x: (-offset.x - bounds.minX) * scale,
+      y: (-offset.y - bounds.minY) * scale,
       width: this.viewportWidth() * scale,
       height: this.viewportHeight() * scale,
     };

@@ -69,13 +69,13 @@ export class Playground implements AfterViewInit {
   }
 
   onNodePositionChanged(event: { nodeId: string; position: { x: number; y: number } }) {
-    this.nodes.update(nodes => {
-      const node = nodes.find((n) => n.id === event.nodeId);
-      if (node) {
-        node.position = event.position;
-      }
-      return [...nodes];
-    });
+    this.nodes.update(nodes =>
+      nodes.map(node =>
+        node.id === event.nodeId
+          ? { ...node, position: event.position }
+          : node
+      )
+    );
   }
 
   onOutputPortClick(event: { nodeId: string; portIndex: number }) {
