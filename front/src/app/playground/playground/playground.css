@@ -44,3 +44,8 @@
 .temp-connection {
   opacity: 0.6;
 }
+
+.cdk-drag-placeholder {
+  opacity: 0;
+  display: none;
+}

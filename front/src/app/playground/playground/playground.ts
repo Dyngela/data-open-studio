@@ -195,20 +195,24 @@ export class Playground implements AfterViewInit {
     const node = this.nodes().find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
 
-    const portSelector = `[data-node-id="${nodeId}"][data-port-index="${portIndex}"][data-port-type="${portType}"]`;
-    const portElement = this.playgroundArea.nativeElement.querySelector(portSelector);
+    // Node dimensions (should match CSS)
+    const nodeWidth = 180;
+    const nodeHeight = 100;
+    const headerHeight = 40;
 
-    if (portElement) {
-      const playgroundRect = this.playgroundArea.nativeElement.getBoundingClientRect();
-      const portRect = portElement.getBoundingClientRect();
+    // Calculate port position based on node layout
+    const portCount = portType === 'input' ? node.type.inputs : node.type.outputs;
+    const bodyHeight = nodeHeight - headerHeight;
+    const portSpacing = bodyHeight / (portCount + 1);
+    const portY = headerHeight + (portIndex + 1) * portSpacing;
 
-      return {
-        x: portRect.left + portRect.width / 2 - playgroundRect.left,
-        y: portRect.top + portRect.height / 2 - playgroundRect.top,
-      };
-    }
+    // Ports are on left (input) or right (output) edge
+    const portX = portType === 'input' ? 0 : nodeWidth;
 
-    return { x: node.position.x, y: node.position.y };
+    return {
+      x: node.position.x + portX,
+      y: node.position.y + portY,
+    };
   }
 
   private findNonOverlappingPosition(x: number, y: number): { x: number; y: number } {
