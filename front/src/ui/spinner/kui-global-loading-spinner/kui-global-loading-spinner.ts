@@ -5,7 +5,7 @@ import { ProgressSpinner } from 'primeng/progressspinner';
   selector: 'kui-global-loading-spinner',
   imports: [ProgressSpinner],
   templateUrl: './kui-global-loading-spinner.html',
-  styleUrl: './kui-global-loading-spinner.scss',
+  styleUrl: './kui-global-loading-spinner.css',
 })
 export class KuiGlobalLoadingSpinner {
   visible = input<boolean>(false);

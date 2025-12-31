@@ -11,7 +11,7 @@ import {NgClass} from "@angular/common";
     NgClass,
   ],
   templateUrl: './kui-switch.html',
-  styleUrl: './kui-switch.scss'
+  styleUrl: './kui-switch.css'
 })
 export class KuiSwitch {
   // Inputs

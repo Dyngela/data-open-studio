@@ -14,7 +14,7 @@ export interface KuiTableColumn {
   selector: 'app-kui-table',
   imports: [CommonModule, TableModule, InputText],
   templateUrl: './kui-table.html',
-  styleUrl: './kui-table.scss',
+  styleUrl: './kui-table.css',
 })
 export class KuiTable {
   data = input.required<any[]>();

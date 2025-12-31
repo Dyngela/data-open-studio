@@ -6,7 +6,7 @@ import { MessageService } from 'primeng/api';
   selector: 'app-kui-file-upload',
   imports: [FileUploadModule],
   templateUrl: './kui-file-upload.html',
-  styleUrl: './kui-file-upload.scss',
+  styleUrl: './kui-file-upload.css',
 })
 export class KuiFileUpload {
   private messageService = inject(MessageService);

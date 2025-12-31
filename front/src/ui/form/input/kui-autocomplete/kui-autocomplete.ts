@@ -13,7 +13,7 @@ import {FloatLabel} from "primeng/floatlabel";
     FloatLabel,
   ],
   templateUrl: './kui-autocomplete.html',
-  styleUrl: './kui-autocomplete.scss'
+  styleUrl: './kui-autocomplete.css'
 })
 export class KuiAutocomplete {
   // Inputs

@@ -13,7 +13,7 @@ import {FloatLabel} from "primeng/floatlabel";
     FloatLabel,
   ],
   templateUrl: './kui-select.html',
-  styleUrl: './kui-select.scss'
+  styleUrl: './kui-select.css'
 })
 export class KuiSelect {
   // Inputs

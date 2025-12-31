@@ -5,7 +5,7 @@ import { ProgressSpinner } from 'primeng/progressspinner';
   selector: 'kui-local-loading-spinner',
   imports: [ProgressSpinner],
   templateUrl: './kui-local-loading-spinner.html',
-  styleUrl: './kui-local-loading-spinner.scss',
+  styleUrl: './kui-local-loading-spinner.css',
 })
 export class KuiLocalLoadingSpinner {
   visible = input<boolean>(false);

@@ -13,7 +13,7 @@ import {FloatLabel} from "primeng/floatlabel";
     FloatLabel,
   ],
   templateUrl: './kui-input-number.html',
-  styleUrl: './kui-input-number.scss'
+  styleUrl: './kui-input-number.css'
 })
 export class InputNumber {
   // Inputs

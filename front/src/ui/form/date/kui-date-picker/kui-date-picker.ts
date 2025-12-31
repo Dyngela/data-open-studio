@@ -7,7 +7,7 @@ import { FloatLabel } from 'primeng/floatlabel';
   selector: 'app-kui-date-picker',
   imports: [DatePicker, FloatLabel, ReactiveFormsModule],
   templateUrl: './kui-date-picker.html',
-  styleUrl: './kui-date-picker.scss',
+  styleUrl: './kui-date-picker.css',
 })
 export class KuiDatePicker {
   control = input.required<FormControl<Date | null>>();

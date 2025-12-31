@@ -11,7 +11,7 @@ import {NgClass} from "@angular/common";
     NgClass,
   ],
   templateUrl: './kui-slider.html',
-  styleUrl: './kui-slider.scss'
+  styleUrl: './kui-slider.css'
 })
 export class KuiSlider {
   // Inputs

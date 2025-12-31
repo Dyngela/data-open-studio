@@ -14,7 +14,7 @@ import {FloatLabel} from "primeng/floatlabel";
   ],
 
   templateUrl: './kui-input-text.html',
-  styleUrl: './kui-input-text.scss'
+  styleUrl: './kui-input-text.css'
 })
 export class KuiInputText {
   // Inputs
