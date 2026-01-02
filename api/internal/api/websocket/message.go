@@ -1,5 +1,10 @@
 package websocket
 
+import (
+	errors2 "errors"
+	"time"
+)
+
 // MessageType represents the type of WebSocket message
 type MessageType string
 
@@ -39,5 +44,45 @@ type UserInfo struct {
 
 // ErrorMessage represents an error message
 type ErrorMessage struct {
-	Error string `json:"error"`
+	Error         error  `json:"error"`
+	CustomMessage string `json:"customMessage"`
+}
+
+// NewErrorMessage creates a new error message
+func NewErrorMessage(jobID uint, userID uint, username string, errorText string, errors ...error) Message {
+	return Message{
+		Type:      MessageTypeError,
+		JobID:     jobID,
+		UserID:    userID,
+		Username:  username,
+		Timestamp: time.Now(),
+		Data: ErrorMessage{
+			Error:         errors2.Join(errors...),
+			CustomMessage: errorText,
+		},
+	}
+}
+
+// NewUserJoinMessage creates a new user join message
+func NewUserJoinMessage(jobID uint, userID uint, username string, userInfo UserInfo) Message {
+	return Message{
+		Type:      MessageTypeUserJoin,
+		JobID:     jobID,
+		UserID:    userID,
+		Username:  username,
+		Timestamp: time.Now(),
+		Data:      userInfo,
+	}
+}
+
+// NewUserLeaveMessage creates a new user leave message
+func NewUserLeaveMessage(jobID uint, userID uint, username string, userInfo UserInfo) Message {
+	return Message{
+		Type:      MessageTypeUserLeave,
+		JobID:     jobID,
+		UserID:    userID,
+		Username:  username,
+		Timestamp: time.Now(),
+		Data:      userInfo,
+	}
 }

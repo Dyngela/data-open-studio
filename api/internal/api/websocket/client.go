@@ -81,9 +81,9 @@ func (c *Client) ReadPump() {
 		}
 
 		var msg Message
-		if err := json.Unmarshal(messageBytes, &msg); err != nil {
+		if err = json.Unmarshal(messageBytes, &msg); err != nil {
 			c.Logger.Error().Err(err).Str("clientId", c.ID).Msg("Failed to unmarshal message")
-			c.sendError("Invalid message format")
+			c.sendError("Invalid message format", err)
 			continue
 		}
 
@@ -184,8 +184,8 @@ func (c *Client) validateMessage(msg *Message) bool {
 }
 
 // sendError sends an error message to the client
-func (c *Client) sendError(errorMsg string) {
-	c.Send <- NewErrorMessage(c.JobID, c.UserID, c.Username, errorMsg)
+func (c *Client) sendError(errorMsg string, errs ...error) {
+	c.Send <- NewErrorMessage(c.JobID, c.UserID, c.Username, errorMsg, errs...)
 }
 
 // processWorker processes messages from the queue sequentially
