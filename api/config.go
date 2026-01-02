@@ -42,10 +42,10 @@ type AppConfig struct {
 
 var config AppConfig
 
-func InitConfig() {
-	err := godotenv.Load(".env")
+func InitConfig(envfile string) {
+	err := godotenv.Load(envfile)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal(fmt.Sprintf("Error loading %s file: %s", envfile, err))
 	} else {
 		log.Println("Loaded .env file successfully")
 	}

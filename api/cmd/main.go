@@ -4,6 +4,8 @@ import (
 	"api"
 	"api/internal/api/handler/endpoints"
 	"api/internal/api/models"
+	"api/internal/api/service"
+	ws "api/internal/api/websocket"
 	"context"
 	"errors"
 	"fmt"
@@ -18,7 +20,7 @@ import (
 )
 
 func main() {
-	api.InitConfig()
+	api.InitConfig(".env")
 	gin.SetMode(gin.ReleaseMode)
 
 	if api.GetConfig().Mode == "dev" {
@@ -48,7 +50,15 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	initAPI(router)
+
+	// Initialize WebSocket components
+	jobService := service.NewJobService()
+	processor := ws.NewMessageProcessor(jobService, api.Logger)
+	hub := ws.NewHub(api.Logger)
+	go hub.Run()
+	api.Logger.Info().Msg("WebSocket hub started")
+
+	initAPI(router, hub, processor)
 
 	api.Logger.Debug().Msgf("Starting CORE API on port %s", api.GetConfig().ApiPort)
 	if err = router.RunWithContext(ctx); err != nil && !errors.Is(err, context.Canceled) {
@@ -58,8 +68,11 @@ func main() {
 
 }
 
-func initAPI(router *graceful.Graceful) {
+func initAPI(router *graceful.Graceful, hub *ws.Hub, processor *ws.MessageProcessor) {
 	endpoints.AuthHandler(router)
+	// endpoints.JobHandler(router)     // TODO: Uncomment when job handler is needed
+	// endpoints.NodeHandler(router)    // TODO: Uncomment when node handler is needed
+	endpoints.WebSocketHandler(router, hub, processor)
 }
 
 func GenerateCode(job *models.Job) string {

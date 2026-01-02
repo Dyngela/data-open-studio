@@ -39,6 +39,7 @@ func AuthMiddleware(cfg api.AppConfig) gin.HandlerFunc {
 		c.Set("userID", claims.UserID)
 		c.Set("userEmail", claims.Email)
 		c.Set("userRole", claims.Role)
+		c.Set("username", claims.Email) // Use email as username for now
 
 		c.Next()
 	}
