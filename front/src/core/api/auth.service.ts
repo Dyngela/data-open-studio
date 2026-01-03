@@ -1,7 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import {inject, Injectable, signal} from '@angular/core';
 import { Observable, tap, of } from 'rxjs';
-import { BaseApiService } from './base-api.service';
-import {User, LoginDto, AuthResponse, RegisterDto} from '../models';
+import {ApiMutation, ApiResult, BaseApiService} from './base-api.service';
+import {AuthResponse, LoginDto, RegisterDto, User} from '../models/user.model';
+import {CookieService} from 'ngx-cookie-service';
 
 /**
  * Authentication service
@@ -10,32 +11,36 @@ import {User, LoginDto, AuthResponse, RegisterDto} from '../models';
 @Injectable({
   providedIn: 'root'
 })
-export class AuthService extends BaseApiService {
+export class AuthService {
+  private api = inject(BaseApiService);
+  private cookieService = inject(CookieService);
   private currentUserSignal = signal<User | null>(null);
   public currentUser = this.currentUserSignal.asReadonly();
+
+  constructor() {
+    this.initializeAuth()
+  }
 
   /**
    * Register new user
    */
-  register(userData: RegisterDto): Observable<AuthResponse> {
-    return this.post<RegisterDto, AuthResponse>('auth/register', userData)
-      .pipe(
-        tap(response => {
-          this.setSession(response);
-        })
-      );
+  register(): ApiMutation<AuthResponse> {
+    return this.api.post<AuthResponse>(
+      '/auth/register',
+      (response) => this.setSession(response),
+    );
   }
 
   /**
    * Login user
    */
-  login(credentials: LoginDto): Observable<AuthResponse> {
-    return this.post<LoginDto, AuthResponse>('auth/login', credentials)
-      .pipe(
-        tap(response => {
-          this.setSession(response);
-        })
-      );
+  login(): ApiMutation<AuthResponse, LoginDto> {
+    return this.api.post(
+      '/auth/login',
+      (response) => this.setSession(response),
+      undefined,
+      { showSuccessMessage: true, successMessage: "OK" }
+    );
   }
 
   /**
@@ -48,13 +53,8 @@ export class AuthService extends BaseApiService {
   /**
    * Get current user profile
    */
-  getCurrentUser(): Observable<User> {
-    return this.get<User>('me')
-      .pipe(
-        tap(user => {
-          this.currentUserSignal.set(user);
-        })
-      );
+  getCurrentUser(): ApiResult<User> {
+    return this.api.get<User>('me')
   }
 
   /**
@@ -62,24 +62,23 @@ export class AuthService extends BaseApiService {
    */
   refreshToken(): Observable<AuthResponse> {
     const refreshToken = this.getRefreshToken();
+
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
 
-    return this.post<{ refreshToken: string }, AuthResponse>('auth/refresh', { refreshToken })
-      .pipe(
-        tap(response => {
-          this.setSession(response);
-        })
-      );
+    return this.api.request$<AuthResponse>('POST', '/auth/refresh', { refreshToken }).pipe(
+      tap(response => this.setSession(response))
+    );
   }
+
 
   /**
    * Set session data
    */
-  private setSession(authResponse: AuthResponse): void {
-    localStorage.setItem('access_token', authResponse.token);
-    localStorage.setItem('refresh_token', authResponse.refreshToken);
+  private async setSession(authResponse: AuthResponse): Promise<void> {
+    this.cookieService.set('access_token', authResponse.token);
+    this.cookieService.set('refresh_token', authResponse.refreshToken);
     this.currentUserSignal.set(authResponse.user);
   }
 
@@ -87,8 +86,8 @@ export class AuthService extends BaseApiService {
    * Clear session data
    */
   private clearSession(): void {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    this.cookieService.delete('access_token');
+    this.cookieService.delete('refresh_token');
     this.currentUserSignal.set(null);
   }
 
@@ -96,14 +95,15 @@ export class AuthService extends BaseApiService {
    * Get access token
    */
   getAccessToken(): string | null {
-    return localStorage.getItem('access_token');
+    return this.cookieService.get('access_token') ?? null;
   }
 
   /**
    * Get refresh token
    */
   getRefreshToken(): string | null {
-    return localStorage.getItem('refresh_token');
+    return this.cookieService.get('refresh_token') ?? null ;
+
   }
 
   /**
@@ -118,7 +118,7 @@ export class AuthService extends BaseApiService {
    */
   initializeAuth(): void {
     if (this.isAuthenticated()) {
-      this.getCurrentUser().subscribe();
+      this.getCurrentUser().refresh();
     }
   }
 }

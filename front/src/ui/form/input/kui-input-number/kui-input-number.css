@@ -1,4 +1,4 @@
-@use "tailwindcss";
+@import "tailwindcss";
 
 :host ::ng-deep {
   .p-inputnumber input {

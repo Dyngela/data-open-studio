@@ -3,11 +3,12 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import {provideHttpClient, withInterceptors} from '@angular/common/http';
-import {authInterceptor, tokenRefreshInterceptor} from '../core/interceptors';
 import {provideAnimationsAsync} from '@angular/platform-browser/animations/async';
 import {providePrimeNG} from 'primeng/config';
-import {MessageService} from 'primeng/api';
+import {ConfirmationService, MessageService} from 'primeng/api';
 import Aura from '@primeng/themes/aura';
+import {authInterceptor} from '../core/interceptors/auth.interceptor';
+import {tokenRefreshInterceptor} from '../core/interceptors/token-refresh.interceptor';
 
 
 export const appConfig: ApplicationConfig = {
@@ -27,5 +28,6 @@ export const appConfig: ApplicationConfig = {
       ripple: true,
     }),
     MessageService,
+    ConfirmationService,
   ]
 };

@@ -6,7 +6,7 @@ import (
 	"api/internal/api/models"
 )
 
-//go:generate go run ../../../../tools/dtomapper -type=VehiculeMapper
+//go:generate go run ../../../../tools/dtomapper -type=UserMapper
 type UserMapper interface {
 	// --update
 	DtoToUpdate(req request.UpdateUser, vehicle *models.User)

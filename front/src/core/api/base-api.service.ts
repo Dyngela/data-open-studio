@@ -1,215 +1,268 @@
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
-import {ApiResponse, Page, QueryParams} from '../models';
+import {HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
+import {inject, Injectable, signal, Signal} from '@angular/core';
+import {finalize, Observable, of} from 'rxjs';
+import {catchError} from 'rxjs/operators';
+import {environment} from '../../environments/environment';
+import {MessageService} from 'primeng/api';
 
-/**
- * Base API service with common HTTP methods
- * Extend this class for feature-specific services
- */
-export abstract class BaseApiService {
+export interface ApiResult<T> {
+  data: Signal<T | null>;
+  error: Signal<ApiError | null>;
+  isLoading: Signal<boolean>;
+  refresh: () => void;
+}
+
+export interface MutationSuccess<T> {
+  data: T;
+  timestamp: number;
+}
+
+export interface MutationError {
+  error: ApiError;
+  timestamp: number;
+}
+
+export interface ApiMutation<TResponse = void, TBody = void> {
+  data: Signal<TResponse | null>;
+  execute: TBody extends void ? () => void : (body: TBody) => void;
+  isLoading: Signal<boolean>;
+  error: Signal<ApiError | null>;
+  success: Signal<MutationSuccess<TResponse> | null>;
+  reset: () => void;
+}
+
+export interface ApiOptions {
+  showSuccessMessage?: boolean;
+  successMessage?: string;
+  showErrorMessage?: boolean;
+}
+
+export interface ApiError {
+  status: number;
+  message: string;
+  raw?: any;
+}
+
+export interface SearchCriteria {
+  name: string;
+  value: any;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BaseApiService {
   protected http = inject(HttpClient);
-  protected baseUrl = environment.apiUrl;
+  protected messageService = inject(MessageService);
 
-  /**
-   * Build complete URL with API version
-   */
-  protected buildUrl(endpoint: string): string {
-    const version = environment.apiVersion;
-    return `${this.baseUrl}/${version}/${endpoint}`;
+  private defaultOptions = {
+    get: { showSuccessMessage: false, showErrorMessage: true },
+    post: { showSuccessMessage: false, showErrorMessage: true },
+    put: { showSuccessMessage: false, showErrorMessage: true },
+    delete: { showSuccessMessage: false, showErrorMessage: true },
+  };
+
+  public request$<T>(
+    method: 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    body?: any
+  ): Observable<T> {
+    return this.http.request<T>(method, `${environment.baseUrl}${path}`, {
+      body,
+      headers: new HttpHeaders({ 'Content-Type': 'application/json' }),
+      observe: 'body',
+      responseType: 'json'
+    });
   }
 
-  /**
-   * Build HTTP params from query object
-   */
-  protected buildParams(params?: QueryParams): HttpParams {
-    let httpParams = new HttpParams();
+  private execute<T>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
+    path: string,
+    request$: () => Observable<T>,
+    options: ApiOptions
+  ): ApiResult<T> {
+    const data = signal<T | null>(null);
+    const error = signal<ApiError | null>(null);
+    const isLoading = signal(true);
 
-    if (params) {
-      Object.keys(params).forEach(key => {
-        const value = params[key];
-        if (value !== null && value !== undefined && value !== '') {
-          httpParams = httpParams.append(key, String(value));
-        }
-      });
-    }
+    const run = () => {
+      isLoading.set(true);
 
-    return httpParams;
+      request$()
+        .pipe(
+          catchError(err => {
+            const apiError: ApiError = {
+              status: err.status,
+              message: err.error?.message ?? 'Erreur inconnue',
+              raw: err
+            };
+
+            error.set(apiError);
+
+            if (options.showErrorMessage !== false) {
+              this.handleError(apiError, path);
+            }
+
+            return of(null);
+          }),
+          finalize(() => isLoading.set(false))
+        )
+        .subscribe(res => {
+          if (res !== null) {
+            data.set(res);
+
+            if (options.showSuccessMessage) {
+              this.handleSuccess(method, options.successMessage);
+            }
+          }
+        });
+    };
+
+    run();
+
+    return { data, error, isLoading, refresh: run };
   }
 
-  /**
-   * GET request
-   */
-  protected get<T>(endpoint: string, params?: QueryParams): Observable<T> {
-    return this.http.get<T>(
-      this.buildUrl(endpoint),
-      { params: this.buildParams(params) }
-    ).pipe(
-      catchError(this.handleError)
+  public get<T>(
+    path: string,
+    criteria?: SearchCriteria[],
+    options: ApiOptions = {}
+  ): ApiResult<T> {
+    const params = new HttpParams({
+      fromObject: Object.fromEntries(
+        criteria?.map(c => [c.name, c.value]) ?? []
+      )
+    });
+
+    return this.execute(
+      'GET',
+      path,
+      () => this.http.get<T>(`${environment.baseUrl}${path}`, { params }),
+      { ...this.defaultOptions.get, ...options }
     );
   }
 
-  /**
-   * GET request with ApiResponse wrapper
-   */
-  protected getWithResponse<T>(endpoint: string, params?: QueryParams): Observable<T> {
-    return this.http.get<ApiResponse<T>>(
-      this.buildUrl(endpoint),
-      { params: this.buildParams(params) }
-    ).pipe(
-      map(response => response.data),
-      catchError(this.handleError)
-    );
+
+  public mutation<TResponse, TBody = void>(
+    method: 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    onSuccess?: (data: TResponse) => void | Promise<void>,
+    onError?: (error: ApiError) => void | Promise<void>,
+    options: ApiOptions = {}
+  ): ApiMutation<TResponse, TBody> {
+    const data = signal<TResponse | null>(null);
+    const isLoading = signal(false);
+    const error = signal<ApiError | null>(null);
+    const success = signal<MutationSuccess<TResponse> | null>(null);
+
+    const reset = () => {
+      data.set(null);
+      error.set(null);
+      success.set(null);
+    };
+
+    return {
+      data,
+      isLoading,
+      error,
+      success,
+      reset,
+      execute: ((body?: TBody) => {
+        isLoading.set(true);
+        error.set(null);
+
+        this.http.request<TResponse>(method, `${environment.baseUrl}${path}`, {
+          body,
+          headers: new HttpHeaders({ 'Content-Type': 'application/json' }),
+          observe: 'body',
+          responseType: 'json'
+        })
+          .pipe(
+            catchError(err => {
+              const apiError: ApiError = {
+                status: err.status,
+                message: err.error?.message ?? 'Erreur inconnue',
+                raw: err
+              };
+
+              error.set(apiError);
+              if (onError) {
+                onError(apiError);
+              }
+
+              if (options.showErrorMessage !== false && !onError) {
+                this.handleError(apiError, path);
+              }
+
+              return of(null);
+            }),
+            finalize(() => isLoading.set(false))
+          )
+          .subscribe(async res => {
+            if (res !== null) {
+              data.set(res);
+              success.set({ data: res, timestamp: Date.now() });
+
+              if (onSuccess) {
+                await onSuccess(res);
+              }
+
+              if (options.showSuccessMessage) {
+                this.handleSuccess(method, options.successMessage);
+              }
+            }
+          });
+      }) as TBody extends void ? () => void : (body: TBody) => void
+    };
   }
 
-  /**
-   * GET paginated list
-   */
-  protected getList<T>(endpoint: string, params?: QueryParams): Observable<Page<T>> {
-    return this.http.get<Page<T>>(
-      this.buildUrl(endpoint),
-      { params: this.buildParams(params) }
-    ).pipe(
-      catchError(this.handleError)
-    );
+  public post<TResponse, TBody = void>(
+    path: string,
+    onSuccess?: (data: TResponse) => void | Promise<void>,
+    onError?: (error: ApiError) => void | Promise<void>,
+    options: ApiOptions = {}
+  ): ApiMutation<TResponse, TBody> {
+    return this.mutation<TResponse, TBody>('POST', path, onSuccess, onError, options);
   }
 
-  /**
-   * POST request
-   */
-  protected post<T, R = T>(endpoint: string, body?: T): Observable<R> {
-    return this.http.post<R>(
-      this.buildUrl(endpoint),
-      body
-    ).pipe(
-      catchError(this.handleError)
-    );
+  public put<TResponse, TBody = void>(
+    path: string,
+    onSuccess?: (data: TResponse) => void | Promise<void>,
+    onError?: (error: ApiError) => void | Promise<void>,
+    options: ApiOptions = {}
+  ): ApiMutation<TResponse, TBody> {
+    return this.mutation<TResponse, TBody>('PUT', path, onSuccess, onError, options);
   }
 
-  /**
-   * POST request with ApiResponse wrapper
-   */
-  protected postWithResponse<T, R = T>(endpoint: string, body: T): Observable<R> {
-    return this.http.post<ApiResponse<R>>(
-      this.buildUrl(endpoint),
-      body
-    ).pipe(
-      map(response => response.data),
-      catchError(this.handleError)
-    );
+  public delete<TResponse, TBody = void>(
+    path: string,
+    onSuccess?: (data: TResponse) => void | Promise<void>,
+    onError?: (error: ApiError) => void | Promise<void>,
+    options: ApiOptions = {}
+  ): ApiMutation<TResponse, TBody> {
+    return this.mutation<TResponse, TBody>('DELETE', path, onSuccess, onError, options);
   }
 
-  /**
-   * PUT request
-   */
-  protected put<T, R = T>(endpoint: string, body: T): Observable<R> {
-    return this.http.put<R>(
-      this.buildUrl(endpoint),
-      body
-    ).pipe(
-      catchError(this.handleError)
-    );
+  private handleError(error: ApiError, path: string) {
+    console.error(`API error on ${path}`, error);
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Erreur',
+      detail: error.message
+    });
   }
 
-  /**
-   * PUT request with ApiResponse wrapper
-   */
-  protected putWithResponse<T, R = T>(endpoint: string, body: T): Observable<R> {
-    return this.http.put<ApiResponse<R>>(
-      this.buildUrl(endpoint),
-      body
-    ).pipe(
-      map(response => response.data),
-      catchError(this.handleError)
-    );
-  }
+  private handleSuccess(method: string, message?: string) {
+    const fallback = {
+      POST: 'Création réussie',
+      PUT: 'Mise à jour réussie',
+      DELETE: 'Suppression réussie'
+    }[method] ?? 'Succès';
 
-  /**
-   * PATCH request
-   */
-  protected patch<T, R = T>(endpoint: string, body: Partial<T>): Observable<R> {
-    return this.http.patch<R>(
-      this.buildUrl(endpoint),
-      body
-    ).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * PATCH request with ApiResponse wrapper
-   */
-  protected patchWithResponse<T, R = T>(endpoint: string, body: Partial<T>): Observable<R> {
-    return this.http.patch<ApiResponse<R>>(
-      this.buildUrl(endpoint),
-      body
-    ).pipe(
-      map(response => response.data),
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * DELETE request
-   */
-  protected delete<T = void>(endpoint: string): Observable<T> {
-    return this.http.delete<T>(
-      this.buildUrl(endpoint)
-    ).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * DELETE request with ApiResponse wrapper
-   */
-  protected deleteWithResponse<T = void>(endpoint: string): Observable<T> {
-    return this.http.delete<ApiResponse<T>>(
-      this.buildUrl(endpoint)
-    ).pipe(
-      map(response => response.data),
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * Upload file
-   */
-  protected uploadFile<T>(endpoint: string, file: File, additionalData?: any): Observable<T> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    if (additionalData) {
-      Object.keys(additionalData).forEach(key => {
-        formData.append(key, additionalData[key]);
-      });
-    }
-
-    return this.http.post<T>(
-      this.buildUrl(endpoint),
-      formData
-    ).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * Handle HTTP errors
-   */
-  protected handleError(error: any): Observable<never> {
-    let errorMessage = 'Une erreur est survenue';
-
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = `Erreur: ${error.error.message}`;
-    } else {
-      // Server-side error
-      errorMessage = error.error?.message || `Erreur serveur: ${error.status}`;
-    }
-
-    console.error('API Error:', error);
-    return throwError(() => new Error(errorMessage));
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Succès',
+      detail: message ?? fallback
+    });
   }
 }
