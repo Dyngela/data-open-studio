@@ -4,7 +4,7 @@ import (
 	"api"
 	"api/internal/api/handler/middleware"
 	"api/internal/api/handler/response"
-	ws "api/internal/api/websocket"
+	websocket2 "api/internal/api/handler/websocket"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -26,13 +26,13 @@ var upgrader = websocket.Upgrader{
 }
 
 type websocketHandler struct {
-	hub       *ws.Hub
-	processor *ws.MessageProcessor
+	hub       *websocket2.Hub
+	processor *websocket2.MessageProcessor
 	logger    zerolog.Logger
 	config    api.AppConfig
 }
 
-func newWebSocketHandler(hub *ws.Hub, processor *ws.MessageProcessor) *websocketHandler {
+func newWebSocketHandler(hub *websocket2.Hub, processor *websocket2.MessageProcessor) *websocketHandler {
 	return &websocketHandler{
 		hub:       hub,
 		processor: processor,
@@ -42,7 +42,7 @@ func newWebSocketHandler(hub *ws.Hub, processor *ws.MessageProcessor) *websocket
 }
 
 // WebSocketHandler sets up WebSocket routes
-func WebSocketHandler(router *graceful.Graceful, hub *ws.Hub, processor *ws.MessageProcessor) {
+func WebSocketHandler(router *graceful.Graceful, hub *websocket2.Hub, processor *websocket2.MessageProcessor) {
 	h := newWebSocketHandler(hub, processor)
 
 	// WebSocket endpoint - requires authentication
@@ -89,7 +89,7 @@ func (slf *websocketHandler) handleWebSocket(c *gin.Context) {
 	clientID := uuid.New().String()
 
 	// Create new client with processor
-	client := ws.NewClient(
+	client := websocket2.NewClient(
 		clientID,
 		userID.(uint),
 		username.(string),

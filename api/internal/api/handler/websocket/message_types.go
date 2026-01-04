@@ -24,6 +24,7 @@ const (
 	MessageTypeJobDelete  MessageType = "job_delete"
 	MessageTypeJobCreate  MessageType = "job_create"
 	MessageTypeJobExecute MessageType = "job_execute"
+	MessageTypeJobGet     MessageType = "job_get"
 
 	// User interactions
 	MessageTypeCursorMove MessageType = "cursor_move"
@@ -35,4 +36,10 @@ const (
 	MessageTypeError MessageType = "error"
 	MessageTypePing  MessageType = "ping"
 	MessageTypePong  MessageType = "pong"
+
+	// Metadata operations
+	MessageTypeMetadataCreate MessageType = "metadata_create"
+	MessageTypeMetadataUpdate MessageType = "metadata_update"
+	MessageTypeMetadataDelete MessageType = "metadata_delete"
+	MessageTypeMetadataGet    MessageType = "metadata_get"
 )

@@ -36,6 +36,14 @@ func (p *MessageProcessor) ProcessMessage(msg *Message) (*Message, error) {
 	case MessageTypeJobExecute:
 		return p.processJobExecute(msg)
 
+	case MessageTypeMetadataGet:
+		return p.processMetadataGet(msg)
+	case MessageTypeMetadataUpdate:
+		return p.processMetadataUpdate(msg)
+	case MessageTypeMetadataDelete:
+		return p.processMetadataDelete(msg)
+	case MessageTypeMetadataCreate:
+		return p.processMetadataCreate(msg)
 	default:
 		// Other message types don't require processing (chat, cursor, etc.)
 		return msg, nil
@@ -111,4 +119,20 @@ func (p *MessageProcessor) processJobCreate(msg *Message) (*Message, error) {
 
 func (p *MessageProcessor) processJobExecute(msg *Message) (*Message, error) {
 	return msg, nil
+}
+
+func (p *MessageProcessor) processMetadataGet(msg *Message) (*Message, error) {
+	return nil, nil
+}
+func (p *MessageProcessor) processMetadataCreate(msg *Message) (*Message, error) {
+	return nil, nil
+
+}
+func (p *MessageProcessor) processMetadataDelete(msg *Message) (*Message, error) {
+	return nil, nil
+
+}
+func (p *MessageProcessor) processMetadataUpdate(msg *Message) (*Message, error) {
+	return nil, nil
+
 }
