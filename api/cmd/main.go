@@ -3,9 +3,9 @@ package main
 import (
 	"api"
 	"api/internal/api/handler/endpoints"
+	"api/internal/api/handler/websocket"
 	"api/internal/api/models"
 	"api/internal/api/service"
-	ws "api/internal/api/websocket"
 	"context"
 	"errors"
 	"os/signal"
@@ -28,6 +28,7 @@ func main() {
 			&models.Job{},
 			&models.BaseNode{},
 			&models.Port{},
+			&models.Metadata{},
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
@@ -54,8 +55,8 @@ func main() {
 
 	// Initialize WebSocket components
 	jobService := service.NewJobService()
-	processor := ws.NewMessageProcessor(jobService, api.Logger)
-	hub := ws.NewHub(api.Logger)
+	processor := websocket.NewMessageProcessor(jobService, api.Logger)
+	hub := websocket.NewHub(api.Logger)
 	go hub.Run()
 	api.Logger.Info().Msg("WebSocket hub started")
 
@@ -69,7 +70,7 @@ func main() {
 
 }
 
-func initAPI(router *graceful.Graceful, hub *ws.Hub, processor *ws.MessageProcessor) {
+func initAPI(router *graceful.Graceful, hub *websocket.Hub, processor *websocket.MessageProcessor) {
 	endpoints.AuthHandler(router)
 	// endpoints.JobHandler(router)     // TODO: Uncomment when job handler is needed
 	// endpoints.NodeHandler(router)    // TODO: Uncomment when node handler is needed
