@@ -8,7 +8,6 @@ import (
 	ws "api/internal/api/websocket"
 	"context"
 	"errors"
-	"fmt"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -27,6 +26,8 @@ func main() {
 		if err := api.DB.AutoMigrate(
 			&models.User{},
 			&models.Job{},
+			&models.BaseNode{},
+			&models.Port{},
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
@@ -78,19 +79,19 @@ func initAPI(router *graceful.Graceful, hub *ws.Hub, processor *ws.MessageProces
 func GenerateCode(job *models.Job) string {
 	var sb strings.Builder
 
-	for _, node := range job.Nodes {
-		switch n := node.(type) {
-		case *models.DBInputConfig:
-			sb.WriteString(fmt.Sprintf("// Query: %s\n", n.Query))
-			sb.WriteString(fmt.Sprintf("// Table: %s.%s\n", n.Schema, n.Table))
-		case *models.DBOutputConfig:
-			sb.WriteString(fmt.Sprintf("// Output Table: %s\n", n.Table))
-		case *models.MapConfig:
-			sb.WriteString("// Map Node\n")
-		default:
-			sb.WriteString("// Unknown Node Type\n")
-		}
-	}
+	//for _, node := range job.Nodes {
+	//	switch n := node.(type) {
+	//	case *models.DBInputConfig:
+	//		sb.WriteString(fmt.Sprintf("// Query: %s\n", n.Query))
+	//		sb.WriteString(fmt.Sprintf("// Table: %s.%s\n", n.Schema, n.Table))
+	//	case *models.DBOutputConfig:
+	//		sb.WriteString(fmt.Sprintf("// Output Table: %s\n", n.Table))
+	//	case *models.MapConfig:
+	//		sb.WriteString("// Map Node\n")
+	//	default:
+	//		sb.WriteString("// Unknown Node Type\n")
+	//	}
+	//}
 
 	return sb.String()
 }

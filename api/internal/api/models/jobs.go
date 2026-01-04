@@ -6,5 +6,5 @@ type Job struct {
 	Description string
 	CreatorID   uint
 	Active      bool
-	Nodes       NodeList `gorm:"type:jsonb" json:"nodes"`
+	Nodes       []BaseNode `gorm:"foreignKey:JobID"`
 }

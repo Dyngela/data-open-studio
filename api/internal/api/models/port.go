@@ -1,11 +1,5 @@
 package models
 
-type Connection struct {
-	EntryPortID  uint `gorm:"primaryKey"`
-	TargetPortID uint `gorm:"primaryKey"`
-	JobID        uint `gorm:"primaryKey"`
-}
-
 type PortType string
 
 const (
@@ -16,6 +10,8 @@ const (
 )
 
 type Port struct {
-	ID   uint
-	Type PortType
+	ID     uint
+	Type   PortType
+	Node   BaseNode `gorm:"foreignKey:NodeID"`
+	NodeID uint
 }
