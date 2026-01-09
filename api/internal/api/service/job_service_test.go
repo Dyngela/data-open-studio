@@ -42,7 +42,7 @@ func TestCreateJobWithNodes(t *testing.T) {
 	jobService := NewJobService()
 
 	// Create test nodes
-	nodes := []models.BaseNode{
+	nodes := []models.Node{
 		// Start node - DB Input reading from a table
 		{
 			ID:   1,
@@ -126,7 +126,7 @@ func TestCreateJobWithNodes(t *testing.T) {
 		},
 	}
 	// Create job with nodes
-	job := models.Job{
+	job := nodes.Job{
 		Name:        "Test ETL Pipeline Job",
 		Description: "A test job that demonstrates data flow from DB input through transformation to DB output",
 		CreatorID:   1,
@@ -165,7 +165,7 @@ func TestCreateJobWithNodes(t *testing.T) {
 	// Verify node details
 	firstNode := retrievedJob.Nodes[0]
 	assert.Equal(t, "Start - DB Connection", firstNode.Name)
-	assert.Equal(t, models.NodeTypeDBInput, firstNode.Type)
+	assert.Equal(t, nodes.NodeTypeDBInput, firstNode.Type)
 	dbInputConfig, err := firstNode.GetDBInputConfig()
 	require.NoError(t, err, "Failed to get DB input config")
 	assert.Equal(t, "SELECT * FROM source_table", dbInputConfig.Query)
@@ -174,7 +174,7 @@ func TestCreateJobWithNodes(t *testing.T) {
 
 	fourthNode := retrievedJob.Nodes[3]
 	assert.Equal(t, "DB Output Node", fourthNode.Name)
-	assert.Equal(t, models.NodeTypeDBOutput, fourthNode.Type)
+	assert.Equal(t, nodes.NodeTypeDBOutput, fourthNode.Type)
 	dbOutputConfig, err := fourthNode.GetDBOutputConfig()
 	require.NoError(t, err, "Failed to get DB output config")
 	assert.Equal(t, "output_table", dbOutputConfig.Table)
@@ -188,7 +188,7 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 	jobService := NewJobService()
 
 	// Create a more complex pipeline with multiple DB connections
-	nodes := []models.BaseNode{
+	nodes := []models.Node{
 		// Start DB Connection 1
 		{
 			ID:   1,
@@ -316,7 +316,7 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 	}
 
 	// Create complex job
-	job := models.Job{
+	job := nodes.Job{
 		Name:        "Complex Multi-DB ETL Pipeline",
 		Description: "Complex pipeline with multiple DB inputs, transformation, and multiple outputs",
 		CreatorID:   1,
@@ -344,11 +344,11 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 	var dbInputCount, dbOutputCount, mapCount int
 	for _, node := range retrievedJob.Nodes {
 		switch node.Type {
-		case models.NodeTypeDBInput:
+		case nodes.NodeTypeDBInput:
 			dbInputCount++
-		case models.NodeTypeDBOutput:
+		case nodes.NodeTypeDBOutput:
 			dbOutputCount++
-		case models.NodeTypeMap:
+		case nodes.NodeTypeMap:
 			mapCount++
 		}
 	}
@@ -360,14 +360,14 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 	// Verify specific node details
 	firstNode := retrievedJob.Nodes[0]
 	assert.Equal(t, "Start DB Conn - Users", firstNode.Name)
-	assert.Equal(t, models.NodeTypeDBInput, firstNode.Type)
+	assert.Equal(t, nodes.NodeTypeDBInput, firstNode.Type)
 	firstDBInputConfig, err := firstNode.GetDBInputConfig()
 	require.NoError(t, err, "Failed to get first DB input config")
 	assert.Equal(t, "users", firstDBInputConfig.Table)
 
 	lastNode := retrievedJob.Nodes[5]
 	assert.Equal(t, "DB Output - Archive", lastNode.Name)
-	assert.Equal(t, models.NodeTypeDBOutput, lastNode.Type)
+	assert.Equal(t, nodes.NodeTypeDBOutput, lastNode.Type)
 	lastDBOutputConfig, err := lastNode.GetDBOutputConfig()
 	require.NoError(t, err, "Failed to get last DB output config")
 	assert.Equal(t, "data_archive", lastDBOutputConfig.Table)
@@ -380,7 +380,7 @@ func TestCreateJobWithSimpleFlow(t *testing.T) {
 	jobService := NewJobService()
 
 	// Simple linear flow: Start -> Input -> Output
-	nodes := []models.BaseNode{
+	nodes := []models.Node{
 		{
 			ID:   1,
 			Type: models.NodeTypeDBInput,
@@ -421,7 +421,7 @@ func TestCreateJobWithSimpleFlow(t *testing.T) {
 		},
 	}
 
-	job := models.Job{
+	job := nodes.Job{
 		Name:        "Simple Flow Test",
 		Description: "Simple two-node pipeline for testing",
 		CreatorID:   1,

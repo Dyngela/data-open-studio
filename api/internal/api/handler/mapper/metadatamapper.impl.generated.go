@@ -3,7 +3,6 @@
 package mapper
 
 import (
-	"api/internal/api/handler/request"
 	"api/internal/api/handler/response"
 	"api/internal/api/models"
 )
@@ -11,21 +10,18 @@ import (
 // MetadataMapperImpl implements MetadataMapper
 type MetadataMapperImpl struct{}
 
+func (m MetadataMapperImpl) ToMetadataResponses(entities []models.Metadata) []response.Metadata {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m MetadataMapperImpl) ToMetadataResponse(mo models.Metadata) response.Metadata {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewMetadataMapper creates a new instance of MetadataMapperImpl
 func NewMetadataMapper() MetadataMapper {
 	return &MetadataMapperImpl{}
 }
 
-// ToMetadataResponses
-func (m *MetadataMapperImpl) ToMetadataResponses(entities []models.Metadata) []response.Metadata {
-	var result []response.Metadata
-	result.ID = entities.ID
-	result.Host = entities.Host
-	result.Port = entities.Port
-	result.User = entities.User
-	result.Password = entities.Password
-	result.DatabaseName = entities.DatabaseName
-	result.SSLMode = entities.SSLMode
-	return result
-
-}

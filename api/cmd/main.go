@@ -26,7 +26,7 @@ func main() {
 		if err := api.DB.AutoMigrate(
 			&models.User{},
 			&models.Job{},
-			&models.BaseNode{},
+			&models.Node{},
 			&models.Port{},
 			&models.Metadata{},
 		); err != nil {

@@ -87,7 +87,7 @@ func (p *MessageProcessor) processJobUpdate(msg *Message) (*Message, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal nodes: %w", err)
 		}
-		var nodeList []models.BaseNode
+		var nodeList []models.Node
 		if err := json.Unmarshal(nodesBytes, &nodeList); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal nodes: %w", err)
 		}

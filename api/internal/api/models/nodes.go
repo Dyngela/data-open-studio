@@ -61,7 +61,7 @@ const (
 	NodeTypeMap      NodeType = "map"
 )
 
-type BaseNode struct {
+type Node struct {
 	ID int `json:"id"`
 	// Type of the node. It has to be immutable
 	Type NodeType
@@ -78,7 +78,7 @@ type BaseNode struct {
 }
 
 // SetData serializes and stores typed config data
-func (slf *BaseNode) SetData(data any) error {
+func (slf *Node) SetData(data any) error {
 	// Validate data type matches node type
 	switch slf.Type {
 	case NodeTypeDBInput:
@@ -106,7 +106,7 @@ func (slf *BaseNode) SetData(data any) error {
 }
 
 // GetTypedData deserializes the JSON data into the expected type
-func GetTypedData[T any](node BaseNode) (T, error) {
+func GetTypedData[T any](node Node) (T, error) {
 	var result T
 	if node.Data == nil {
 		return result, errors.New("node data is nil")
@@ -117,32 +117,32 @@ func GetTypedData[T any](node BaseNode) (T, error) {
 	return result, nil
 }
 
-func (slf BaseNode) GetDBInputConfig() (DBInputConfig, error) {
+func (slf Node) GetDBInputConfig() (DBInputConfig, error) {
 	if slf.Type != NodeTypeDBInput {
 		return DBInputConfig{}, errors.New("node is not a db_input type")
 	}
 	return GetTypedData[DBInputConfig](slf)
 }
 
-func (slf BaseNode) GetDBOutputConfig() (DBOutputConfig, error) {
+func (slf Node) GetDBOutputConfig() (DBOutputConfig, error) {
 	if slf.Type != NodeTypeDBOutput {
 		return DBOutputConfig{}, errors.New("node is not a db_output type")
 	}
 	return GetTypedData[DBOutputConfig](slf)
 }
 
-func (slf BaseNode) GetMapConfig() (MapConfig, error) {
+func (slf Node) GetMapConfig() (MapConfig, error) {
 	if slf.Type != NodeTypeMap {
 		return MapConfig{}, errors.New("node is not a map type")
 	}
 	return GetTypedData[MapConfig](slf)
 }
 
-func (slf BaseNode) GetNextFlowNode() *[]BaseNode {
+func (slf Node) GetNextFlowNode() *[]Node {
 	if len(slf.OutputPort) == 0 {
 		return nil
 	}
-	var nextNodes []BaseNode
+	var nextNodes []Node
 	for _, conn := range slf.OutputPort {
 		if conn.Type == PortNodeFlowInput {
 			nextNodes = append(nextNodes, conn.Node)
@@ -151,11 +151,11 @@ func (slf BaseNode) GetNextFlowNode() *[]BaseNode {
 	return nil
 }
 
-func (slf BaseNode) GetPrevFlowNode() *[]BaseNode {
+func (slf Node) GetPrevFlowNode() *[]Node {
 	if len(slf.InputPort) == 0 {
 		return nil
 	}
-	var previousNodes []BaseNode
+	var previousNodes []Node
 	for _, conn := range slf.InputPort {
 		if conn.Type == PortNodeFlowOutput {
 			previousNodes = append(previousNodes, conn.Node)
@@ -164,5 +164,46 @@ func (slf BaseNode) GetPrevFlowNode() *[]BaseNode {
 	return nil
 }
 
-func (slf BaseNode) Generate() {
+// Generate creates and returns a Generator for this node based on its type
+func (slf Node) Generate() (Generator, error) {
+	switch slf.Type {
+	case NodeTypeDBInput:
+		return slf.GenerateDBInput()
+	case NodeTypeDBOutput:
+		return slf.GenerateDBOutput()
+	case NodeTypeMap:
+		return slf.GenerateMap()
+	default:
+		return nil, fmt.Errorf("unknown node type: %s", slf.Type)
+	}
+}
+
+// GenerateDBInput creates a DBInputGenerator for this node
+func (slf Node) GenerateDBInput() (Generator, error) {
+	config, err := slf.GetDBInputConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get DB input config: %w", err)
+	}
+
+	return NewDBInputGenerator(slf.ID, config), nil
+}
+
+// GenerateDBOutput creates a DBOutputGenerator for this node
+func (slf Node) GenerateDBOutput() (Generator, error) {
+	config, err := slf.GetDBOutputConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get DB output config: %w", err)
+	}
+
+	return NewDBOutputGenerator(slf.ID, config), nil
+}
+
+// GenerateMap creates a MapGenerator for this node
+func (slf Node) GenerateMap() (Generator, error) {
+	config, err := slf.GetMapConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get map config: %w", err)
+	}
+
+	return NewMapGenerator(slf.ID, config), nil
 }

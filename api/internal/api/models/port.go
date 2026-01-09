@@ -12,6 +12,6 @@ const (
 type Port struct {
 	ID     uint
 	Type   PortType
-	Node   BaseNode `gorm:"foreignKey:NodeID"`
+	Node   Node `gorm:"foreignKey:NodeID"`
 	NodeID uint
 }
