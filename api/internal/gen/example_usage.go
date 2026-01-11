@@ -1,35 +1,30 @@
-package models
-
-import (
-	"database/sql"
-	"fmt"
-)
+package gen
 
 // Example usage demonstrating how to use the generator system
 
 // ExecuteJob executes a job by building and running its pipeline
-func ExecuteJob(job *Job, nodes []Node, dbConn *sql.DB) (*PipelineResult, error) {
-	// Create pipeline builder
-	builder := NewPipelineBuilder(job, dbConn)
-
-	// Add all nodes to the pipeline
-	builder.WithNodes(nodes)
-
-	// Build the pipeline
-	pipeline, err := builder.Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build pipeline: %w", err)
-	}
-
-	// Execute the pipeline
-	result := pipeline.Execute()
-
-	if !result.Success {
-		return result, fmt.Errorf("pipeline execution failed: %v", result.Errors)
-	}
-
-	return result, nil
-}
+//func ExecuteJob(job *models.Job, nodes []models.Node, dbConn *sql.DB) (*PipelineResult, error) {
+//	// Create pipeline builder
+//	builder := NewPipelineBuilder(job, dbConn)
+//
+//	// Add all nodes to the pipeline
+//	builder.WithNodes(nodes)
+//
+//	// Build the pipeline
+//	pipeline, err := builder.Build()
+//	if err != nil {
+//		return nil, fmt.Errorf("failed to build pipeline: %w", err)
+//	}
+//
+//	// Execute the pipeline
+//	result := pipeline.Execute()
+//
+//	if !result.Success {
+//		return result, fmt.Errorf("pipeline execution failed: %v", result.Errors)
+//	}
+//
+//	return result, nil
+//}
 
 // Example: How to use the system
 

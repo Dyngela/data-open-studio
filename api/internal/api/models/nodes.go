@@ -56,6 +56,7 @@ func (n *NodeData) UnmarshalJSON(data []byte) error {
 type NodeType string
 
 const (
+	NodeTypeStart    NodeType = "start"
 	NodeTypeDBInput  NodeType = "db_input"
 	NodeTypeDBOutput NodeType = "db_output"
 	NodeTypeMap      NodeType = "map"
@@ -138,72 +139,28 @@ func (slf Node) GetMapConfig() (MapConfig, error) {
 	return GetTypedData[MapConfig](slf)
 }
 
-func (slf Node) GetNextFlowNode() *[]Node {
+func (slf Node) GetNextFlowNode() []Node {
 	if len(slf.OutputPort) == 0 {
 		return nil
 	}
 	var nextNodes []Node
 	for _, conn := range slf.OutputPort {
-		if conn.Type == PortNodeFlowInput {
+		if conn.Type == PortNodeFlowOutput {
 			nextNodes = append(nextNodes, conn.Node)
 		}
 	}
-	return nil
+	return nextNodes
 }
 
-func (slf Node) GetPrevFlowNode() *[]Node {
+func (slf Node) GetPrevFlowNode() []Node {
 	if len(slf.InputPort) == 0 {
 		return nil
 	}
 	var previousNodes []Node
 	for _, conn := range slf.InputPort {
-		if conn.Type == PortNodeFlowOutput {
+		if conn.Type == PortNodeFlowInput {
 			previousNodes = append(previousNodes, conn.Node)
 		}
 	}
-	return nil
-}
-
-// Generate creates and returns a Generator for this node based on its type
-func (slf Node) Generate() (Generator, error) {
-	switch slf.Type {
-	case NodeTypeDBInput:
-		return slf.GenerateDBInput()
-	case NodeTypeDBOutput:
-		return slf.GenerateDBOutput()
-	case NodeTypeMap:
-		return slf.GenerateMap()
-	default:
-		return nil, fmt.Errorf("unknown node type: %s", slf.Type)
-	}
-}
-
-// GenerateDBInput creates a DBInputGenerator for this node
-func (slf Node) GenerateDBInput() (Generator, error) {
-	config, err := slf.GetDBInputConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get DB input config: %w", err)
-	}
-
-	return NewDBInputGenerator(slf.ID, config), nil
-}
-
-// GenerateDBOutput creates a DBOutputGenerator for this node
-func (slf Node) GenerateDBOutput() (Generator, error) {
-	config, err := slf.GetDBOutputConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get DB output config: %w", err)
-	}
-
-	return NewDBOutputGenerator(slf.ID, config), nil
-}
-
-// GenerateMap creates a MapGenerator for this node
-func (slf Node) GenerateMap() (Generator, error) {
-	config, err := slf.GetMapConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get map config: %w", err)
-	}
-
-	return NewMapGenerator(slf.ID, config), nil
+	return previousNodes
 }

@@ -7,4 +7,5 @@ type Job struct {
 	CreatorID   uint
 	Active      bool
 	Nodes       []Node `gorm:"foreignKey:JobID"`
+	OutputPath  string
 }
