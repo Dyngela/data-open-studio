@@ -4,6 +4,7 @@ import (
 	"api/internal/api/models"
 	"fmt"
 	"os"
+	"path"
 	"text/template"
 )
 
@@ -14,10 +15,11 @@ type DBInputGenerator struct {
 }
 
 // NewDBInputGenerator creates a new DB input generator
-func NewDBInputGenerator(nodeID int, config models.DBInputConfig) *DBInputGenerator {
+func NewDBInputGenerator(nodeID int, nodeName string, config models.DBInputConfig) *DBInputGenerator {
 	return &DBInputGenerator{
 		BaseGenerator: BaseGenerator{
 			nodeID:   nodeID,
+			nodeName: nodeName,
 			nodeType: models.NodeTypeDBInput,
 		},
 		config: config,
@@ -60,7 +62,7 @@ func (g *DBInputGenerator) GenerateCode(ctx *ExecutionContext, outputPath string
 		"SSLMode":          g.config.Connection.SSLMode,
 	}
 
-	file, err := os.Create(outputPath)
+	file, err := os.Create(path.Join(outputPath, fmt.Sprintf("node_%s.go", g.nodeName)))
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}

@@ -52,6 +52,7 @@ type Generator interface {
 type BaseGenerator struct {
 	nodeID   int
 	nodeType models.NodeType
+	nodeName string
 }
 
 func (g *BaseGenerator) GetType() models.NodeType {
@@ -71,21 +72,21 @@ func NewGenerator(node models.Node) (Generator, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get DB input config for node %d: %w", node.ID, err)
 		}
-		return NewDBInputGenerator(node.ID, config), nil
+		return NewDBInputGenerator(node.ID, node.Name, config), nil
 
 	case models.NodeTypeDBOutput:
 		config, err := node.GetDBOutputConfig()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get DB output config for node %d: %w", node.ID, err)
 		}
-		return NewDBOutputGenerator(node.ID, config), nil
+		return NewDBOutputGenerator(node.ID, node.Name, config), nil
 
 	case models.NodeTypeMap:
 		config, err := node.GetMapConfig()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get map config for node %d: %w", node.ID, err)
 		}
-		return NewMapGenerator(node.ID, config), nil
+		return NewMapGenerator(node.ID, node.Name, config), nil
 
 	case models.NodeTypeStart:
 		// Start nodes don't have generators, they just mark the beginning

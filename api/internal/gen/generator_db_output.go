@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"text/template"
 )
@@ -16,10 +17,11 @@ type DBOutputGenerator struct {
 }
 
 // NewDBOutputGenerator creates a new DB output generator
-func NewDBOutputGenerator(nodeID int, config models.DBOutputConfig) *DBOutputGenerator {
+func NewDBOutputGenerator(nodeID int, nodeName string, config models.DBOutputConfig) *DBOutputGenerator {
 	return &DBOutputGenerator{
 		BaseGenerator: BaseGenerator{
 			nodeID:   nodeID,
+			nodeName: nodeName,
 			nodeType: models.NodeTypeDBOutput,
 		},
 		config: config,
@@ -118,7 +120,7 @@ func (g *DBOutputGenerator) GenerateCode(ctx *ExecutionContext, outputPath strin
 		"SSLMode":          g.config.Connection.SSLMode,
 	}
 
-	file, err := os.Create(outputPath)
+	file, err := os.Create(path.Join(outputPath, fmt.Sprintf("node_%s.go", g.nodeName)))
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}

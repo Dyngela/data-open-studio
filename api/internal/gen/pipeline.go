@@ -172,6 +172,7 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			log.Print(generator)
 		}
 	}

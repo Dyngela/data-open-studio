@@ -4,6 +4,7 @@ import (
 	"api/internal/api/models"
 	"fmt"
 	"os"
+	"path"
 	"text/template"
 )
 
@@ -14,10 +15,11 @@ type MapGenerator struct {
 }
 
 // NewMapGenerator creates a new map generator
-func NewMapGenerator(nodeID int, config models.MapConfig) *MapGenerator {
+func NewMapGenerator(nodeID int, nodeName string, config models.MapConfig) *MapGenerator {
 	return &MapGenerator{
 		BaseGenerator: BaseGenerator{
 			nodeID:   nodeID,
+			nodeName: nodeName,
 			nodeType: models.NodeTypeMap,
 		},
 		config: config,
@@ -32,7 +34,7 @@ func (g *MapGenerator) GenerateCode(ctx *ExecutionContext, outputPath string) er
 		"NodeID": g.nodeID,
 	}
 
-	file, err := os.Create(outputPath)
+	file, err := os.Create(path.Join(outputPath, fmt.Sprintf("node_%s.go", g.nodeName)))
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}

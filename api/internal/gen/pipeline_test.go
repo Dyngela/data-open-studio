@@ -849,3 +849,202 @@ func TestJobExecution_Build(t *testing.T) {
 		assert.Contains(t, err.Error(), "has no nodes")
 	})
 }
+
+func TestJobExecution_Generation(t *testing.T) {
+	dbOutputNode := models.Node{
+		ID:   5,
+		Type: models.NodeTypeDBOutput,
+		Name: "DB Output Node",
+		InputPort: []models.Port{
+			{
+				ID:     7,
+				Type:   models.PortNodeFlowInput,
+				Node:   models.Node{},
+				NodeID: 4,
+			},
+		},
+		OutputPort: nil,
+		Data:       nil,
+		JobID:      1,
+	}
+
+	dbOutputNode.SetData(models.DBOutputConfig{
+		Table:     "OUTPUT_TABLE",
+		Mode:      "INSERT",
+		BatchSize: 500,
+		Connection: models.DBConnectionConfig{
+			Type:     models.DBTypePostgres,
+			Host:     "DC-CENTRIC-01",
+			Port:     5432,
+			Database: "TEST_DB",
+			Username: "postgres",
+			Password: "postgres",
+			SSLMode:  "disable",
+			Extra:    nil,
+		},
+	})
+
+	mapNode := models.Node{
+		ID:   4,
+		Type: models.NodeTypeMap,
+		Name: "Map Node",
+		InputPort: []models.Port{
+			{
+				ID:     4,
+				Type:   models.PortNodeFlowInput,
+				Node:   models.Node{},
+				NodeID: 2,
+			},
+			{
+				ID:     5,
+				Type:   models.PortNodeFlowInput,
+				Node:   models.Node{},
+				NodeID: 3,
+			},
+		},
+		OutputPort: []models.Port{
+			{
+				ID:     6,
+				Type:   models.PortNodeFlowOutput,
+				Node:   dbOutputNode,
+				NodeID: 4,
+			},
+		},
+		Data:  nil,
+		JobID: 1,
+	}
+	mapNode.SetData(models.MapConfig{})
+
+	firstDBInputNode := models.Node{
+		ID:   2,
+		Type: models.NodeTypeDBInput,
+		Name: "First DB Input",
+		InputPort: []models.Port{
+			{
+				ID:     2,
+				Type:   models.PortNodeFlowInput,
+				Node:   models.Node{},
+				NodeID: 1,
+			},
+		},
+		OutputPort: []models.Port{
+			{
+				ID:     3,
+				Type:   models.PortNodeFlowOutput,
+				Node:   mapNode,
+				NodeID: 2,
+			},
+		},
+		Data:  nil,
+		JobID: 1,
+	}
+	firstDBInputNode.SetData(models.DBInputConfig{
+		Query:  "select * from tgcliente",
+		Schema: "public",
+		Table:  "tgcliente",
+		Connection: models.DBConnectionConfig{
+			Type:     models.DBTypeSQLServer,
+			Host:     "DC-SQL-01",
+			Port:     1433,
+			Database: "ICarDEMO",
+			Username: "sa",
+			Password: "sa",
+			SSLMode:  "disable",
+			Extra:    nil,
+		},
+	})
+
+	secondDBInputNode := models.Node{
+		ID:   3,
+		Type: models.NodeTypeDBInput,
+		Name: "Second DB Input",
+		InputPort: []models.Port{
+			{
+				ID:     9,
+				Type:   models.PortNodeFlowInput,
+				Node:   models.Node{},
+				NodeID: 1,
+			},
+		},
+		OutputPort: []models.Port{
+			{
+				ID:     10,
+				Type:   models.PortNodeFlowOutput,
+				Node:   mapNode,
+				NodeID: 3,
+			},
+		},
+		Data:  nil,
+		JobID: 1,
+	}
+	secondDBInputNode.SetData(models.DBInputConfig{
+		Query:  "select * from tgclienteProtec",
+		Schema: "dbo",
+		Table:  "tgclienteProtec",
+		Connection: models.DBConnectionConfig{
+			Type:     models.DBTypeSQLServer,
+			Host:     "DC-SQL-02",
+			Port:     1895,
+			Database: "ICarKKKKK",
+			Username: "sa",
+			Password: "sa",
+			SSLMode:  "disable",
+			Extra:    nil,
+		},
+	})
+
+	// Node 1: Start (début de chaîne)
+	startNode := models.Node{
+		ID:        1,
+		Type:      models.NodeTypeStart,
+		Name:      "Starter",
+		InputPort: nil,
+		OutputPort: []models.Port{
+			{
+				ID:     1,
+				Type:   models.PortNodeFlowOutput,
+				Node:   firstDBInputNode,
+				NodeID: 1,
+			},
+			{
+				ID:     8,
+				Type:   models.PortNodeFlowOutput,
+				Node:   secondDBInputNode,
+				NodeID: 1,
+			},
+		},
+		Data:  nil,
+		JobID: 1,
+	}
+
+	// Liste finale
+	nodes := []models.Node{
+		startNode,
+		firstDBInputNode,
+		secondDBInputNode,
+		mapNode,
+		dbOutputNode,
+		models.Node{
+			ID:    89,
+			Type:  models.NodeTypeDBInput,
+			Name:  "unlinked",
+			Data:  nil,
+			JobID: 1,
+		},
+	}
+	test := models.Job{
+		ID:          1,
+		Name:        "Test job",
+		Description: "Un job de test",
+		CreatorID:   1,
+		Active:      true,
+		Nodes:       nodes,
+		OutputPath:  "C:\\dev\\data-open-studio\\bin",
+	}
+
+	execution, err := NewJobExecution(&test).Build()
+
+	require.NoError(t, err)
+	require.NotNil(t, execution)
+
+}
