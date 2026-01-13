@@ -164,3 +164,31 @@ func (slf Node) GetPrevFlowNode() []Node {
 	}
 	return previousNodes
 }
+
+// GetDataInputNodes returns nodes that provide data input to this node
+func (slf Node) GetDataInputNodes() []Node {
+	if len(slf.InputPort) == 0 {
+		return nil
+	}
+	var inputNodes []Node
+	for _, conn := range slf.InputPort {
+		if conn.Type == PortTypeInput {
+			inputNodes = append(inputNodes, conn.Node)
+		}
+	}
+	return inputNodes
+}
+
+// GetDataOutputNodes returns nodes that receive data output from this node
+func (slf Node) GetDataOutputNodes() []Node {
+	if len(slf.OutputPort) == 0 {
+		return nil
+	}
+	var outputNodes []Node
+	for _, conn := range slf.OutputPort {
+		if conn.Type == PortTypeOutput {
+			outputNodes = append(outputNodes, conn.Node)
+		}
+	}
+	return outputNodes
+}

@@ -851,18 +851,12 @@ func TestJobExecution_Build(t *testing.T) {
 }
 
 func TestJobExecution_Generation(t *testing.T) {
+	// Create all nodes first without ports to avoid circular dependencies
 	dbOutputNode := models.Node{
-		ID:   5,
-		Type: models.NodeTypeDBOutput,
-		Name: "DB Output Node",
-		InputPort: []models.Port{
-			{
-				ID:     7,
-				Type:   models.PortNodeFlowInput,
-				Node:   models.Node{},
-				NodeID: 4,
-			},
-		},
+		ID:         5,
+		Type:       models.NodeTypeDBOutput,
+		Name:       "DB Output Node",
+		InputPort:  nil, // Will be set later
 		OutputPort: nil,
 		Data:       nil,
 		JobID:      1,
@@ -884,60 +878,116 @@ func TestJobExecution_Generation(t *testing.T) {
 		},
 	})
 
+	firstDBInputNode := models.Node{
+		ID:        2,
+		Type:      models.NodeTypeDBInput,
+		Name:      "First DB Input",
+		InputPort: nil, // Will be set later
+		OutputPort: nil, // Will be set later
+		Data:      nil,
+		JobID:     1,
+	}
+
+	secondDBInputNode := models.Node{
+		ID:         3,
+		Type:       models.NodeTypeDBInput,
+		Name:       "Second DB Input",
+		InputPort:  nil, // Will be set later
+		OutputPort: nil, // Will be set later
+		Data:       nil,
+		JobID:      1,
+	}
+
 	mapNode := models.Node{
-		ID:   4,
-		Type: models.NodeTypeMap,
-		Name: "Map Node",
-		InputPort: []models.Port{
-			{
-				ID:     4,
-				Type:   models.PortNodeFlowInput,
-				Node:   models.Node{},
-				NodeID: 2,
-			},
-			{
-				ID:     5,
-				Type:   models.PortNodeFlowInput,
-				Node:   models.Node{},
-				NodeID: 3,
-			},
-		},
-		OutputPort: []models.Port{
-			{
-				ID:     6,
-				Type:   models.PortNodeFlowOutput,
-				Node:   dbOutputNode,
-				NodeID: 4,
-			},
-		},
-		Data:  nil,
-		JobID: 1,
+		ID:         4,
+		Type:       models.NodeTypeMap,
+		Name:       "Map Node",
+		InputPort:  nil, // Will be set later
+		OutputPort: nil, // Will be set later
+		Data:       nil,
+		JobID:      1,
 	}
 	mapNode.SetData(models.MapConfig{})
 
-	firstDBInputNode := models.Node{
-		ID:   2,
-		Type: models.NodeTypeDBInput,
-		Name: "First DB Input",
-		InputPort: []models.Port{
-			{
-				ID:     2,
-				Type:   models.PortNodeFlowInput,
-				Node:   models.Node{},
-				NodeID: 1,
-			},
+	// Now set up the ports with proper node references
+	firstDBInputNode.OutputPort = []models.Port{
+		// FLOW port
+		{
+			ID:     3,
+			Type:   models.PortNodeFlowOutput,
+			Node:   mapNode,
+			NodeID: 2,
 		},
-		OutputPort: []models.Port{
-			{
-				ID:     3,
-				Type:   models.PortNodeFlowOutput,
-				Node:   mapNode,
-				NodeID: 2,
-			},
+		// DATA port
+		{
+			ID:     11,
+			Type:   models.PortTypeOutput,
+			Node:   mapNode,
+			NodeID: 2,
 		},
-		Data:  nil,
-		JobID: 1,
 	}
+
+	mapNode.InputPort = []models.Port{
+		// FLOW ports (execution order)
+		{
+			ID:     4,
+			Type:   models.PortNodeFlowInput,
+			Node:   firstDBInputNode,
+			NodeID: 2,
+		},
+		{
+			ID:     5,
+			Type:   models.PortNodeFlowInput,
+			Node:   secondDBInputNode,
+			NodeID: 3,
+		},
+		// DATA ports (data input)
+		{
+			ID:     13,
+			Type:   models.PortTypeInput,
+			Node:   firstDBInputNode,
+			NodeID: 2,
+		},
+		{
+			ID:     14,
+			Type:   models.PortTypeInput,
+			Node:   secondDBInputNode,
+			NodeID: 3,
+		},
+	}
+	mapNode.OutputPort = []models.Port{
+		// FLOW port
+		{
+			ID:     6,
+			Type:   models.PortNodeFlowOutput,
+			Node:   dbOutputNode,
+			NodeID: 4,
+		},
+		// DATA port
+		{
+			ID:     15,
+			Type:   models.PortTypeOutput,
+			Node:   dbOutputNode,
+			NodeID: 4,
+		},
+	}
+	secondDBInputNode.OutputPort = []models.Port{
+		// FLOW port
+		{
+			ID:     10,
+			Type:   models.PortNodeFlowOutput,
+			Node:   mapNode,
+			NodeID: 3,
+		},
+		// DATA port
+		{
+			ID:     12,
+			Type:   models.PortTypeOutput,
+			Node:   mapNode,
+			NodeID: 3,
+		},
+	}
+
 	firstDBInputNode.SetData(models.DBInputConfig{
 		Query:  "select * from tgcliente",
 		Schema: "public",
@@ -954,29 +1004,6 @@ func TestJobExecution_Generation(t *testing.T) {
 		},
 	})
 
-	secondDBInputNode := models.Node{
-		ID:   3,
-		Type: models.NodeTypeDBInput,
-		Name: "Second DB Input",
-		InputPort: []models.Port{
-			{
-				ID:     9,
-				Type:   models.PortNodeFlowInput,
-				Node:   models.Node{},
-				NodeID: 1,
-			},
-		},
-		OutputPort: []models.Port{
-			{
-				ID:     10,
-				Type:   models.PortNodeFlowOutput,
-				Node:   mapNode,
-				NodeID: 3,
-			},
-		},
-		Data:  nil,
-		JobID: 1,
-	}
 	secondDBInputNode.SetData(models.DBInputConfig{
 		Query:  "select * from tgclienteProtec",
 		Schema: "dbo",
@@ -993,28 +1020,68 @@ func TestJobExecution_Generation(t *testing.T) {
 		},
 	})
 
-	// Node 1: Start (début de chaîne)
+	// Node 1: Start (create first to be able to reference it)
 	startNode := models.Node{
-		ID:        1,
-		Type:      models.NodeTypeStart,
-		Name:      "Starter",
-		InputPort: nil,
-		OutputPort: []models.Port{
-			{
-				ID:     1,
-				Type:   models.PortNodeFlowOutput,
-				Node:   firstDBInputNode,
-				NodeID: 1,
-			},
-			{
-				ID:     8,
-				Type:   models.PortNodeFlowOutput,
-				Node:   secondDBInputNode,
-				NodeID: 1,
-			},
+		ID:         1,
+		Type:       models.NodeTypeStart,
+		Name:       "Starter",
+		InputPort:  nil,
+		OutputPort: nil, // Will be set after
+		Data:       nil,
+		JobID:      1,
+	}
+
+	// Now set up InputPorts for DB Input nodes (they receive from startNode)
+	firstDBInputNode.InputPort = []models.Port{
+		{
+			ID:     2,
+			Type:   models.PortNodeFlowInput,
+			Node:   startNode,
+			NodeID: 1,
 		},
-		Data:  nil,
-		JobID: 1,
+	}
+
+	secondDBInputNode.InputPort = []models.Port{
+		{
+			ID:     9,
+			Type:   models.PortNodeFlowInput,
+			Node:   startNode,
+			NodeID: 1,
+		},
+	}
+
+	// Set up dbOutputNode InputPort (receives from mapNode)
+	dbOutputNode.InputPort = []models.Port{
+		// FLOW port
+		{
+			ID:     7,
+			Type:   models.PortNodeFlowInput,
+			Node:   mapNode,
+			NodeID: 4,
+		},
+		// DATA port
+		{
+			ID:     16,
+			Type:   models.PortTypeInput,
+			Node:   mapNode,
+			NodeID: 4,
+		},
+	}
+
+	// Finally, set startNode OutputPorts (sends to both DB Input nodes)
+	startNode.OutputPort = []models.Port{
+		{
+			ID:     1,
+			Type:   models.PortNodeFlowOutput,
+			Node:   firstDBInputNode,
+			NodeID: 1,
+		},
+		{
+			ID:     8,
+			Type:   models.PortNodeFlowOutput,
+			Node:   secondDBInputNode,
+			NodeID: 1,
+		},
 	}
 
 	// Liste finale

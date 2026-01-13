@@ -40,6 +40,7 @@ func (j *JobExecution) withDbConnection(conn models.DBConnectionConfig) *JobExec
 }
 
 // withStepsSetup sets up the execution steps based on the job's node structure
+// Supports multiple start nodes for independent parallel flows
 func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 	if len(j.Job.Nodes) == 0 {
 		return nil, fmt.Errorf("job '%s' (ID: %d) has no nodes", j.Job.Name, j.Job.ID)
@@ -50,17 +51,16 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 		nodeByID[j.Job.Nodes[i].ID] = &j.Job.Nodes[i]
 	}
 
-	// Find start node
-	var startNode *models.Node
+	// Find ALL start nodes (support multiple independent flows)
+	startNodes := make([]*models.Node, 0)
 	for i := range j.Job.Nodes {
 		if j.Job.Nodes[i].Type == models.NodeTypeStart {
-			startNode = &j.Job.Nodes[i]
-			break
+			startNodes = append(startNodes, &j.Job.Nodes[i])
 		}
 	}
 
-	if startNode == nil {
-		return nil, fmt.Errorf("job '%s' (ID: %d) has no start node", j.Job.Name, j.Job.ID)
+	if len(startNodes) == 0 {
+		return nil, fmt.Errorf("job '%s' (ID: %d) has no start nodes", j.Job.Name, j.Job.ID)
 	}
 
 	levels := make(map[int]int)
@@ -88,22 +88,26 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 		return maxPredLevel + 1
 	}
 
-	// BFS traversal from start node
+	// BFS traversal from each start node
 	visited := make(map[int]bool)
-	queue := []*models.Node{startNode}
-	visited[startNode.ID] = true
+	for _, startNode := range startNodes {
+		queue := []*models.Node{startNode}
+		if !visited[startNode.ID] {
+			visited[startNode.ID] = true
+		}
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
+		for len(queue) > 0 {
+			current := queue[0]
+			queue = queue[1:]
 
-		calculateLevel(current)
+			calculateLevel(current)
 
-		for _, next := range current.GetNextFlowNode() {
-			if !visited[next.ID] {
-				visited[next.ID] = true
-				if n := nodeByID[next.ID]; n != nil {
-					queue = append(queue, n)
+			for _, next := range current.GetNextFlowNode() {
+				if !visited[next.ID] {
+					visited[next.ID] = true
+					if n := nodeByID[next.ID]; n != nil {
+						queue = append(queue, n)
+					}
 				}
 			}
 		}
@@ -121,11 +125,29 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 		}
 	}
 
+	// Debug: Log levels for each node
+	log.Printf("Node levels calculated:")
+	for nodeID, level := range levels {
+		if node := nodeByID[nodeID]; node != nil {
+			log.Printf("  Node %d (%s): Level %d", nodeID, node.Name, level)
+		}
+	}
+
 	// Build execution steps
 	j.Steps = make([]Step, 0, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
 		if nodes := levelNodes[level]; len(nodes) > 0 {
+			log.Printf("Step %d: %d node(s)", len(j.Steps), len(nodes))
 			j.Steps = append(j.Steps, Step{nodes: nodes})
+		}
+	}
+
+	log.Printf("Total steps created: %d", len(j.Steps))
+
+	// Log unlinked nodes (not visited - these are orphaned/test nodes)
+	for _, node := range j.Job.Nodes {
+		if !visited[node.ID] {
+			log.Printf("Warning: Node %d (%s) is not reachable from any start node", node.ID, node.Name)
 		}
 	}
 
@@ -150,13 +172,15 @@ func (j *JobExecution) withGlobalVariables() *JobExecution {
 
 // Build builds the job file for compilation
 func (j *JobExecution) Build() (*JobExecution, error) {
+	// Setup execution steps and global variables
 	j, err := j.withStepsSetup()
 	if err != nil {
 		return nil, err
 	}
 	j.withGlobalVariables()
 
-	// Traverse steps and get generators for each node (skip start nodes)
+	// Collect all generators for non-start nodes
+	generators := make([]Generator, 0)
 	for _, step := range j.Steps {
 		for _, node := range step.nodes {
 			// Skip start nodes as they don't have generators
@@ -168,15 +192,20 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to create generator for node ID %d: %w", node.ID, err)
 			}
-			err = generator.GenerateCode(j.Context, j.Job.OutputPath)
-			if err != nil {
-				return nil, err
-			}
-
-			log.Print(generator)
+			generators = append(generators, generator)
+			log.Printf("Collected generator for node %d (%s)", node.ID, node.Name)
 		}
 	}
 
+	// Generate single main.go with all interconnected node functions
+	mainGen := NewMainProgramGenerator(j)
+	mainGen.Generators = generators
+
+	if err := mainGen.Generate(j.Job.OutputPath); err != nil {
+		return nil, fmt.Errorf("failed to generate main program: %w", err)
+	}
+
+	log.Printf("Successfully generated main.go with %d node functions", len(generators))
 	return j, nil
 }
 

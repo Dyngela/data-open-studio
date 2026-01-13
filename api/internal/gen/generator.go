@@ -44,8 +44,16 @@ type Generator interface {
 	GetType() models.NodeType
 	// GetNodeID returns the ID of the node this generator was created from
 	GetNodeID() int
-	// GenerateCode generates a Go source file for this generator
+	// GetNodeName returns the name of the node
+	GetNodeName() string
+	// GenerateCode generates a Go source file for this generator (legacy)
 	GenerateCode(ctx *ExecutionContext, outputPath string) error
+	// GenerateFunctionSignature returns the function signature for this node
+	GenerateFunctionSignature() string
+	// GenerateFunctionBody returns the function body (without signature) for this node
+	GenerateFunctionBody() string
+	// GenerateImports returns the list of imports needed for this node
+	GenerateImports() []string
 }
 
 // BaseGenerator provides common functionality for all generators
@@ -61,6 +69,10 @@ func (g *BaseGenerator) GetType() models.NodeType {
 
 func (g *BaseGenerator) GetNodeID() int {
 	return g.nodeID
+}
+
+func (g *BaseGenerator) GetNodeName() string {
+	return g.nodeName
 }
 
 // NewGenerator creates the appropriate generator for a given node
@@ -95,4 +107,27 @@ func NewGenerator(node models.Node) (Generator, error) {
 	default:
 		return nil, fmt.Errorf("unknown node type '%s' for node %d", node.Type, node.ID)
 	}
+}
+
+// sanitizeNodeName converts a node name to a valid Go identifier
+// Removes/replaces special characters and ensures it starts with a letter
+func sanitizeNodeName(name string) string {
+	if name == "" {
+		return "Node"
+	}
+
+	result := ""
+	for i, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9' && i > 0) {
+			result += string(r)
+		} else if r == '_' || r == '-' || r == ' ' {
+			result += "_"
+		}
+	}
+
+	if result == "" || (result[0] >= '0' && result[0] <= '9') {
+		result = "Node_" + result
+	}
+
+	return result
 }
