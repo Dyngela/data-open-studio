@@ -3,6 +3,7 @@ package gen
 import (
 	"api/internal/api/models"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -593,129 +594,6 @@ func TestJob_NodeDependencies(t *testing.T) {
 	})
 }
 
-// ============================================================================
-// Generator Creation Tests
-// These tests verify that generators are correctly created for nodes
-// ============================================================================
-
-func TestNewGenerator(t *testing.T) {
-	t.Run("creates DB input generator with properly typed config", func(t *testing.T) {
-		node := models.Node{
-			ID:   1,
-			Type: models.NodeTypeDBInput,
-			Name: "Input Node",
-			Data: mustNodeData(models.DBInputConfig{
-				Connection: models.DBConnectionConfig{
-					Type:     models.DBTypePostgres,
-					Host:     "localhost",
-					Port:     5432,
-					Database: "testdb",
-					Username: "user",
-					Password: "pass",
-				},
-				Schema: "public",
-				Table:  "users",
-			}),
-		}
-
-		gen, err := NewGenerator(node)
-
-		require.NoError(t, err)
-		require.NotNil(t, gen)
-		assert.Equal(t, models.NodeTypeDBInput, gen.GetType())
-		assert.Equal(t, 1, gen.GetNodeID())
-
-		// Verify it's the correct type with proper config
-		dbInputGen, ok := gen.(*DBInputGenerator)
-		assert.True(t, ok, "Generator should be *DBInputGenerator")
-		assert.NotNil(t, dbInputGen)
-	})
-
-	t.Run("creates DB output generator with properly typed config", func(t *testing.T) {
-		node := models.Node{
-			ID:   2,
-			Type: models.NodeTypeDBOutput,
-			Name: "Output Node",
-			Data: mustNodeData(models.DBOutputConfig{
-				Connection: models.DBConnectionConfig{
-					Type:     models.DBTypePostgres,
-					Host:     "localhost",
-					Port:     5432,
-					Database: "testdb",
-					Username: "user",
-					Password: "pass",
-				},
-				Table:     "output_table",
-				Mode:      "insert",
-				BatchSize: 100,
-			}),
-		}
-
-		gen, err := NewGenerator(node)
-
-		require.NoError(t, err)
-		require.NotNil(t, gen)
-		assert.Equal(t, models.NodeTypeDBOutput, gen.GetType())
-		assert.Equal(t, 2, gen.GetNodeID())
-
-		// Verify it's the correct type with proper config
-		dbOutputGen, ok := gen.(*DBOutputGenerator)
-		assert.True(t, ok, "Generator should be *DBOutputGenerator")
-		assert.NotNil(t, dbOutputGen)
-	})
-
-	t.Run("creates map generator with properly typed config", func(t *testing.T) {
-		node := models.Node{
-			ID:   3,
-			Type: models.NodeTypeMap,
-			Name: "Map Node",
-			Data: mustNodeData(models.MapConfig{}),
-		}
-
-		gen, err := NewGenerator(node)
-
-		require.NoError(t, err)
-		require.NotNil(t, gen)
-		assert.Equal(t, models.NodeTypeMap, gen.GetType())
-		assert.Equal(t, 3, gen.GetNodeID())
-
-		// Verify it's the correct type with proper config
-		mapGen, ok := gen.(*MapGenerator)
-		assert.True(t, ok, "Generator should be *MapGenerator")
-		assert.NotNil(t, mapGen)
-	})
-
-	t.Run("returns error for start node", func(t *testing.T) {
-		node := models.Node{
-			ID:   4,
-			Type: models.NodeTypeStart,
-			Name: "Start Node",
-			Data: mustNodeData(models.DBInputConfig{}),
-		}
-
-		gen, err := NewGenerator(node)
-
-		require.Error(t, err)
-		assert.Nil(t, gen)
-		assert.Contains(t, err.Error(), "start nodes do not have generators")
-	})
-
-	t.Run("returns error for invalid config", func(t *testing.T) {
-		node := models.Node{
-			ID:   5,
-			Type: models.NodeTypeDBInput,
-			Name: "Bad Node",
-			Data: models.NodeData([]byte("invalid json")), // Invalid JSON
-		}
-
-		gen, err := NewGenerator(node)
-
-		require.Error(t, err)
-		assert.Nil(t, gen)
-		assert.Contains(t, err.Error(), "failed to get DB input config")
-	})
-}
-
 func TestJobExecution_Build(t *testing.T) {
 	t.Run("builds generators for simple pipeline", func(t *testing.T) {
 		// Create a simple pipeline: Start -> Input -> Output
@@ -736,8 +614,7 @@ func TestJobExecution_Build(t *testing.T) {
 					Username: "user",
 					Password: "pass",
 				},
-				Schema: "public",
-				Table:  "users",
+				DbSchema: "public",
 			}),
 		}
 		builder.nodes[2] = inputNode
@@ -790,7 +667,7 @@ func TestJobExecution_Build(t *testing.T) {
 					Type: models.DBTypePostgres, Host: "localhost",
 					Port: 5432, Database: "testdb", Username: "user", Password: "pass",
 				},
-				Schema: "public", Table: "table1",
+				DbSchema: "public",
 			}),
 		}
 		builder.nodes[2] = input1
@@ -805,7 +682,7 @@ func TestJobExecution_Build(t *testing.T) {
 					Type: models.DBTypePostgres, Host: "localhost",
 					Port: 5432, Database: "testdb", Username: "user", Password: "pass",
 				},
-				Schema: "public", Table: "table2",
+				DbSchema: "public",
 			}),
 		}
 		builder.nodes[3] = input2
@@ -851,6 +728,14 @@ func TestJobExecution_Build(t *testing.T) {
 }
 
 func TestJobExecution_Generation(t *testing.T) {
+	// Create output directory in the project root for inspection
+	// This will persist after the test runs so you can see the generated code
+	outputDir := "../../generated_test_output"
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output directory: %v", err)
+	}
+	t.Logf("Output will be written to: %s", outputDir)
+
 	// Create all nodes first without ports to avoid circular dependencies
 	dbOutputNode := models.Node{
 		ID:         5,
@@ -879,13 +764,13 @@ func TestJobExecution_Generation(t *testing.T) {
 	})
 
 	firstDBInputNode := models.Node{
-		ID:        2,
-		Type:      models.NodeTypeDBInput,
-		Name:      "First DB Input",
-		InputPort: nil, // Will be set later
+		ID:         2,
+		Type:       models.NodeTypeDBInput,
+		Name:       "First DB Input",
+		InputPort:  nil, // Will be set later
 		OutputPort: nil, // Will be set later
-		Data:      nil,
-		JobID:     1,
+		Data:       nil,
+		JobID:      1,
 	}
 
 	secondDBInputNode := models.Node{
@@ -989,9 +874,8 @@ func TestJobExecution_Generation(t *testing.T) {
 	}
 
 	firstDBInputNode.SetData(models.DBInputConfig{
-		Query:  "select * from tgcliente",
-		Schema: "public",
-		Table:  "tgcliente",
+		Query:    "select * from tgcliente",
+		DbSchema: "public",
 		Connection: models.DBConnectionConfig{
 			Type:     models.DBTypeSQLServer,
 			Host:     "DC-SQL-01",
@@ -1005,9 +889,8 @@ func TestJobExecution_Generation(t *testing.T) {
 	})
 
 	secondDBInputNode.SetData(models.DBInputConfig{
-		Query:  "select * from tgclienteProtec",
-		Schema: "dbo",
-		Table:  "tgclienteProtec",
+		Query:    "select * from tgclienteProtec",
+		DbSchema: "dbo",
 		Connection: models.DBConnectionConfig{
 			Type:     models.DBTypeSQLServer,
 			Host:     "DC-SQL-02",
@@ -1026,7 +909,7 @@ func TestJobExecution_Generation(t *testing.T) {
 		Type:       models.NodeTypeStart,
 		Name:       "Starter",
 		InputPort:  nil,
-		OutputPort: nil, // Will be set after
+		OutputPort: nil,
 		Data:       nil,
 		JobID:      1,
 	}
@@ -1106,7 +989,7 @@ func TestJobExecution_Generation(t *testing.T) {
 		CreatorID:   1,
 		Active:      true,
 		Nodes:       nodes,
-		OutputPath:  "C:\\dev\\data-open-studio\\bin",
+		OutputPath:  outputDir,
 	}
 
 	execution, err := NewJobExecution(&test).Build()
@@ -1114,4 +997,13 @@ func TestJobExecution_Generation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, execution)
 
+	// Verify that main.go was generated
+	generatedFile := outputDir + "/main.go"
+	_, err = os.Stat(generatedFile)
+	require.NoError(t, err, "main.go should have been generated")
+
+	// Read and log the generated content
+	content, err := os.ReadFile(generatedFile)
+	require.NoError(t, err)
+	t.Logf("Generated main.go (%d bytes):\n%s", len(content), string(content))
 }

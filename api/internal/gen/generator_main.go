@@ -244,6 +244,7 @@ func (g *MainProgramGenerator) writeNodeFunctions(file *os.File) error {
 		return err
 	}
 
+	// First, write all main node functions
 	for _, gen := range g.Generators {
 		// Write function signature and body
 		signature := gen.GenerateFunctionSignature()
@@ -253,6 +254,25 @@ func (g *MainProgramGenerator) writeNodeFunctions(file *os.File) error {
 
 		if _, err := file.WriteString(nodeFunc); err != nil {
 			return err
+		}
+	}
+
+	// Then, write all helper functions
+	helperHeader := `// ============================================================
+// HELPER FUNCTIONS
+// ============================================================
+
+`
+	if _, err := file.WriteString(helperHeader); err != nil {
+		return err
+	}
+
+	for _, gen := range g.Generators {
+		helpers := gen.GenerateHelperFunctions()
+		if helpers != "" {
+			if _, err := file.WriteString(helpers + "\n\n"); err != nil {
+				return err
+			}
 		}
 	}
 

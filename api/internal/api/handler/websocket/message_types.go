@@ -42,4 +42,17 @@ const (
 	MessageTypeMetadataUpdate MessageType = "metadata_update"
 	MessageTypeMetadataDelete MessageType = "metadata_delete"
 	MessageTypeMetadataGet    MessageType = "metadata_get"
+
+	// DB nodes operations
+	MessageTypeDbNodeGuessDataModel MessageType = "db_node_guess_data_model"
+	ResponseDbNodeGuessDataModel    MessageType = "response_db_node_guess_data_model"
 )
+
+type Response struct {
+	Type      MessageType `json:"type"`
+	JobID     uint        `json:"jobId,omitempty"`
+	UserID    uint        `json:"userId"`
+	Username  string      `json:"username"`
+	Timestamp time.Time   `json:"timestamp"`
+	Data      any         `json:"data"`
+}

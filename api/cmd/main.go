@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -72,27 +71,5 @@ func main() {
 
 func initAPI(router *graceful.Graceful, hub *websocket.Hub, processor *websocket.MessageProcessor) {
 	endpoints.AuthHandler(router)
-	// endpoints.JobHandler(router)     // TODO: Uncomment when job handler is needed
-	// endpoints.NodeHandler(router)    // TODO: Uncomment when node handler is needed
 	endpoints.WebSocketHandler(router, hub, processor)
-}
-
-func GenerateCode(job *models.Job) string {
-	var sb strings.Builder
-
-	//for _, node := range job.Nodes {
-	//	switch n := node.(type) {
-	//	case *models.DBInputConfig:
-	//		sb.WriteString(fmt.Sprintf("// Query: %s\n", n.Query))
-	//		sb.WriteString(fmt.Sprintf("// Table: %s.%s\n", n.Schema, n.Table))
-	//	case *models.DBOutputConfig:
-	//		sb.WriteString(fmt.Sprintf("// Output Table: %s\n", n.Table))
-	//	case *models.MapConfig:
-	//		sb.WriteString("// Map Node\n")
-	//	default:
-	//		sb.WriteString("// Unknown Node Type\n")
-	//	}
-	//}
-
-	return sb.String()
 }

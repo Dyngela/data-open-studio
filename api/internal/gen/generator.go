@@ -52,6 +52,9 @@ type Generator interface {
 	GenerateFunctionSignature() string
 	// GenerateFunctionBody returns the function body (without signature) for this node
 	GenerateFunctionBody() string
+	// GenerateHelperFunctions returns any helper functions that should be generated alongside
+	// These are written as separate top-level functions, not nested inside the main function
+	GenerateHelperFunctions() string
 	// GenerateImports returns the list of imports needed for this node
 	GenerateImports() []string
 }
@@ -73,6 +76,11 @@ func (g *BaseGenerator) GetNodeID() int {
 
 func (g *BaseGenerator) GetNodeName() string {
 	return g.nodeName
+}
+
+// GenerateHelperFunctions returns an empty string by default (no helpers needed)
+func (g *BaseGenerator) GenerateHelperFunctions() string {
+	return ""
 }
 
 // NewGenerator creates the appropriate generator for a given node
@@ -113,7 +121,7 @@ func NewGenerator(node models.Node) (Generator, error) {
 // Removes/replaces special characters and ensures it starts with a letter
 func sanitizeNodeName(name string) string {
 	if name == "" {
-		return "Node"
+		return fmt.Sprintf("Node_%d", time.Now().UnixNano())
 	}
 
 	result := ""

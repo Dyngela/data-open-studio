@@ -58,9 +58,9 @@ func TestCreateJobWithNodes(t *testing.T) {
 				{ID: 3, Type: models.PortNodeFlowOutput},
 			},
 			Data: mustNodeData(models.DBInputConfig{
-				Query:  "SELECT * FROM source_table",
-				Schema: "public",
-				Table:  "source_table",
+				Query:    "SELECT * FROM source_table",
+				DbSchema: "public",
+				Table:    "source_table",
 			}),
 		},
 
@@ -80,9 +80,9 @@ func TestCreateJobWithNodes(t *testing.T) {
 				{ID: 7, Type: models.PortNodeFlowOutput},
 			},
 			Data: mustNodeData(models.DBInputConfig{
-				Query:  "SELECT id, name, value FROM input_data WHERE active = true",
-				Schema: "public",
-				Table:  "input_data",
+				Query:    "SELECT id, name, value FROM input_data WHERE active = true",
+				DbSchema: "public",
+				Table:    "input_data",
 			}),
 		},
 
@@ -169,7 +169,7 @@ func TestCreateJobWithNodes(t *testing.T) {
 	dbInputConfig, err := firstNode.GetDBInputConfig()
 	require.NoError(t, err, "Failed to get DB input config")
 	assert.Equal(t, "SELECT * FROM source_table", dbInputConfig.Query)
-	assert.Equal(t, "public", dbInputConfig.Schema)
+	assert.Equal(t, "public", dbInputConfig.DbSchema)
 	assert.Equal(t, "source_table", dbInputConfig.Table)
 
 	fourthNode := retrievedJob.Nodes[3]
@@ -204,9 +204,9 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 				{ID: 3, Type: models.PortNodeFlowOutput},
 			},
 			Data: mustNodeData(models.DBInputConfig{
-				Query:  "SELECT * FROM users WHERE created_at > NOW() - INTERVAL '30 days'",
-				Schema: "public",
-				Table:  "users",
+				Query:    "SELECT * FROM users WHERE created_at > NOW() - INTERVAL '30 days'",
+				DbSchema: "public",
+				Table:    "users",
 			}),
 		},
 
@@ -225,9 +225,9 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 				{ID: 6, Type: models.PortNodeFlowOutput},
 			},
 			Data: mustNodeData(models.DBInputConfig{
-				Query:  "SELECT * FROM orders WHERE status = 'completed'",
-				Schema: "sales",
-				Table:  "orders",
+				Query:    "SELECT * FROM orders WHERE status = 'completed'",
+				DbSchema: "sales",
+				Table:    "orders",
 			}),
 		},
 
@@ -247,9 +247,9 @@ func TestCreateJobWithMultipleDBNodes(t *testing.T) {
 				{ID: 10, Type: models.PortNodeFlowOutput},
 			},
 			Data: mustNodeData(models.DBInputConfig{
-				Query:  "SELECT product_id, name, price FROM products",
-				Schema: "inventory",
-				Table:  "products",
+				Query:    "SELECT product_id, name, price FROM products",
+				DbSchema: "inventory",
+				Table:    "products",
 			}),
 		},
 
@@ -395,9 +395,9 @@ func TestCreateJobWithSimpleFlow(t *testing.T) {
 				{ID: 3, Type: models.PortNodeFlowOutput},
 			},
 			Data: mustNodeData(models.DBInputConfig{
-				Query:  "SELECT * FROM source",
-				Schema: "public",
-				Table:  "source",
+				Query:    "SELECT * FROM source",
+				DbSchema: "public",
+				Table:    "source",
 			}),
 		},
 		{
