@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// MapGenerator handles data transformation operations
+// MapGenerator handles data transformation with sync point support for cross-data operations
 type MapGenerator struct {
 	BaseGenerator
 	config models.MapConfig
@@ -23,56 +23,119 @@ func NewMapGenerator(nodeID int, nodeName string, config models.MapConfig) *MapG
 	}
 }
 
-// GenerateFunctionSignature returns the function signature for this map node
+// GenerateFunctionSignature returns signature accepting variadic input datasets for cross-data
 func (g *MapGenerator) GenerateFunctionSignature() string {
 	nodeName := sanitizeNodeName(g.nodeName)
-	return fmt.Sprintf("func executeNode_%d_%s(ctx *JobContext, input []map[string]interface{}) ([]map[string]interface{}, error)",
+	// Accepts variadic slices for multiple input sources (sync point)
+	return fmt.Sprintf("func executeNode_%d_%s(ctx *JobContext, inputs ...[]map[string]interface{}) (*RowStream, error)",
 		g.nodeID, nodeName)
 }
 
-// GenerateFunctionBody returns the function body for this map node
+// GenerateFunctionBody returns the function body with streaming output
 func (g *MapGenerator) GenerateFunctionBody() string {
-	return fmt.Sprintf(`	log.Printf("Node %%d: Processing %%d rows through map node", %d, len(input))
+	bufferSize := 1000 // Default buffer for output stream
 
-	// Transform data
-	transformedData := transformData_%d(input)
- 
-	return transformedData, nil`, g.nodeID, g.nodeID)
+	return fmt.Sprintf(`	// Calculate total input size
+	totalInputRows := 0
+	for _, input := range inputs {
+		totalInputRows += len(input)
+	}
+	log.Printf("Node %d: Processing %%d input source(s), %%d total rows", len(inputs), totalInputRows)
+
+	// Create output stream
+	stream := NewRowStream(%d)
+
+	go func() {
+		defer stream.Close()
+
+		// Process and transform data
+		outputCount := 0
+
+		// Call transformation function
+		results := transformData_%d(inputs)
+
+		// Stream results
+		for _, row := range results {
+			if !stream.Send(row) {
+				return // Stream closed
+			}
+			outputCount++
+		}
+
+		log.Printf("Node %d: Transformed %%d -> %%d rows", totalInputRows, outputCount)
+	}()
+
+	return stream, nil`, g.nodeID, bufferSize, g.nodeID, g.nodeID)
 }
 
-// GenerateHelperFunctions returns helper functions for this map node
+// GenerateHelperFunctions returns the transformation helper
 func (g *MapGenerator) GenerateHelperFunctions() string {
-	return fmt.Sprintf(`// transformData_%d applies transformations to the input data
-func transformData_%d(data []map[string]interface{}) []map[string]interface{} {
-	// TODO: Implement your transformation logic here
-	// For now, this is a passthrough that returns data as-is
-
-	// Example transformations you could implement:
-	// - Filter rows based on conditions
-	// - Add/remove fields
-	// - Rename fields
-	// - Calculate derived fields
-	// - Aggregate data
-
-	result := make([]map[string]interface{}, 0, len(data))
-
-	for _, row := range data {
-		// Example: Add a processed timestamp
-		// row["processed_at"] = time.Now().Format(time.RFC3339)
-
-		// Example: Transform field values
-		// if val, ok := row["status"]; ok {
-		//     row["status_upper"] = strings.ToUpper(val.(string))
-		// }
-
-		result = append(result, row)
+	return fmt.Sprintf(`// transformData_%d processes multiple input datasets
+// Customize this function for your cross-data transformation logic
+func transformData_%d(inputs [][]map[string]interface{}) []map[string]interface{} {
+	// Handle single input - simple passthrough with optional transform
+	if len(inputs) == 1 {
+		result := make([]map[string]interface{}, 0, len(inputs[0]))
+		for _, row := range inputs[0] {
+			// Apply transformation here
+			result = append(result, row)
+		}
+		return result
 	}
+
+	// Handle multiple inputs - cross-data operations
+	// Example: Join, merge, or combine datasets
+
+	// Calculate output capacity
+	totalRows := 0
+	for _, input := range inputs {
+		totalRows += len(input)
+	}
+	result := make([]map[string]interface{}, 0, totalRows)
+
+	// Default: Concatenate all inputs
+	// TODO: Replace with your actual cross-data logic (joins, lookups, etc.)
+	for inputIdx, input := range inputs {
+		for _, row := range input {
+			// Tag source for debugging
+			row["_source_input"] = inputIdx
+			result = append(result, row)
+		}
+	}
+
+	// Example cross-data patterns:
+	//
+	// 1. Inner Join by key:
+	// input0Map := make(map[interface{}]map[string]interface{})
+	// for _, row := range inputs[0] {
+	//     key := row["join_key"]
+	//     input0Map[key] = row
+	// }
+	// for _, row := range inputs[1] {
+	//     if matchRow, ok := input0Map[row["join_key"]]; ok {
+	//         merged := make(map[string]interface{})
+	//         for k, v := range matchRow { merged[k] = v }
+	//         for k, v := range row { merged[k] = v }
+	//         result = append(result, merged)
+	//     }
+	// }
+	//
+	// 2. Lookup enrichment:
+	// lookup := make(map[interface{}]map[string]interface{})
+	// for _, row := range inputs[1] {
+	//     lookup[row["lookup_key"]] = row
+	// }
+	// for _, row := range inputs[0] {
+	//     if extra, ok := lookup[row["lookup_key"]]; ok {
+	//         row["extra_field"] = extra["value"]
+	//     }
+	//     result = append(result, row)
+	// }
 
 	return result
 }`, g.nodeID, g.nodeID)
 }
 
-// GenerateImports returns the list of imports needed for this map node
 func (g *MapGenerator) GenerateImports() []string {
 	return []string{
 		`"fmt"`,

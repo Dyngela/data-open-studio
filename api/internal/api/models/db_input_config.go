@@ -14,6 +14,9 @@ type DBInputConfig struct {
 	// QueryWithSchema Query with schema prefix according to dbtype
 	QueryWithSchema string `json:"queryWithSchema"`
 
+	BatchSize   int `json:"batchSize"`
+	WorkerCount int `json:"workerCount"`
+
 	Connection DBConnectionConfig `json:"connection"`
 	// DataModels Give the query result data model with type and col name
 	DataModels []DataModel `json:"dataModel"`

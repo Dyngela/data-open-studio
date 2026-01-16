@@ -629,11 +629,11 @@ func TestJobExecution_Build(t *testing.T) {
 					Type:     models.DBTypePostgres,
 					Host:     "localhost",
 					Port:     5432,
-					Database: "testdb",
+					Database: "test-input",
 					Username: "user",
 					Password: "pass",
 				},
-				Table:     "output",
+				Table:     "test",
 				Mode:      "insert",
 				BatchSize: 100,
 			}),
@@ -730,7 +730,7 @@ func TestJobExecution_Build(t *testing.T) {
 func TestJobExecution_Generation(t *testing.T) {
 	// Create output directory in the project root for inspection
 	// This will persist after the test runs so you can see the generated code
-	outputDir := "../../generated_test_output"
+	outputDir := "../../../bin"
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		t.Fatalf("Failed to create output directory: %v", err)
 	}
@@ -741,21 +741,21 @@ func TestJobExecution_Generation(t *testing.T) {
 		ID:         5,
 		Type:       models.NodeTypeDBOutput,
 		Name:       "DB Output Node",
-		InputPort:  nil, // Will be set later
+		InputPort:  nil,
 		OutputPort: nil,
 		Data:       nil,
 		JobID:      1,
 	}
 
 	dbOutputNode.SetData(models.DBOutputConfig{
-		Table:     "OUTPUT_TABLE",
+		Table:     "test",
 		Mode:      "INSERT",
 		BatchSize: 500,
 		Connection: models.DBConnectionConfig{
 			Type:     models.DBTypePostgres,
-			Host:     "DC-CENTRIC-01",
-			Port:     5432,
-			Database: "TEST_DB",
+			Host:     "localhost",
+			Port:     5433,
+			Database: "test-input",
 			Username: "postgres",
 			Password: "postgres",
 			SSLMode:  "disable",
@@ -767,8 +767,8 @@ func TestJobExecution_Generation(t *testing.T) {
 		ID:         2,
 		Type:       models.NodeTypeDBInput,
 		Name:       "First DB Input",
-		InputPort:  nil, // Will be set later
-		OutputPort: nil, // Will be set later
+		InputPort:  nil,
+		OutputPort: nil,
 		Data:       nil,
 		JobID:      1,
 	}
@@ -874,30 +874,30 @@ func TestJobExecution_Generation(t *testing.T) {
 	}
 
 	firstDBInputNode.SetData(models.DBInputConfig{
-		Query:    "select * from tgcliente",
+		Query:    "select * from sender",
 		DbSchema: "public",
 		Connection: models.DBConnectionConfig{
-			Type:     models.DBTypeSQLServer,
-			Host:     "DC-SQL-01",
-			Port:     1433,
-			Database: "ICarDEMO",
-			Username: "sa",
-			Password: "sa",
+			Type:     models.DBTypePostgres,
+			Host:     "localhost",
+			Port:     5433,
+			Database: "data-open-studio",
+			Username: "postgres",
+			Password: "postgres",
 			SSLMode:  "disable",
 			Extra:    nil,
 		},
 	})
 
 	secondDBInputNode.SetData(models.DBInputConfig{
-		Query:    "select * from tgclienteProtec",
-		DbSchema: "dbo",
+		Query:    "select * from receiver",
+		DbSchema: "public",
 		Connection: models.DBConnectionConfig{
-			Type:     models.DBTypeSQLServer,
-			Host:     "DC-SQL-02",
-			Port:     1895,
-			Database: "ICarKKKKK",
-			Username: "sa",
-			Password: "sa",
+			Type:     models.DBTypePostgres,
+			Host:     "localhost",
+			Port:     5433,
+			Database: "data-open-studio",
+			Username: "postgres",
+			Password: "postgres",
 			SSLMode:  "disable",
 			Extra:    nil,
 		},
@@ -1001,9 +1001,4 @@ func TestJobExecution_Generation(t *testing.T) {
 	generatedFile := outputDir + "/main.go"
 	_, err = os.Stat(generatedFile)
 	require.NoError(t, err, "main.go should have been generated")
-
-	// Read and log the generated content
-	content, err := os.ReadFile(generatedFile)
-	require.NoError(t, err)
-	t.Logf("Generated main.go (%d bytes):\n%s", len(content), string(content))
 }

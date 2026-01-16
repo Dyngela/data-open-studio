@@ -16,6 +16,7 @@ front/out-tsc/
 *.test
 *.out
 api/bin/
+bin/
 
 # Go workspace files
 go.work

@@ -2,7 +2,6 @@ package gen
 
 import (
 	"api/internal/api/models"
-	"api/pkg"
 	"fmt"
 	"os"
 	"path"
@@ -26,7 +25,6 @@ func NewMainProgramGenerator(execution *JobExecution) *MainProgramGenerator {
 
 // Generate creates the main.go file with all interconnected node functions
 func (g *MainProgramGenerator) Generate(outputPath string) error {
-	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(outputPath, 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -37,27 +35,26 @@ func (g *MainProgramGenerator) Generate(outputPath string) error {
 	}
 	defer file.Close()
 
-	// Generate package and imports
 	if err := g.writePackageAndImports(file); err != nil {
 		return err
 	}
 
-	// Generate JobContext struct and initialization
+	if err := g.writeRowStreamType(file); err != nil {
+		return err
+	}
+
 	if err := g.writeJobContext(file); err != nil {
 		return err
 	}
 
-	// Generate DB connection initialization functions
 	if err := g.writeConnectionInitFunctions(file); err != nil {
 		return err
 	}
 
-	// Generate all node execution functions
 	if err := g.writeNodeFunctions(file); err != nil {
 		return err
 	}
 
-	// Generate main orchestration function
 	if err := g.writeMainFunction(file); err != nil {
 		return err
 	}
@@ -65,33 +62,30 @@ func (g *MainProgramGenerator) Generate(outputPath string) error {
 	return nil
 }
 
-// writePackageAndImports writes the package declaration and imports
 func (g *MainProgramGenerator) writePackageAndImports(file *os.File) error {
-	// Collect all imports from generators
 	importSet := make(map[string]bool)
 
-	// Add base imports always needed
+	// Base imports for pipeline pattern
+	importSet[`"context"`] = true
 	importSet[`"database/sql"`] = true
 	importSet[`"fmt"`] = true
 	importSet[`"log"`] = true
 	importSet[`"os"`] = true
+	importSet[`"os/signal"`] = true
 	importSet[`"sync"`] = true
+	importSet[`"sync/atomic"`] = true
 	importSet[`"time"`] = true
-	importSet[`"strings"`] = true
 
-	// Add imports from each generator
 	for _, gen := range g.Generators {
 		for _, imp := range gen.GenerateImports() {
 			importSet[imp] = true
 		}
 	}
 
-	// Write package declaration
 	if _, err := file.WriteString("package main\n\n"); err != nil {
 		return err
 	}
 
-	// Write imports
 	if _, err := file.WriteString("import (\n"); err != nil {
 		return err
 	}
@@ -104,34 +98,193 @@ func (g *MainProgramGenerator) writePackageAndImports(file *os.File) error {
 		return err
 	}
 
-	// Write header comment
-	comment := fmt.Sprintf("// Generated code for job: %s\n", g.Job.Name)
-	comment += fmt.Sprintf("// Job ID: %d\n", g.Job.ID)
-	comment += fmt.Sprintf("// Total nodes: %d\n", len(g.Job.Nodes))
-	comment += "// This file contains all node execution functions interconnected via data flow\n\n"
+	comment := fmt.Sprintf("// Generated pipeline for job: %s (ID: %d)\n", g.Job.Name, g.Job.ID)
+	comment += "// Uses channel-based streaming with backpressure support\n\n"
 
-	if _, err := file.WriteString(comment); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := file.WriteString(comment)
+	return err
 }
 
-// writeJobContext writes the JobContext struct and helper methods
-func (g *MainProgramGenerator) writeJobContext(file *os.File) error {
-	contextCode := `// ============================================================
-// GLOBAL CONTEXT & CONNECTION MANAGEMENT
+// writeRowStreamType writes the RowStream type and helper functions
+func (g *MainProgramGenerator) writeRowStreamType(file *os.File) error {
+	code := `// ============================================================
+// PIPELINE STREAMING INFRASTRUCTURE
 // ============================================================
 
-// JobContext holds all database connections for the job
+// RowStream provides channel-based row streaming with error handling
+type RowStream struct {
+	rows     chan map[string]interface{}
+	err      chan error
+	done     chan struct{}
+	closed   atomic.Bool
+	rowCount atomic.Int64
+}
+
+// NewRowStream creates a new stream with the specified buffer size
+func NewRowStream(bufferSize int) *RowStream {
+	return &RowStream{
+		rows: make(chan map[string]interface{}, bufferSize),
+		err:  make(chan error, 1),
+		done: make(chan struct{}),
+	}
+}
+
+// Send sends a row to the stream. Returns false if stream is closed.
+func (s *RowStream) Send(row map[string]interface{}) bool {
+	if s.closed.Load() {
+		return false
+	}
+	select {
+	case s.rows <- row:
+		s.rowCount.Add(1)
+		return true
+	case <-s.done:
+		return false
+	}
+}
+
+// SendError sends an error and closes the stream
+func (s *RowStream) SendError(err error) {
+	if s.closed.Load() {
+		return
+	}
+	select {
+	case s.err <- err:
+	default:
+	}
+	s.Close()
+}
+
+// Close closes the stream channels
+func (s *RowStream) Close() {
+	if s.closed.CompareAndSwap(false, true) {
+		close(s.rows)
+		close(s.done)
+	}
+}
+
+// Rows returns the row channel for range iteration
+func (s *RowStream) Rows() <-chan map[string]interface{} {
+	return s.rows
+}
+
+// Err returns any error that occurred
+func (s *RowStream) Err() error {
+	select {
+	case err := <-s.err:
+		return err
+	default:
+		return nil
+	}
+}
+
+// Count returns the number of rows sent
+func (s *RowStream) Count() int64 {
+	return s.rowCount.Load()
+}
+
+// Collect waits for all rows and returns them as a slice (sync point)
+func (s *RowStream) Collect() ([]map[string]interface{}, error) {
+	results := make([]map[string]interface{}, 0, 1000)
+	for row := range s.rows {
+		results = append(results, row)
+	}
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// CollectMultiple collects from multiple streams in parallel (sync point for joins)
+func CollectMultiple(streams ...*RowStream) ([][]map[string]interface{}, error) {
+	results := make([][]map[string]interface{}, len(streams))
+	errors := make([]error, len(streams))
+	var wg sync.WaitGroup
+
+	for i, stream := range streams {
+		wg.Add(1)
+		go func(idx int, s *RowStream) {
+			defer wg.Done()
+			data, err := s.Collect()
+			results[idx] = data
+			errors[idx] = err
+		}(i, stream)
+	}
+
+	wg.Wait()
+
+	// Check for errors
+	for i, err := range errors {
+		if err != nil {
+			return nil, fmt.Errorf("stream %d failed: %w", i, err)
+		}
+	}
+
+	return results, nil
+}
+
+// MergeStreams merges multiple input streams into a single output stream
+func MergeStreams(bufferSize int, streams ...*RowStream) *RowStream {
+	out := NewRowStream(bufferSize)
+	var wg sync.WaitGroup
+
+	for _, stream := range streams {
+		wg.Add(1)
+		go func(s *RowStream) {
+			defer wg.Done()
+			for row := range s.Rows() {
+				if !out.Send(row) {
+					return
+				}
+			}
+			if err := s.Err(); err != nil {
+				out.SendError(err)
+			}
+		}(stream)
+	}
+
+	go func() {
+		wg.Wait()
+		out.Close()
+	}()
+
+	return out
+}
+
+`
+	_, err := file.WriteString(code)
+	return err
+}
+
+func (g *MainProgramGenerator) writeJobContext(file *os.File) error {
+	contextCode := `// ============================================================
+// JOB CONTEXT & CONNECTION MANAGEMENT
+// ============================================================
+
+// JobContext holds database connections and cancellation context
 type JobContext struct {
+	Ctx         context.Context
+	Cancel      context.CancelFunc
 	Connections map[string]*sql.DB
 	mu          sync.RWMutex
 }
 
-// InitJobContext initializes the global context with all database connections
+// InitJobContext initializes the context with graceful shutdown support
 func InitJobContext() (*JobContext, error) {
-	ctx := &JobContext{
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Handle interrupt signals for graceful shutdown
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt)
+		<-sigCh
+		log.Println("Received interrupt, shutting down...")
+		cancel()
+	}()
+
+	jobCtx := &JobContext{
+		Ctx:         ctx,
+		Cancel:      cancel,
 		Connections: make(map[string]*sql.DB),
 	}
 
@@ -140,10 +293,9 @@ func InitJobContext() (*JobContext, error) {
 		return err
 	}
 
-	// Add initialization for each unique connection
 	for _, connConfig := range g.Execution.Context.DBConnections {
 		connID := connConfig.GetConnectionID()
-		initCall := fmt.Sprintf("\tif err := initConnection_%s(ctx); err != nil {\n", connID)
+		initCall := fmt.Sprintf("\tif err := initConnection_%s(jobCtx); err != nil {\n", connID)
 		initCall += fmt.Sprintf("\t\treturn nil, fmt.Errorf(\"failed to init connection %s: %%w\", err)\n", connID)
 		initCall += "\t}\n\n"
 
@@ -152,30 +304,27 @@ func InitJobContext() (*JobContext, error) {
 		}
 	}
 
-	closeCode := `	return ctx, nil
+	closeCode := `	return jobCtx, nil
 }
 
-// Close closes all database connections
+// Close releases all resources
 func (ctx *JobContext) Close() {
+	ctx.Cancel()
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
 	for connID, db := range ctx.Connections {
 		if err := db.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error closing connection %s: %v\n", connID, err)
+			log.Printf("Error closing connection %s: %v", connID, err)
 		}
 	}
 }
 
 `
-	if _, err := file.WriteString(closeCode); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := file.WriteString(closeCode)
+	return err
 }
 
-// writeConnectionInitFunctions writes the database connection initialization functions
 func (g *MainProgramGenerator) writeConnectionInitFunctions(file *os.File) error {
 	header := `// ============================================================
 // DATABASE CONNECTION INITIALIZATION
@@ -187,45 +336,40 @@ func (g *MainProgramGenerator) writeConnectionInitFunctions(file *os.File) error
 	}
 
 	for _, connConfig := range g.Execution.Context.DBConnections {
-		pkg.PrettyPrint(connConfig)
 		connID := connConfig.GetConnectionID()
 		connStr := connConfig.BuildConnectionString()
 		driverName := connConfig.GetDriverName()
 
-		initFunc := fmt.Sprintf(`// initConnection_%s initializes the database connection
-func initConnection_%s(ctx *JobContext) error {
-	// Database connection string from config
-	// Override with DATABASE_URL_%s environment variable if set
+		initFunc := fmt.Sprintf(`func initConnection_%s(ctx *JobContext) error {
 	dbURL := os.Getenv("DATABASE_URL_%s")
 	if dbURL == "" {
 		dbURL = %q
 	}
 
-	// Connect to database
 	db, err := sql.Open(%q, dbURL)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %%w", err)
+		return fmt.Errorf("failed to connect: %%w", err)
 	}
 
-	// Verify connection
 	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %%w", err)
+		return fmt.Errorf("failed to ping: %%w", err)
 	}
 
-	// Configure connection pool
+	// Optimized connection pool settings
 	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
 
-	// Store in context
 	ctx.mu.Lock()
 	ctx.Connections[%q] = db
 	ctx.mu.Unlock()
 
-	log.Printf("Initialized connection pool: %s")
+	log.Printf("Initialized connection: %s")
 	return nil
 }
 
-`, connID, connID, strings.ToUpper(connID), strings.ToUpper(connID), connStr, driverName, connID, connID)
+`, connID, strings.ToUpper(connID), connStr, driverName, connID, connID)
 
 		if _, err := file.WriteString(initFunc); err != nil {
 			return err
@@ -235,7 +379,6 @@ func initConnection_%s(ctx *JobContext) error {
 	return nil
 }
 
-// writeNodeFunctions writes all node execution functions
 func (g *MainProgramGenerator) writeNodeFunctions(file *os.File) error {
 	header := `// ============================================================
 // NODE EXECUTION FUNCTIONS
@@ -246,9 +389,7 @@ func (g *MainProgramGenerator) writeNodeFunctions(file *os.File) error {
 		return err
 	}
 
-	// First, write all main node functions
 	for _, gen := range g.Generators {
-		// Write function signature and body
 		signature := gen.GenerateFunctionSignature()
 		body := gen.GenerateFunctionBody()
 
@@ -259,16 +400,7 @@ func (g *MainProgramGenerator) writeNodeFunctions(file *os.File) error {
 		}
 	}
 
-	// Then, write all helper functions
-	helperHeader := `// ============================================================
-// HELPER FUNCTIONS
-// ============================================================
-
-`
-	if _, err := file.WriteString(helperHeader); err != nil {
-		return err
-	}
-
+	// Write helper functions from generators
 	for _, gen := range g.Generators {
 		helpers := gen.GenerateHelperFunctions()
 		if helpers != "" {
@@ -281,25 +413,27 @@ func (g *MainProgramGenerator) writeNodeFunctions(file *os.File) error {
 	return nil
 }
 
-// writeMainFunction writes the main orchestration function
 func (g *MainProgramGenerator) writeMainFunction(file *os.File) error {
 	header := `// ============================================================
 // MAIN ORCHESTRATION
 // ============================================================
 
 func main() {
-	log.SetPrefix("[Job: ` + g.Job.Name + `] ")
+	log.SetPrefix("[` + g.Job.Name + `] ")
+	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	startTime := time.Now()
 
-	// Initialize context
 	ctx, err := InitJobContext()
 	if err != nil {
-		log.Fatalf("Failed to initialize context: %v", err)
+		log.Fatalf("Failed to initialize: %v", err)
 	}
 	defer ctx.Close()
 
-	// Track results from each node
-	nodeResults := make(map[int][]map[string]interface{})
+	// Track streams for each node
+	nodeStreams := make(map[int]*RowStream)
+	// Track collected data for nodes that need sync
+	nodeData := make(map[int][]map[string]interface{})
+	var streamsMu sync.Mutex
 
 `
 	if _, err := file.WriteString(header); err != nil {
@@ -308,7 +442,6 @@ func main() {
 
 	// Generate code for each step
 	for stepIdx, step := range g.Execution.Steps {
-		// Count non-start nodes in this step
 		nonStartNodes := make([]models.Node, 0)
 		for _, node := range step.nodes {
 			if node.Type != models.NodeTypeStart {
@@ -317,8 +450,7 @@ func main() {
 		}
 
 		if len(nonStartNodes) == 0 {
-			// Skip steps with only start nodes
-			stepCode := fmt.Sprintf("\t// Step %d: Start node (no execution)\n", stepIdx)
+			stepCode := fmt.Sprintf("\t// Step %d: Pipeline start\n", stepIdx)
 			stepCode += fmt.Sprintf("\tlog.Println(\"Step %d: Starting pipeline\")\n\n", stepIdx)
 			if _, err := file.WriteString(stepCode); err != nil {
 				return err
@@ -326,28 +458,17 @@ func main() {
 			continue
 		}
 
-		stepCode := fmt.Sprintf("\t// Step %d: Executing %d node(s)\n", stepIdx, len(nonStartNodes))
-		stepCode += fmt.Sprintf("\tlog.Println(\"Step %d: Executing %d node(s)\")\n", stepIdx, len(nonStartNodes))
+		stepCode := fmt.Sprintf("\t// Step %d: %d node(s)\n", stepIdx, len(nonStartNodes))
+		stepCode += fmt.Sprintf("\tlog.Printf(\"Step %d: Launching %%d node(s)\", %d)\n", stepIdx, len(nonStartNodes))
 		stepCode += "\t{\n"
 
-		// Check if we need parallel execution (more than 1 node in step)
 		if len(nonStartNodes) > 1 {
-			// Parallel execution with goroutines
-			stepCode += "\t\tvar wg sync.WaitGroup\n"
-			stepCode += "\t\tvar mu sync.Mutex\n"
-			stepCode += "\t\terrors := make([]error, 0)\n\n"
-
+			// Parallel launch
 			for _, node := range nonStartNodes {
-				stepCode += g.generateParallelNodeExecution(node)
+				stepCode += g.generateStreamingNodeLaunch(node, true)
 			}
-
-			stepCode += "\t\twg.Wait()\n\n"
-			stepCode += "\t\tif len(errors) > 0 {\n"
-			stepCode += fmt.Sprintf("\t\t\tlog.Fatalf(\"Step %d failed with %%d error(s): %%v\", len(errors), errors)\n", stepIdx)
-			stepCode += "\t\t}\n"
 		} else {
-			// Sequential execution (single node)
-			stepCode += g.generateSequentialNodeExecution(nonStartNodes[0])
+			stepCode += g.generateStreamingNodeLaunch(nonStartNodes[0], false)
 		}
 
 		stepCode += "\t}\n\n"
@@ -358,185 +479,89 @@ func main() {
 	}
 
 	footer := `	duration := time.Since(startTime)
-	log.Printf("Pipeline completed successfully in %v", duration)
+	log.Printf("Pipeline completed in %v", duration)
+
+	// Suppress unused variable warnings
+	_ = nodeStreams
+	_ = nodeData
+	_ = streamsMu
 }
 `
-	if _, err := file.WriteString(footer); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := file.WriteString(footer)
+	return err
 }
 
-// generateParallelNodeExecution generates code for a node executing in parallel
-func (g *MainProgramGenerator) generateParallelNodeExecution(node models.Node) string {
+// generateStreamingNodeLaunch generates code to launch a node with streaming
+func (g *MainProgramGenerator) generateStreamingNodeLaunch(node models.Node, parallel bool) string {
 	nodeName := sanitizeNodeName(node.Name)
-	code := fmt.Sprintf("\t\t// Node %d: %s\n", node.ID, node.Name)
-	code += "\t\twg.Add(1)\n"
-	code += "\t\tgo func() {\n"
-	code += "\t\t\tdefer wg.Done()\n"
-
-	// Get data inputs for this node
 	dataInputs := node.GetDataInputNodes()
+
+	var code string
 
 	switch node.Type {
 	case models.NodeTypeDBInput:
-		// DB Input: no input parameters
-		code += fmt.Sprintf("\t\t\tresult, err := executeNode_%d_%s(ctx)\n", node.ID, nodeName)
-		code += "\t\t\tif err != nil {\n"
-		code += "\t\t\t\tmu.Lock()\n"
-		code += fmt.Sprintf("\t\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) failed: %%w\", err))\n", node.ID, node.Name)
-		code += "\t\t\t\tmu.Unlock()\n"
-		code += "\t\t\t\treturn\n"
-		code += "\t\t\t}\n"
-		code += "\t\t\tmu.Lock()\n"
-		code += fmt.Sprintf("\t\t\tnodeResults[%d] = result\n", node.ID)
-		code += "\t\t\tmu.Unlock()\n"
-		code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Processed %%d rows\", len(result))\n", node.ID, node.Name)
+		// DB Input: Launch streaming immediately
+		code = fmt.Sprintf("\t\t// Node %d: %s (streaming)\n", node.ID, node.Name)
+		code += fmt.Sprintf("\t\tnodeStreams[%d] = executeNode_%d_%s(ctx)\n", node.ID, node.ID, nodeName)
 
 	case models.NodeTypeMap:
-		// Map: requires input data
+		// Map: Need to sync/collect inputs first
+		code = fmt.Sprintf("\t\t// Node %d: %s (sync point)\n", node.ID, node.Name)
+
 		if len(dataInputs) == 0 {
-			code += fmt.Sprintf("\t\t\t// ERROR: Node %d (%s) has no data inputs\n", node.ID, node.Name)
-			code += "\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) has no data inputs\"))\n", node.ID, node.Name)
-			code += "\t\t\tmu.Unlock()\n"
+			code += fmt.Sprintf("\t\tlog.Fatalf(\"Node %d (%s) has no data inputs\")\n", node.ID, node.Name)
 		} else if len(dataInputs) == 1 {
-			code += fmt.Sprintf("\t\t\tinputData := nodeResults[%d]\n", dataInputs[0].ID)
-			code += fmt.Sprintf("\t\t\tresult, err := executeNode_%d_%s(ctx, inputData)\n", node.ID, nodeName)
-			code += "\t\t\tif err != nil {\n"
-			code += "\t\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) failed: %%w\", err))\n", node.ID, node.Name)
-			code += "\t\t\t\tmu.Unlock()\n"
-			code += "\t\t\t\treturn\n"
-			code += "\t\t\t}\n"
-			code += "\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\tnodeResults[%d] = result\n", node.ID)
-			code += "\t\t\tmu.Unlock()\n"
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Processed %%d rows\", len(result))\n", node.ID, node.Name)
+			// Single input - collect it
+			code += fmt.Sprintf("\t\tdata_%d, err := nodeStreams[%d].Collect()\n", node.ID, dataInputs[0].ID)
+			code += "\t\tif err != nil {\n"
+			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Failed to collect input for node %d: %%v\", err)\n", node.ID)
+			code += "\t\t}\n"
+			code += fmt.Sprintf("\t\tnodeData[%d] = data_%d\n", dataInputs[0].ID, node.ID)
+			code += fmt.Sprintf("\t\tlog.Printf(\"Node %d: Collected %%d rows from input\", len(data_%d))\n", node.ID, node.ID)
+			code += fmt.Sprintf("\t\tnodeStreams[%d], err = executeNode_%d_%s(ctx, data_%d)\n", node.ID, node.ID, nodeName, node.ID)
+			code += "\t\tif err != nil {\n"
+			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
+			code += "\t\t}\n"
 		} else {
-			// Multiple inputs: concatenate
-			code += "\t\t\tvar inputData []map[string]interface{}\n"
-			for _, inputNode := range dataInputs {
-				code += fmt.Sprintf("\t\t\tinputData = append(inputData, nodeResults[%d]...)\n", inputNode.ID)
+			// Multiple inputs - collect all (sync point for cross-data)
+			streamVars := make([]string, len(dataInputs))
+			for i, input := range dataInputs {
+				streamVars[i] = fmt.Sprintf("nodeStreams[%d]", input.ID)
 			}
-			code += fmt.Sprintf("\t\t\tresult, err := executeNode_%d_%s(ctx, inputData)\n", node.ID, nodeName)
-			code += "\t\t\tif err != nil {\n"
-			code += "\t\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) failed: %%w\", err))\n", node.ID, node.Name)
-			code += "\t\t\t\tmu.Unlock()\n"
-			code += "\t\t\t\treturn\n"
-			code += "\t\t\t}\n"
-			code += "\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\tnodeResults[%d] = result\n", node.ID)
-			code += "\t\t\tmu.Unlock()\n"
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Processed %%d rows\", len(result))\n", node.ID, node.Name)
+			code += fmt.Sprintf("\t\tallData_%d, err := CollectMultiple(%s)\n", node.ID, strings.Join(streamVars, ", "))
+			code += "\t\tif err != nil {\n"
+			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Failed to sync inputs for node %d: %%v\", err)\n", node.ID)
+			code += "\t\t}\n"
+			code += fmt.Sprintf("\t\tlog.Printf(\"Node %d: Synced %%d input streams\", len(allData_%d))\n", node.ID, node.ID)
+			code += fmt.Sprintf("\t\tnodeStreams[%d], err = executeNode_%d_%s(ctx, allData_%d...)\n", node.ID, node.ID, nodeName, node.ID)
+			code += "\t\tif err != nil {\n"
+			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
+			code += "\t\t}\n"
 		}
 
 	case models.NodeTypeDBOutput:
-		// DB Output: requires input data
+		// DB Output: Stream or collect depending on input count
+		code = fmt.Sprintf("\t\t// Node %d: %s (output)\n", node.ID, node.Name)
+
 		if len(dataInputs) == 0 {
-			code += fmt.Sprintf("\t\t\t// ERROR: Node %d (%s) has no data inputs\n", node.ID, node.Name)
-			code += "\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) has no data inputs\"))\n", node.ID, node.Name)
-			code += "\t\t\tmu.Unlock()\n"
+			code += fmt.Sprintf("\t\tlog.Fatalf(\"Node %d (%s) has no data inputs\")\n", node.ID, node.Name)
 		} else if len(dataInputs) == 1 {
-			code += fmt.Sprintf("\t\t\tinputData := nodeResults[%d]\n", dataInputs[0].ID)
-			code += fmt.Sprintf("\t\t\tif err := executeNode_%d_%s(ctx, inputData); err != nil {\n", node.ID, nodeName)
-			code += "\t\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) failed: %%w\", err))\n", node.ID, node.Name)
-			code += "\t\t\t\tmu.Unlock()\n"
-			code += "\t\t\t\treturn\n"
-			code += "\t\t\t}\n"
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Completed successfully\")\n", node.ID, node.Name)
+			// Single input - can stream directly
+			code += fmt.Sprintf("\t\tif err := executeNode_%d_%s(ctx, nodeStreams[%d]); err != nil {\n", node.ID, nodeName, dataInputs[0].ID)
+			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
+			code += "\t\t}\n"
 		} else {
-			// Multiple inputs: concatenate
-			code += "\t\t\tvar inputData []map[string]interface{}\n"
-			for _, inputNode := range dataInputs {
-				code += fmt.Sprintf("\t\t\tinputData = append(inputData, nodeResults[%d]...)\n", inputNode.ID)
+			// Multiple inputs - merge streams
+			streamVars := make([]string, len(dataInputs))
+			for i, input := range dataInputs {
+				streamVars[i] = fmt.Sprintf("nodeStreams[%d]", input.ID)
 			}
-			code += fmt.Sprintf("\t\t\tif err := executeNode_%d_%s(ctx, inputData); err != nil {\n", node.ID, nodeName)
-			code += "\t\t\t\tmu.Lock()\n"
-			code += fmt.Sprintf("\t\t\t\terrors = append(errors, fmt.Errorf(\"node %d (%s) failed: %%w\", err))\n", node.ID, node.Name)
-			code += "\t\t\t\tmu.Unlock()\n"
-			code += "\t\t\t\treturn\n"
-			code += "\t\t\t}\n"
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Completed successfully\")\n", node.ID, node.Name)
+			code += fmt.Sprintf("\t\tmerged_%d := MergeStreams(1000, %s)\n", node.ID, strings.Join(streamVars, ", "))
+			code += fmt.Sprintf("\t\tif err := executeNode_%d_%s(ctx, merged_%d); err != nil {\n", node.ID, nodeName, node.ID)
+			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
+			code += "\t\t}\n"
 		}
 	}
 
-	code += "\t\t}()\n\n"
-	return code
-}
-
-// generateSequentialNodeExecution generates code for a node executing sequentially
-func (g *MainProgramGenerator) generateSequentialNodeExecution(node models.Node) string {
-	nodeName := sanitizeNodeName(node.Name)
-	code := fmt.Sprintf("\t\t// Node %d: %s\n", node.ID, node.Name)
-	code += "\t\t{\n"
-
-	// Get data inputs for this node
-	dataInputs := node.GetDataInputNodes()
-
-	switch node.Type {
-	case models.NodeTypeDBInput:
-		// DB Input: no input parameters
-		code += fmt.Sprintf("\t\t\tresult, err := executeNode_%d_%s(ctx)\n", node.ID, nodeName)
-		code += "\t\t\tif err != nil {\n"
-		code += fmt.Sprintf("\t\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
-		code += "\t\t\t}\n"
-		code += fmt.Sprintf("\t\t\tnodeResults[%d] = result\n", node.ID)
-		code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Processed %%d rows\", len(result))\n", node.ID, node.Name)
-
-	case models.NodeTypeMap:
-		// Map: requires input data
-		if len(dataInputs) == 0 {
-			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Node %d (%s) has no data inputs\")\n", node.ID, node.Name)
-		} else if len(dataInputs) == 1 {
-			code += fmt.Sprintf("\t\t\tinputData := nodeResults[%d]\n", dataInputs[0].ID)
-			code += fmt.Sprintf("\t\t\tresult, err := executeNode_%d_%s(ctx, inputData)\n", node.ID, nodeName)
-			code += "\t\t\tif err != nil {\n"
-			code += fmt.Sprintf("\t\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
-			code += "\t\t\t}\n"
-			code += fmt.Sprintf("\t\t\tnodeResults[%d] = result\n", node.ID)
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Processed %%d rows\", len(result))\n", node.ID, node.Name)
-		} else {
-			// Multiple inputs: concatenate
-			code += "\t\t\tvar inputData []map[string]interface{}\n"
-			for _, inputNode := range dataInputs {
-				code += fmt.Sprintf("\t\t\tinputData = append(inputData, nodeResults[%d]...)\n", inputNode.ID)
-			}
-			code += fmt.Sprintf("\t\t\tresult, err := executeNode_%d_%s(ctx, inputData)\n", node.ID, nodeName)
-			code += "\t\t\tif err != nil {\n"
-			code += fmt.Sprintf("\t\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
-			code += "\t\t\t}\n"
-			code += fmt.Sprintf("\t\t\tnodeResults[%d] = result\n", node.ID)
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Processed %%d rows\", len(result))\n", node.ID, node.Name)
-		}
-
-	case models.NodeTypeDBOutput:
-		// DB Output: requires input data
-		if len(dataInputs) == 0 {
-			code += fmt.Sprintf("\t\t\tlog.Fatalf(\"Node %d (%s) has no data inputs\")\n", node.ID, node.Name)
-		} else if len(dataInputs) == 1 {
-			code += fmt.Sprintf("\t\t\tinputData := nodeResults[%d]\n", dataInputs[0].ID)
-			code += fmt.Sprintf("\t\t\tif err := executeNode_%d_%s(ctx, inputData); err != nil {\n", node.ID, nodeName)
-			code += fmt.Sprintf("\t\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
-			code += "\t\t\t}\n"
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Completed successfully\")\n", node.ID, node.Name)
-		} else {
-			// Multiple inputs: concatenate
-			code += "\t\t\tvar inputData []map[string]interface{}\n"
-			for _, inputNode := range dataInputs {
-				code += fmt.Sprintf("\t\t\tinputData = append(inputData, nodeResults[%d]...)\n", inputNode.ID)
-			}
-			code += fmt.Sprintf("\t\t\tif err := executeNode_%d_%s(ctx, inputData); err != nil {\n", node.ID, nodeName)
-			code += fmt.Sprintf("\t\t\t\tlog.Fatalf(\"Node %d (%s) failed: %%v\", err)\n", node.ID, node.Name)
-			code += "\t\t\t}\n"
-			code += fmt.Sprintf("\t\t\tlog.Printf(\"Node %d (%s): Completed successfully\")\n", node.ID, node.Name)
-		}
-	}
-
-	code += "\t\t}\n"
 	return code
 }
