@@ -1,15 +1,15 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
-	_ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/lib/pq"
 	"log"
-	"os"
-	"strings"
-	"sync"
 	"time"
+	"strings"
+	_ "github.com/denisenkom/go-mssqldb"
+	"database/sql"
+	"os"
+	"sync"
+	_ "github.com/lib/pq"
+	"fmt"
 )
 
 // Generated code for job: Test job
@@ -33,20 +33,16 @@ func InitJobContext() (*JobContext, error) {
 		Connections: make(map[string]*sql.DB),
 	}
 
-	if err := initConnection_sqlserver_DC_SQL_01_1433_ICarDEMO_sa(ctx); err != nil {
-		return nil, fmt.Errorf("failed to init connection sqlserver_DC_SQL_01_1433_ICarDEMO_sa: %w", err)
-	}
-
 	if err := initConnection_sqlserver_DC_SQL_02_1895_ICarKKKKK_sa(ctx); err != nil {
 		return nil, fmt.Errorf("failed to init connection sqlserver_DC_SQL_02_1895_ICarKKKKK_sa: %w", err)
 	}
 
-	if err := initConnection_postgres_DC_CENTRIC_01_5432_TEST_DB_postgres(ctx); err != nil {
-		return nil, fmt.Errorf("failed to init connection postgres_DC_CENTRIC_01_5432_TEST_DB_postgres: %w", err)
+	if err := initConnection_sqlserver_DC_SQL_01_1433_ICarDEMO_sa(ctx); err != nil {
+		return nil, fmt.Errorf("failed to init connection sqlserver_DC_SQL_01_1433_ICarDEMO_sa: %w", err)
 	}
 
-	if err := initConnection___0__(ctx); err != nil {
-		return nil, fmt.Errorf("failed to init connection __0__: %w", err)
+	if err := initConnection_postgres_DC_CENTRIC_01_5432_TEST_DB_postgres(ctx); err != nil {
+		return nil, fmt.Errorf("failed to init connection postgres_DC_CENTRIC_01_5432_TEST_DB_postgres: %w", err)
 	}
 
 	return ctx, nil
@@ -62,6 +58,43 @@ func (ctx *JobContext) Close() {
 			fmt.Fprintf(os.Stderr, "Error closing connection %s: %v\n", connID, err)
 		}
 	}
+}
+
+// ============================================================
+// DATABASE CONNECTION INITIALIZATION
+// ============================================================
+
+// initConnection_sqlserver_DC_SQL_02_1895_ICarKKKKK_sa initializes the database connection
+func initConnection_sqlserver_DC_SQL_02_1895_ICarKKKKK_sa(ctx *JobContext) error {
+	// Database connection string from config
+	// Override with DATABASE_URL_SQLSERVER_DC_SQL_02_1895_ICARKKKKK_SA environment variable if set
+	dbURL := os.Getenv("DATABASE_URL_SQLSERVER_DC_SQL_02_1895_ICARKKKKK_SA")
+	if dbURL == "" {
+		dbURL = "sqlserver://sa:sa@DC-SQL-02:1895?database=ICarKKKKK&encrypt=disable"
+	}
+
+	// Connect to database
+	db, err := sql.Open("sqlserver", dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Verify connection
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// Configure connection pool
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+
+	// Store in context
+	ctx.mu.Lock()
+	ctx.Connections["sqlserver_DC_SQL_02_1895_ICarKKKKK_sa"] = db
+	ctx.mu.Unlock()
+
+	log.Printf("Initialized connection pool: sqlserver_DC_SQL_02_1895_ICarKKKKK_sa")
+	return nil
 }
 
 // initConnection_sqlserver_DC_SQL_01_1433_ICarDEMO_sa initializes the database connection
@@ -94,39 +127,6 @@ func initConnection_sqlserver_DC_SQL_01_1433_ICarDEMO_sa(ctx *JobContext) error 
 	ctx.mu.Unlock()
 
 	log.Printf("Initialized connection pool: sqlserver_DC_SQL_01_1433_ICarDEMO_sa")
-	return nil
-}
-
-// initConnection_sqlserver_DC_SQL_02_1895_ICarKKKKK_sa initializes the database connection
-func initConnection_sqlserver_DC_SQL_02_1895_ICarKKKKK_sa(ctx *JobContext) error {
-	// Database connection string from config
-	// Override with DATABASE_URL_SQLSERVER_DC_SQL_02_1895_ICARKKKKK_SA environment variable if set
-	dbURL := os.Getenv("DATABASE_URL_SQLSERVER_DC_SQL_02_1895_ICARKKKKK_SA")
-	if dbURL == "" {
-		dbURL = "sqlserver://sa:sa@DC-SQL-02:1895?database=ICarKKKKK&encrypt=disable"
-	}
-
-	// Connect to database
-	db, err := sql.Open("sqlserver", dbURL)
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	// Verify connection
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-
-	// Store in context
-	ctx.mu.Lock()
-	ctx.Connections["sqlserver_DC_SQL_02_1895_ICarKKKKK_sa"] = db
-	ctx.mu.Unlock()
-
-	log.Printf("Initialized connection pool: sqlserver_DC_SQL_02_1895_ICarKKKKK_sa")
 	return nil
 }
 
@@ -163,56 +163,23 @@ func initConnection_postgres_DC_CENTRIC_01_5432_TEST_DB_postgres(ctx *JobContext
 	return nil
 }
 
-// initConnection___0__ initializes the database connection
-func initConnection___0__(ctx *JobContext) error {
-	// Database connection string from config
-	// Override with DATABASE_URL___0__ environment variable if set
-	dbURL := os.Getenv("DATABASE_URL___0__")
-	if dbURL == "" {
-		dbURL = "host= port=0 user= password= dbname= sslmode=disable"
-	}
-
-	// Connect to database
-	db, err := sql.Open("postgres", dbURL)
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	// Verify connection
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-
-	// Store in context
-	ctx.mu.Lock()
-	ctx.Connections["__0__"] = db
-	ctx.mu.Unlock()
-
-	log.Printf("Initialized connection pool: __0__")
-	return nil
-}
-
 // ============================================================
 // NODE EXECUTION FUNCTIONS
 // ============================================================
 
-func executeNode_2_First_DB_Input(ctx *JobContext) ([]map[string]interface{}, error) {
+func executeNode_3_Second_DB_Input(ctx *JobContext) ([]map[string]interface{}, error) {
 	// Get connection from global context
 	ctx.mu.RLock()
-	db := ctx.Connections["sqlserver_DC_SQL_01_1433_ICarDEMO_sa"]
+	db := ctx.Connections["sqlserver_DC_SQL_02_1895_ICarKKKKK_sa"]
 	ctx.mu.RUnlock()
 
 	if db == nil {
-		return nil, fmt.Errorf("connection %s not found in context", "sqlserver_DC_SQL_01_1433_ICarDEMO_sa")
+		return nil, fmt.Errorf("connection %s not found in context", "sqlserver_DC_SQL_02_1895_ICarKKKKK_sa")
 	}
 
 	// Execute query
-	query := "select * from tgcliente"
-	log.Printf("Node %d: Executing query: %s", 2, query)
+	query := "/* dbo */ select * from tgclienteProtec"
+	log.Printf("Node %d: Executing query: %s", 3, query)
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -258,19 +225,19 @@ func executeNode_2_First_DB_Input(ctx *JobContext) ([]map[string]interface{}, er
 	return results, nil
 }
 
-func executeNode_3_Second_DB_Input(ctx *JobContext) ([]map[string]interface{}, error) {
+func executeNode_2_First_DB_Input(ctx *JobContext) ([]map[string]interface{}, error) {
 	// Get connection from global context
 	ctx.mu.RLock()
-	db := ctx.Connections["sqlserver_DC_SQL_02_1895_ICarKKKKK_sa"]
+	db := ctx.Connections["sqlserver_DC_SQL_01_1433_ICarDEMO_sa"]
 	ctx.mu.RUnlock()
 
 	if db == nil {
-		return nil, fmt.Errorf("connection %s not found in context", "sqlserver_DC_SQL_02_1895_ICarKKKKK_sa")
+		return nil, fmt.Errorf("connection %s not found in context", "sqlserver_DC_SQL_01_1433_ICarDEMO_sa")
 	}
 
 	// Execute query
-	query := "select * from tgclienteProtec"
-	log.Printf("Node %d: Executing query: %s", 3, query)
+	query := "/* public */ select * from tgcliente"
+	log.Printf("Node %d: Executing query: %s", 2, query)
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -321,7 +288,7 @@ func executeNode_4_Map_Node(ctx *JobContext, input []map[string]interface{}) ([]
 
 	// Transform data
 	transformedData := transformData_4(input)
-
+ 
 	return transformedData, nil
 }
 
@@ -476,23 +443,6 @@ func main() {
 		var mu sync.Mutex
 		errors := make([]error, 0)
 
-		// Node 2: First DB Input
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			result, err := executeNode_2_First_DB_Input(ctx)
-			if err != nil {
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("node 2 (First DB Input) failed: %w", err))
-				mu.Unlock()
-				return
-			}
-			mu.Lock()
-			nodeResults[2] = result
-			mu.Unlock()
-			log.Printf("Node 2 (First DB Input): Processed %d rows", len(result))
-		}()
-
 		// Node 3: Second DB Input
 		wg.Add(1)
 		go func() {
@@ -508,6 +458,23 @@ func main() {
 			nodeResults[3] = result
 			mu.Unlock()
 			log.Printf("Node 3 (Second DB Input): Processed %d rows", len(result))
+		}()
+
+		// Node 2: First DB Input
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			result, err := executeNode_2_First_DB_Input(ctx)
+			if err != nil {
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("node 2 (First DB Input) failed: %w", err))
+				mu.Unlock()
+				return
+			}
+			mu.Lock()
+			nodeResults[2] = result
+			mu.Unlock()
+			log.Printf("Node 2 (First DB Input): Processed %d rows", len(result))
 		}()
 
 		wg.Wait()

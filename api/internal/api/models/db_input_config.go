@@ -7,24 +7,41 @@ import (
 )
 
 type DBInputConfig struct {
-	Query    string `json:"query"`
+	// Query SQL query to execute raw
+	Query string `json:"query"`
+	// DbSchema Schema name according to dbtype ref: FindDefaultSchema()
 	DbSchema string `json:"dbschema"`
+	// QueryWithSchema Query with schema prefix according to dbtype
+	QueryWithSchema string `json:"queryWithSchema"`
 
 	Connection DBConnectionConfig `json:"connection"`
 	// DataModels Give the query result data model with type and col name
 	DataModels []DataModel `json:"dataModel"`
 }
 
-func (slf *DBInputConfig) FillDataModels() error {
-	if slf.Query == "" {
-		return errors.New("Query is empty, can fill data models")
+func (slf *DBInputConfig) EnforceSchema() {
+	if slf.DbSchema == "" {
+		slf.DbSchema = slf.findDefaultSchema()
 	}
 
-	// Logic to fill DataModels
-	// - connect to DB using slf.Connection
-	// - analyze fields and table involved in slf.Query
-	// - populate slf.DataModels with column names and types
+	var gotoSchema string
+	switch slf.Connection.Type {
+	case DBTypePostgres:
+		gotoSchema = fmt.Sprintf("SET search_path TO %s;", slf.DbSchema)
+	case DBTypeSQLServer:
+		gotoSchema = fmt.Sprintf("/* %s */", slf.DbSchema)
+	case DBTypeMySQL:
+		gotoSchema = fmt.Sprintf("/* %s */", slf.DbSchema)
+	}
 
+	slf.QueryWithSchema = fmt.Sprintf(`%s %s`, gotoSchema, slf.Query)
+}
+
+func (slf *DBInputConfig) FillDataModels() error {
+	if slf.Query == "" {
+		return fmt.Errorf("query is empty, can fill data models")
+	}
+	slf.EnforceSchema()
 	switch slf.Connection.Type {
 	case DBTypePostgres:
 		conn, err := sql.Open("postgres", slf.Connection.BuildConnectionString())
@@ -43,13 +60,27 @@ func (slf *DBInputConfig) FillDataModels() error {
 	default:
 		return errors.New("unsupported database type for filling data models")
 	}
+}
 
-	return nil
+func (slf *DBInputConfig) findDefaultSchema() string {
+	if slf.DbSchema != "" {
+		return slf.DbSchema
+	}
+	switch slf.Connection.Type {
+	case DBTypePostgres:
+		return "public"
+	case DBTypeSQLServer:
+		return "dbo"
+	case DBTypeMySQL:
+		return slf.Connection.Database
+	default:
+		panic("Unsupported DB type")
+	}
 }
 
 func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
 	// Exécute la requête avec LIMIT 0 pour ne récupérer que les métadonnées
-	query := fmt.Sprintf("SELECT * FROM (%s) AS subquery LIMIT 0", slf.Query)
+	query := fmt.Sprintf("SELECT * FROM (%s) AS subquery LIMIT 0", slf.QueryWithSchema)
 
 	rows, err := conn.Query(query)
 	if err != nil {
@@ -94,7 +125,7 @@ func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
 }
 
 func (slf *DBInputConfig) findSqlServerDataModels(conn *sql.DB) error {
-	query := fmt.Sprintf("SELECT TOP 0 * FROM (%s) AS subquery", slf.Query)
+	query := fmt.Sprintf("SELECT TOP 0 * FROM (%s) AS subquery", slf.QueryWithSchema)
 
 	rows, err := conn.Query(query)
 	if err != nil {

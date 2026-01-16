@@ -46,8 +46,6 @@ type Generator interface {
 	GetNodeID() int
 	// GetNodeName returns the name of the node
 	GetNodeName() string
-	// GenerateCode generates a Go source file for this generator (legacy)
-	GenerateCode(ctx *ExecutionContext, outputPath string) error
 	// GenerateFunctionSignature returns the function signature for this node
 	GenerateFunctionSignature() string
 	// GenerateFunctionBody returns the function body (without signature) for this node
@@ -93,7 +91,6 @@ func NewGenerator(node models.Node) (Generator, error) {
 			return nil, fmt.Errorf("failed to get DB input config for node %d: %w", node.ID, err)
 		}
 		return NewDBInputGenerator(node.ID, node.Name, config), nil
-
 	case models.NodeTypeDBOutput:
 		config, err := node.GetDBOutputConfig()
 		if err != nil {

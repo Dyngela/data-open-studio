@@ -155,19 +155,23 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 }
 
 // withGlobalVariables Fill global variables in the execution context like db connections or file path for certificates
-func (j *JobExecution) withGlobalVariables() *JobExecution {
-	for _, node := range j.Job.Nodes {
-		switch node.Type {
-		case models.NodeTypeDBInput:
-			dbInputConfig, _ := node.GetDBInputConfig()
-			j.withDbConnection(dbInputConfig.Connection)
-		case models.NodeTypeDBOutput:
-			dbOutputConfig, _ := node.GetDBOutputConfig()
-			j.withDbConnection(dbOutputConfig.Connection)
+func (j *JobExecution) withGlobalVariables(node models.Node) (*JobExecution, error) {
+	switch node.Type {
+	case models.NodeTypeDBInput:
+		dbInputConfig, err := node.GetDBInputConfig()
+		if err != nil {
+			return nil, err
 		}
+		j.withDbConnection(dbInputConfig.Connection)
+	case models.NodeTypeDBOutput:
+		dbOutputConfig, err := node.GetDBOutputConfig()
+		if err != nil {
+			return nil, err
+		}
+		j.withDbConnection(dbOutputConfig.Connection)
 	}
 
-	return j
+	return j, nil
 }
 
 // Build builds the job file for compilation
@@ -177,7 +181,6 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 	if err != nil {
 		return nil, err
 	}
-	j.withGlobalVariables()
 
 	// Collect all generators for non-start nodes
 	generators := make([]Generator, 0)
@@ -186,6 +189,10 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 			// Skip start nodes as they don't have generators
 			if node.Type == models.NodeTypeStart {
 				continue
+			}
+			_, err = j.withGlobalVariables(node)
+			if err != nil {
+				return nil, err
 			}
 
 			generator, err := NewGenerator(node)

@@ -32,14 +32,10 @@ func (g *DBInputGenerator) GenerateFunctionSignature() string {
 
 // GenerateFunctionBody returns the function body for this DB input node
 func (g *DBInputGenerator) GenerateFunctionBody() string {
-	schema := g.config.DbSchema
-	if schema == "" {
-		schema = "public"
-	}
-
-	query := g.config.Query
-	if query == "" && g.config.Table != "" {
-		query = fmt.Sprintf("SELECT * FROM %s.%s", schema, g.config.Table)
+	g.config.EnforceSchema()
+	query := g.config.QueryWithSchema
+	if query == "" {
+		return fmt.Sprintf(`	return nil, fmt.Errorf("query not specified for node %%d", %d)`, g.nodeID)
 	}
 
 	connID := g.config.Connection.GetConnectionID()

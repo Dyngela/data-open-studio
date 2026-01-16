@@ -40,10 +40,8 @@ func (c DBConnectionConfig) BuildConnectionString() string {
 		return c.buildSQLServerConnectionString()
 	case DBTypeMySQL:
 		return c.buildMySQLConnectionString()
-
 	default:
-		// Default to PostgreSQL
-		panic("Unsupported DB type")
+		panic("Unsupported DB type: " + string(c.Type))
 	}
 }
 

@@ -2,6 +2,7 @@ package gen
 
 import (
 	"api/internal/api/models"
+	"api/pkg"
 	"fmt"
 	"os"
 	"path"
@@ -186,6 +187,7 @@ func (g *MainProgramGenerator) writeConnectionInitFunctions(file *os.File) error
 	}
 
 	for _, connConfig := range g.Execution.Context.DBConnections {
+		pkg.PrettyPrint(connConfig)
 		connID := connConfig.GetConnectionID()
 		connStr := connConfig.BuildConnectionString()
 		driverName := connConfig.GetDriverName()
