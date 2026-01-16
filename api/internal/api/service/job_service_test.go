@@ -422,7 +422,7 @@ func TestCreateJobWithSimpleFlow(t *testing.T) {
 	}
 
 	job := nodes.Job{
-		Name:        "Simple Flow Test",
+		Name:        "Simple InputFlow Test",
 		Description: "Simple two-node pipeline for testing",
 		CreatorID:   1,
 		Active:      true,
@@ -435,7 +435,7 @@ func TestCreateJobWithSimpleFlow(t *testing.T) {
 
 	defer cleanupTestJob(t, createdJob.ID)
 
-	assert.Equal(t, "Simple Flow Test", createdJob.Name)
+	assert.Equal(t, "Simple InputFlow Test", createdJob.Name)
 	assert.Len(t, createdJob.Nodes, 2, "Should have 2 nodes")
 
 	// Verify persistence

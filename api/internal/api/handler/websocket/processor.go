@@ -120,11 +120,9 @@ func (p *MessageProcessor) processJobDelete(msg *Message) (*Message, error) {
 func (p *MessageProcessor) processJobCreate(msg *Message) (*Message, error) {
 	return msg, nil
 }
-
 func (p *MessageProcessor) processJobExecute(msg *Message) (*Message, error) {
 	return msg, nil
 }
-
 func (p *MessageProcessor) processMetadataGet(msg *Message) (*Message, error) {
 	return nil, nil
 }

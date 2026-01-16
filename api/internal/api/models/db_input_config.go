@@ -14,12 +14,23 @@ type DBInputConfig struct {
 	// QueryWithSchema Query with schema prefix according to dbtype
 	QueryWithSchema string `json:"queryWithSchema"`
 
-	BatchSize   int `json:"batchSize"`
-	WorkerCount int `json:"workerCount"`
+	BatchSize int `json:"batchSize"`
 
 	Connection DBConnectionConfig `json:"connection"`
 	// DataModels Give the query result data model with type and col name
 	DataModels []DataModel `json:"dataModel"`
+}
+
+func (slf *DBInputConfig) Validate() error {
+	if slf.Query == "" {
+		return errors.New("query is empty")
+	}
+
+	if len(slf.DataModels) <= 0 {
+		return errors.New("data model is empty")
+	}
+
+	return nil
 }
 
 func (slf *DBInputConfig) EnforceSchema() {
