@@ -43,6 +43,7 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 	ctx.AddImport("context")
 	ctx.AddImport("database/sql")
 	ctx.AddImport("fmt")
+	ctx.AddImport("test/lib")
 	ctx.AddImportAlias("_", config.Connection.GetImportPath())
 
 	structName := ctx.StructName(node)
@@ -64,14 +65,32 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 		}
 	}
 
+	// Progress report interval (every 1000 rows)
+	progressInterval := 1000
+
 	fn := ir.NewFunc(funcName).
 		Param("ctx", "context.Context").
 		Param("db", "*sql.DB").
 		Param("out", fmt.Sprintf("chan<- *%s", structName)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(
 			// query := "SELECT ..."
 			ir.Define(ir.Id("query"), ir.Lit(config.QueryWithSchema)),
+
+			// var rowCount int64
+			ir.Var("rowCount", "int64"),
+
+			// Report start
+			ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+				ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+					ir.Lit(node.ID),
+					ir.Lit(node.Name),
+					ir.Id("lib.StatusRunning"),
+					ir.Lit(0),
+					ir.Lit("starting query"),
+				))),
+			),
 
 			// rows, err := db.QueryContext(ctx, query)
 			ir.DefineMulti(
@@ -106,6 +125,20 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 					)),
 				),
 
+				// rowCount++
+				ir.RawStatement("rowCount++"),
+
+				// Report progress every N rows
+				ir.If(ir.And(ir.Neq(ir.Id("progress"), ir.Nil()), ir.Eq(ir.Mod(ir.Id("rowCount"), ir.Lit(progressInterval)), ir.Lit(0))),
+					ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+						ir.Lit(node.ID),
+						ir.Lit(node.Name),
+						ir.Id("lib.StatusRunning"),
+						ir.Id("rowCount"),
+						ir.Lit(fmt.Sprintf("read %d rows", progressInterval)),
+					))),
+				),
+
 				// select { case out <- &row: case <-ctx.Done(): return ctx.Err() }
 				ir.RawStatementf(`select {
 		case out <- &row:
@@ -119,6 +152,17 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 				ir.Define(ir.Id("err"), ir.Call("rows.Err")),
 				ir.Neq(ir.Id("err"), ir.Nil()),
 				ir.Return(ir.Id("err")),
+			),
+
+			// Report completion
+			ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+				ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+					ir.Lit(node.ID),
+					ir.Lit(node.Name),
+					ir.Id("lib.StatusCompleted"),
+					ir.Id("rowCount"),
+					ir.Lit("completed"),
+				))),
 			),
 
 			// return nil

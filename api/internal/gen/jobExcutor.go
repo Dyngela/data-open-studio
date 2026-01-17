@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"api"
 	"api/internal/api/models"
 	"fmt"
 	"log"
@@ -195,6 +196,8 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	j.FileBuilder.SetProgressConfig(api.GetEnv("API_HOST", "localhost:8080"), j.Job.ID)
 
 	// Collect global variables and node IDs
 	nodeIDs := make([]int, 0)

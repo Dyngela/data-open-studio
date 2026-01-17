@@ -77,6 +77,8 @@ func (g *DBOutputGenerator) generateInsertFunc(node *models.Node, config *models
 		return nil, fmt.Errorf("db_output node %q: DataModels is empty - cannot generate INSERT without columns", node.Name)
 	}
 
+	ctx.AddImport("test/lib")
+
 	batchSize := config.BatchSize
 	if batchSize <= 0 {
 		batchSize = 500
@@ -103,11 +105,25 @@ func (g *DBOutputGenerator) generateInsertFunc(node *models.Node, config *models
 			ir.Call("make", ir.Raw(fmt.Sprintf("[]*%s", inputRowType)), ir.Lit(0), ir.Lit(batchSize)),
 		),
 
+		// var totalRows int64
+		ir.Var("totalRows", "int64"),
+
+		// Report start
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusRunning"),
+				ir.Lit(0),
+				ir.Lit("starting insert"),
+			))),
+		),
+
 		// flushBatch function
 		ir.Define(ir.Id("flushBatch"), ir.Closure(
 			nil,
 			[]ir.Param{{Type: "error"}},
-			g.generateFlushBatchBody(config, tableName, columnsStr, inputRowType)...,
+			g.generateFlushBatchBody(node, config, tableName, columnsStr, inputRowType)...,
 		)),
 
 		// Main loop: for row := range in
@@ -134,6 +150,17 @@ func (g *DBOutputGenerator) generateInsertFunc(node *models.Node, config *models
 			),
 		),
 
+		// Report completion
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusCompleted"),
+				ir.Id("totalRows"),
+				ir.Lit("completed"),
+			))),
+		),
+
 		ir.Return(ir.Nil()),
 	}
 
@@ -141,13 +168,14 @@ func (g *DBOutputGenerator) generateInsertFunc(node *models.Node, config *models
 		Param("ctx", "context.Context").
 		Param("db", "*sql.DB").
 		Param("in", fmt.Sprintf("<-chan *%s", inputRowType)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(body...).
 		Build(), nil
 }
 
 // generateFlushBatchBody generates the body of the flushBatch closure
-func (g *DBOutputGenerator) generateFlushBatchBody(config *models.DBOutputConfig, tableName, columnsStr, inputRowType string) []ir.Stmt {
+func (g *DBOutputGenerator) generateFlushBatchBody(node *models.Node, config *models.DBOutputConfig, tableName, columnsStr, inputRowType string) []ir.Stmt {
 	numCols := len(config.DataModels)
 
 	// Build field accessors for the row
@@ -161,6 +189,9 @@ func (g *DBOutputGenerator) generateFlushBatchBody(config *models.DBOutputConfig
 		ir.If(ir.Eq(ir.Call("len", ir.Id("batch")), ir.Lit(0)),
 			ir.Return(ir.Nil()),
 		),
+
+		// batchLen := int64(len(batch))
+		ir.Define(ir.Id("batchLen"), ir.Call("int64", ir.Call("len", ir.Id("batch")))),
 
 		// Build VALUES placeholders
 		// var placeholders []string
@@ -211,6 +242,20 @@ func (g *DBOutputGenerator) generateFlushBatchBody(config *models.DBOutputConfig
 			ir.Return(ir.Call("fmt.Errorf", ir.Lit("batch insert failed: %w"), ir.Id("err"))),
 		),
 
+		// totalRows += batchLen
+		ir.RawStatement("totalRows += batchLen"),
+
+		// Report progress after batch insert
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusRunning"),
+				ir.Id("totalRows"),
+				ir.Lit("batch inserted"),
+			))),
+		),
+
 		// batch = batch[:0] (reset batch)
 		ir.Assign(ir.Id("batch"), ir.Slice(ir.Id("batch"), nil, ir.Lit(0))),
 
@@ -220,14 +265,17 @@ func (g *DBOutputGenerator) generateFlushBatchBody(config *models.DBOutputConfig
 
 // generateUpdateFunc generates an update function (simplified - updates by primary key)
 func (g *DBOutputGenerator) generateUpdateFunc(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName, inputRowType string) (*ir.FuncDecl, error) {
+	ctx.AddImport("test/lib")
 	// For now, generate a placeholder that can be expanded later
 	return ir.NewFunc(funcName).
 		Param("ctx", "context.Context").
 		Param("db", "*sql.DB").
 		Param("in", fmt.Sprintf("<-chan *%s", inputRowType)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(
 			ir.RawStatement("// TODO: Implement UPDATE logic"),
+			ir.RawStatement("_ = progress"),
 			ir.RangeValue("row", ir.Id("in"),
 				ir.RawStatement("_ = row // consume input"),
 			),
@@ -238,13 +286,16 @@ func (g *DBOutputGenerator) generateUpdateFunc(node *models.Node, config *models
 
 // generateDeleteFunc generates a delete function
 func (g *DBOutputGenerator) generateDeleteFunc(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName, inputRowType string) (*ir.FuncDecl, error) {
+	ctx.AddImport("test/lib")
 	return ir.NewFunc(funcName).
 		Param("ctx", "context.Context").
 		Param("db", "*sql.DB").
 		Param("in", fmt.Sprintf("<-chan *%s", inputRowType)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(
 			ir.RawStatement("// TODO: Implement DELETE logic"),
+			ir.RawStatement("_ = progress"),
 			ir.RangeValue("row", ir.Id("in"),
 				ir.RawStatement("_ = row // consume input"),
 			),
@@ -255,6 +306,7 @@ func (g *DBOutputGenerator) generateDeleteFunc(node *models.Node, config *models
 
 // generateTruncateFunc generates a truncate + insert function
 func (g *DBOutputGenerator) generateTruncateFunc(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName, inputRowType string) (*ir.FuncDecl, error) {
+	ctx.AddImport("test/lib")
 	tableName := config.Table
 	if config.DbSchema != "" {
 		tableName = fmt.Sprintf("%s.%s", config.DbSchema, config.Table)
@@ -264,8 +316,10 @@ func (g *DBOutputGenerator) generateTruncateFunc(node *models.Node, config *mode
 		Param("ctx", "context.Context").
 		Param("db", "*sql.DB").
 		Param("in", fmt.Sprintf("<-chan *%s", inputRowType)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(
+			ir.RawStatement("_ = progress"),
 			// TRUNCATE TABLE
 			ir.DefineMulti(
 				[]ir.Expr{ir.Id("_"), ir.Id("err")},

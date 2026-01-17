@@ -13,6 +13,27 @@ type JobUpdate struct {
 	Nodes       any     `json:"nodes,omitempty"`
 }
 
+// JobProgress represents a progress update from a running job
+type JobProgress struct {
+	NodeID        int    `json:"nodeId"`
+	NodeName      string `json:"nodeName"`
+	Status        string `json:"status"` // running, completed, error
+	RowsProcessed int64  `json:"rowsProcessed"`
+	Message       string `json:"message,omitempty"`
+}
+
+// NewJobProgressMessage creates a new job progress message
+func NewJobProgressMessage(jobID uint, progress JobProgress) Message {
+	return Message{
+		Type:      MessageTypeJobProgress,
+		JobID:     jobID,
+		UserID:    0, // System message
+		Username:  "system",
+		Timestamp: time.Now(),
+		Data:      progress,
+	}
+}
+
 // UserInfo represents user information in the room
 type UserInfo struct {
 	UserID   uint   `json:"userId"`

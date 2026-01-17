@@ -20,11 +20,12 @@ type MessageType string
 
 const (
 	// Job operations
-	MessageTypeJobUpdate  MessageType = "job_update"
-	MessageTypeJobDelete  MessageType = "job_delete"
-	MessageTypeJobCreate  MessageType = "job_create"
-	MessageTypeJobExecute MessageType = "job_execute"
-	MessageTypeJobGet     MessageType = "job_get"
+	MessageTypeJobUpdate   MessageType = "job_update"
+	MessageTypeJobDelete   MessageType = "job_delete"
+	MessageTypeJobCreate   MessageType = "job_create"
+	MessageTypeJobExecute  MessageType = "job_execute"
+	MessageTypeJobGet      MessageType = "job_get"
+	MessageTypeJobProgress MessageType = "job_progress"
 
 	// User interactions
 	MessageTypeCursorMove MessageType = "cursor_move"

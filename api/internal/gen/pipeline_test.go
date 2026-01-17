@@ -257,6 +257,10 @@ func TestJobExecution_Generation(t *testing.T) {
 	}
 
 	exec := NewPipelineExecutor(&job)
+
+	// Set progress config - bakes API URL and job ID into the executable
+	exec.SetProgressConfig("http://localhost:8080", job.ID)
+
 	_, err := exec.Build()
 	if err != nil {
 		t.Fatalf("Pipeline build failed: %v", err)

@@ -90,6 +90,8 @@ func (g *MapGenerator) findInputRowTypes(node *models.Node, config *models.MapCo
 
 // generateSingleInputFunc generates a function for single-input map (simple transform)
 func (g *MapGenerator) generateSingleInputFunc(node *models.Node, config *models.MapConfig, ctx *GeneratorContext, funcName, outputStructName string, inputTypes map[string]string) (*ir.FuncDecl, error) {
+	ctx.AddImport("test/lib")
+
 	input := config.Inputs[0]
 	inputType := inputTypes[input.Name]
 	if inputType == "" {
@@ -97,11 +99,26 @@ func (g *MapGenerator) generateSingleInputFunc(node *models.Node, config *models
 	}
 
 	output := config.Outputs[0]
+	progressInterval := 1000
 
 	// Build the transformation statements for each output column
 	transformStmts := g.buildTransformStatements(input.Name, output.Columns, config, ctx)
 
 	body := []ir.Stmt{
+		// var rowCount int64
+		ir.Var("rowCount", "int64"),
+
+		// Report start
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusRunning"),
+				ir.Lit(0),
+				ir.Lit("starting transform"),
+			))),
+		),
+
 		// for row := range in {
 		ir.RangeValue("row", ir.Id("in"),
 			append([]ir.Stmt{
@@ -109,6 +126,20 @@ func (g *MapGenerator) generateSingleInputFunc(node *models.Node, config *models
 				ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 			},
 				append(transformStmts,
+					// rowCount++
+					ir.RawStatement("rowCount++"),
+
+					// Report progress every N rows
+					ir.If(ir.And(ir.Neq(ir.Id("progress"), ir.Nil()), ir.Eq(ir.Mod(ir.Id("rowCount"), ir.Lit(progressInterval)), ir.Lit(0))),
+						ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+							ir.Lit(node.ID),
+							ir.Lit(node.Name),
+							ir.Id("lib.StatusRunning"),
+							ir.Id("rowCount"),
+							ir.Lit(fmt.Sprintf("transformed %d rows", progressInterval)),
+						))),
+					),
+
 					// select { case outChan <- out: case <-ctx.Done(): return ctx.Err() }
 					ir.RawStatementf(`select {
 		case outChan <- out:
@@ -118,6 +149,18 @@ func (g *MapGenerator) generateSingleInputFunc(node *models.Node, config *models
 				)...,
 			)...,
 		),
+
+		// Report completion
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusCompleted"),
+				ir.Id("rowCount"),
+				ir.Lit("completed"),
+			))),
+		),
+
 		ir.Return(ir.Nil()),
 	}
 
@@ -125,6 +168,7 @@ func (g *MapGenerator) generateSingleInputFunc(node *models.Node, config *models
 		Param("ctx", "context.Context").
 		Param("in", fmt.Sprintf("<-chan *%s", inputType)).
 		Param("outChan", fmt.Sprintf("chan<- *%s", outputStructName)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(body...).
 		Build(), nil
@@ -135,6 +179,8 @@ func (g *MapGenerator) generateJoinFunc(node *models.Node, config *models.MapCon
 	if config.Join == nil {
 		return nil, fmt.Errorf("map node %d has multiple inputs but no join config", node.ID)
 	}
+
+	ctx.AddImport("test/lib")
 
 	join := config.Join
 	leftType := inputTypes[join.LeftInput]
@@ -167,35 +213,68 @@ func (g *MapGenerator) generateJoinFunc(node *models.Node, config *models.MapCon
 
 	var body []ir.Stmt
 
+	// Add progress reporting wrapper
+	progressStart := []ir.Stmt{
+		ir.Var("rowCount", "int64"),
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusRunning"),
+				ir.Lit(0),
+				ir.Lit("starting join"),
+			))),
+		),
+	}
+
+	progressEnd := []ir.Stmt{
+		ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
+			ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+				ir.Lit(node.ID),
+				ir.Lit(node.Name),
+				ir.Id("lib.StatusCompleted"),
+				ir.Id("rowCount"),
+				ir.Lit("completed"),
+			))),
+		),
+	}
+
 	switch join.Type {
 	case models.JoinTypeLeft:
-		body = g.generateLeftJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
+		body = g.generateLeftJoinBody(node, leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
 	case models.JoinTypeInner:
-		body = g.generateInnerJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
+		body = g.generateInnerJoinBody(node, leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
 	case models.JoinTypeRight:
-		body = g.generateRightJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
+		body = g.generateRightJoinBody(node, leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
 	case models.JoinTypeCross:
-		body = g.generateCrossJoinBody(leftType, rightType, outputStructName, transformStmts, ctx)
+		body = g.generateCrossJoinBody(node, leftType, rightType, outputStructName, transformStmts, ctx)
 	case models.JoinTypeUnion:
-		body = g.generateUnionBody(leftType, rightType, outputStructName, transformStmts, ctx)
+		body = g.generateUnionBody(node, leftType, rightType, outputStructName, transformStmts, ctx)
 	default:
 		// Default to left join
-		body = g.generateLeftJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
+		body = g.generateLeftJoinBody(node, leftType, rightType, leftKeyField, rightKeyField, outputStructName, transformStmts, ctx)
 	}
+
+	// Insert progress start at beginning, progress end before return
+	body = append(progressStart, body[:len(body)-1]...) // Remove final return
+	body = append(body, progressEnd...)
+	body = append(body, ir.Return(ir.Nil()))
 
 	return ir.NewFunc(funcName).
 		Param("ctx", "context.Context").
 		Param("leftIn", fmt.Sprintf("<-chan *%s", leftType)).
 		Param("rightIn", fmt.Sprintf("<-chan *%s", rightType)).
 		Param("outChan", fmt.Sprintf("chan<- *%s", outputStructName)).
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(body...).
 		Build(), nil
 }
 
 // generateLeftJoinBody generates the body for a left join
-func (g *MapGenerator) generateLeftJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+func (g *MapGenerator) generateLeftJoinBody(node *models.Node, leftType, rightType, leftKeyField, rightKeyField, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
 	ctx.AddImport("fmt")
+	progressInterval := 1000
 
 	return []ir.Stmt{
 		// Build right index: map[key]*RightRow
@@ -217,6 +296,16 @@ func (g *MapGenerator) generateLeftJoinBody(leftType, rightType, leftKeyField, r
 				ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 			},
 				append(transformStmts,
+					ir.RawStatement("rowCount++"),
+					ir.If(ir.And(ir.Neq(ir.Id("progress"), ir.Nil()), ir.Eq(ir.Mod(ir.Id("rowCount"), ir.Lit(progressInterval)), ir.Lit(0))),
+						ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
+							ir.Lit(node.ID),
+							ir.Lit(node.Name),
+							ir.Id("lib.StatusRunning"),
+							ir.Id("rowCount"),
+							ir.Lit(fmt.Sprintf("joined %d rows", progressInterval)),
+						))),
+					),
 					ir.RawStatementf(`select {
 		case outChan <- out:
 		case <-ctx.Done():
@@ -231,8 +320,9 @@ func (g *MapGenerator) generateLeftJoinBody(leftType, rightType, leftKeyField, r
 }
 
 // generateInnerJoinBody generates the body for an inner join
-func (g *MapGenerator) generateInnerJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+func (g *MapGenerator) generateInnerJoinBody(node *models.Node, leftType, rightType, leftKeyField, rightKeyField, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
 	ctx.AddImport("fmt")
+	_ = node // Used for progress reporting in wrapper
 
 	return []ir.Stmt{
 		// Build right index
@@ -256,6 +346,7 @@ func (g *MapGenerator) generateInnerJoinBody(leftType, rightType, leftKeyField, 
 			),
 			ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 			ir.RawStatementf("%s", strings.Join(stmtsToStrings(transformStmts), "\n")),
+			ir.RawStatement("rowCount++"),
 			ir.RawStatementf(`select {
 		case outChan <- out:
 		case <-ctx.Done():
@@ -268,8 +359,9 @@ func (g *MapGenerator) generateInnerJoinBody(leftType, rightType, leftKeyField, 
 }
 
 // generateRightJoinBody generates the body for a right join
-func (g *MapGenerator) generateRightJoinBody(leftType, rightType, leftKeyField, rightKeyField, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+func (g *MapGenerator) generateRightJoinBody(node *models.Node, leftType, rightType, leftKeyField, rightKeyField, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
 	ctx.AddImport("fmt")
+	_ = node // Used for progress reporting in wrapper
 
 	return []ir.Stmt{
 		// Build left index
@@ -289,6 +381,7 @@ func (g *MapGenerator) generateRightJoinBody(leftType, rightType, leftKeyField, 
 				ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 			},
 				append(transformStmts,
+					ir.RawStatement("rowCount++"),
 					ir.RawStatementf(`select {
 		case outChan <- out:
 		case <-ctx.Done():
@@ -303,7 +396,9 @@ func (g *MapGenerator) generateRightJoinBody(leftType, rightType, leftKeyField, 
 }
 
 // generateCrossJoinBody generates the body for a cross join
-func (g *MapGenerator) generateCrossJoinBody(leftType, rightType, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+func (g *MapGenerator) generateCrossJoinBody(node *models.Node, leftType, rightType, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+	_ = node // Used for progress reporting in wrapper
+
 	return []ir.Stmt{
 		// Collect all right rows
 		ir.Define(ir.Id("rightRows"), ir.Call("make", ir.Raw(fmt.Sprintf("[]*%s", rightType)), ir.Lit(0))),
@@ -318,6 +413,7 @@ func (g *MapGenerator) generateCrossJoinBody(leftType, rightType, outputStructNa
 					ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 				},
 					append(transformStmts,
+						ir.RawStatement("rowCount++"),
 						ir.RawStatementf(`select {
 		case outChan <- out:
 		case <-ctx.Done():
@@ -333,7 +429,9 @@ func (g *MapGenerator) generateCrossJoinBody(leftType, rightType, outputStructNa
 }
 
 // generateUnionBody generates the body for a union (concatenate rows)
-func (g *MapGenerator) generateUnionBody(leftType, rightType, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+func (g *MapGenerator) generateUnionBody(node *models.Node, leftType, rightType, outputStructName string, transformStmts []ir.Stmt, ctx *GeneratorContext) []ir.Stmt {
+	_ = node // Used for progress reporting in wrapper
+
 	// For union, we process both streams independently
 	// This requires separate transform logic for each input type
 	return []ir.Stmt{
@@ -342,6 +440,7 @@ func (g *MapGenerator) generateUnionBody(leftType, rightType, outputStructName s
 			ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 			ir.RawStatement("// TODO: transform left row to output"),
 			ir.RawStatement("_ = left"),
+			ir.RawStatement("rowCount++"),
 			ir.RawStatementf(`select {
 		case outChan <- out:
 		case <-ctx.Done():
@@ -354,6 +453,7 @@ func (g *MapGenerator) generateUnionBody(leftType, rightType, outputStructName s
 			ir.Define(ir.Id("out"), ir.Addr(ir.Composite(outputStructName))),
 			ir.RawStatement("// TODO: transform right row to output"),
 			ir.RawStatement("_ = right"),
+			ir.RawStatement("rowCount++"),
 			ir.RawStatementf(`select {
 		case outChan <- out:
 		case <-ctx.Done():

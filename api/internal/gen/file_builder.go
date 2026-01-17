@@ -18,6 +18,10 @@ type FileBuilder struct {
 	dbConnections []models.DBConnectionConfig
 	steps         []Step
 	nodeByID      map[int]*models.Node
+
+	// Progress reporting config
+	apiURL string
+	jobID  uint
 }
 
 // NewFileBuilder creates a new file builder
@@ -53,6 +57,12 @@ func (b *FileBuilder) SetDBConnections(conns []models.DBConnectionConfig) {
 // SetSteps sets the execution steps
 func (b *FileBuilder) SetSteps(steps []Step) {
 	b.steps = steps
+}
+
+// SetProgressConfig sets the API URL and job ID for progress reporting
+func (b *FileBuilder) SetProgressConfig(apiURL string, jobID uint) {
+	b.apiURL = apiURL
+	b.jobID = jobID
 }
 
 // Build generates all code for the job
@@ -97,10 +107,11 @@ func (b *FileBuilder) Build() error {
 func (b *FileBuilder) EmitFile(pkgName string) ([]byte, error) {
 	file := ir.NewFile(pkgName)
 
-	// Generate main executor function first (may add imports)
+	// Generate main executor and entrypoint functions first (they add imports)
 	executorFunc := b.generateMainFunc()
+	entrypointFunc := b.generateEntrypoint()
 
-	// Add imports
+	// Add imports (after all functions are generated so all imports are collected)
 	for path, alias := range b.ctx.Imports {
 		if alias != "" {
 			file.ImportAlias(alias, path)
@@ -121,7 +132,7 @@ func (b *FileBuilder) EmitFile(pkgName string) ([]byte, error) {
 
 	file.AddFunc(executorFunc)
 
-	file.AddFunc(b.generateEntrypoint())
+	file.AddFunc(entrypointFunc)
 
 	// Emit to buffer
 	var buf bytes.Buffer
@@ -145,6 +156,7 @@ func (b *FileBuilder) generateMainFunc() *ir.FuncDecl {
 	b.ctx.AddImport("sync")
 	b.ctx.AddImport("database/sql")
 	b.ctx.AddImport("fmt")
+	b.ctx.AddImport("test/lib")
 
 	body := make([]ir.Stmt, 0)
 
@@ -222,6 +234,7 @@ func (b *FileBuilder) generateMainFunc() *ir.FuncDecl {
 
 	return ir.NewFunc("Execute").
 		Param("ctx", "context.Context").
+		Param("progress", "lib.ProgressFunc").
 		Returns("error").
 		Body(body...).
 		Build()
@@ -310,7 +323,7 @@ func (b *FileBuilder) generateDBInputLaunch(node *models.Node, channels []channe
 	// go func() {
 	//     defer wg.Done()
 	//     defer close(ch_X)
-	//     if err := executeNodeX(ctx, db_Y, ch_X); err != nil {
+	//     if err := executeNodeX(ctx, db_Y, ch_X, progress); err != nil {
 	//         errChan <- err
 	//     }
 	// }()
@@ -320,7 +333,7 @@ func (b *FileBuilder) generateDBInputLaunch(node *models.Node, channels []channe
 			ir.Defer(ir.Call("wg.Done")),
 			ir.Defer(ir.Call("close", ir.Id(outChanVar))),
 			ir.IfInit(
-				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(dbVar), ir.Id(outChanVar))),
+				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(dbVar), ir.Id(outChanVar), ir.Id("progress"))),
 				ir.Neq(ir.Id("err"), ir.Nil()),
 				ir.Send(ir.Id("errChan"), ir.Id("err")),
 			),
@@ -366,7 +379,7 @@ func (b *FileBuilder) generateDBOutputLaunch(node *models.Node, channels []chann
 	// wg.Add(1)
 	// go func() {
 	//     defer wg.Done()
-	//     if err := executeNodeX(ctx, db_Y, ch_in); err != nil {
+	//     if err := executeNodeX(ctx, db_Y, ch_in, progress); err != nil {
 	//         errChan <- err
 	//     }
 	// }()
@@ -375,7 +388,7 @@ func (b *FileBuilder) generateDBOutputLaunch(node *models.Node, channels []chann
 		ir.Go(ir.ClosureCall(nil, nil,
 			ir.Defer(ir.Call("wg.Done")),
 			ir.IfInit(
-				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(dbVar), ir.Id(inChanVar))),
+				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(dbVar), ir.Id(inChanVar), ir.Id("progress"))),
 				ir.Neq(ir.Id("err"), ir.Nil()),
 				ir.Send(ir.Id("errChan"), ir.Id("err")),
 			),
@@ -438,7 +451,7 @@ func (b *FileBuilder) generateSingleInputMapLaunch(node *models.Node, config *mo
 	// go func() {
 	//     defer wg.Done()
 	//     defer close(outChan)
-	//     if err := executeNodeX(ctx, in, outChan); err != nil {
+	//     if err := executeNodeX(ctx, in, outChan, progress); err != nil {
 	//         errChan <- err
 	//     }
 	// }()
@@ -448,7 +461,7 @@ func (b *FileBuilder) generateSingleInputMapLaunch(node *models.Node, config *mo
 			ir.Defer(ir.Call("wg.Done")),
 			ir.Defer(ir.Call("close", ir.Id(outChanVar))),
 			ir.IfInit(
-				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(inChanVar), ir.Id(outChanVar))),
+				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(inChanVar), ir.Id(outChanVar), ir.Id("progress"))),
 				ir.Neq(ir.Id("err"), ir.Nil()),
 				ir.Send(ir.Id("errChan"), ir.Id("err")),
 			),
@@ -510,7 +523,7 @@ func (b *FileBuilder) generateJoinMapLaunch(node *models.Node, config *models.Ma
 	// go func() {
 	//     defer wg.Done()
 	//     defer close(outChan)
-	//     if err := executeNodeX(ctx, leftIn, rightIn, outChan); err != nil {
+	//     if err := executeNodeX(ctx, leftIn, rightIn, outChan, progress); err != nil {
 	//         errChan <- err
 	//     }
 	// }()
@@ -520,7 +533,7 @@ func (b *FileBuilder) generateJoinMapLaunch(node *models.Node, config *models.Ma
 			ir.Defer(ir.Call("wg.Done")),
 			ir.Defer(ir.Call("close", ir.Id(outChanVar))),
 			ir.IfInit(
-				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(leftChanVar), ir.Id(rightChanVar), ir.Id(outChanVar))),
+				ir.Define(ir.Id("err"), ir.Call(funcName, ir.Id("ctx"), ir.Id(leftChanVar), ir.Id(rightChanVar), ir.Id(outChanVar), ir.Id("progress"))),
 				ir.Neq(ir.Id("err"), ir.Nil()),
 				ir.Send(ir.Id("errChan"), ir.Id("err")),
 			),
@@ -532,18 +545,47 @@ func (b *FileBuilder) generateJoinMapLaunch(node *models.Node, config *models.Ma
 func (b *FileBuilder) generateEntrypoint() *ir.FuncDecl {
 	b.ctx.AddImport("context")
 	b.ctx.AddImport("log")
-	b.ctx.AddImport("os")
+	b.ctx.AddImport("test/lib")
+
+	body := []ir.Stmt{
+		ir.Define(ir.Id("ctx"), ir.Call("context.Background")),
+	}
+
+	// If apiURL and jobID are configured, use them directly (baked into the exe)
+	// Otherwise, use command-line flags for flexibility
+	if b.apiURL != "" && b.jobID > 0 {
+		body = append(body,
+			ir.Define(ir.Id("reporter"), ir.Call("lib.NewProgressReporter", ir.Lit(b.apiURL), ir.Lit(b.jobID))),
+			ir.Define(ir.Id("progress"), ir.Call("reporter.ReportFunc")),
+			ir.ExprStatement(ir.Call("log.Printf", ir.Lit(fmt.Sprintf("Progress reporting: %s/api/internal/jobs/%d/progress", b.apiURL, b.jobID)))),
+		)
+	} else {
+		// Fallback to command-line flags
+		b.ctx.AddImport("flag")
+		body = append(body,
+			ir.RawStatement(`apiURL := flag.String("api", "http://localhost:8080", "API server URL")`),
+			ir.RawStatement(`jobID := flag.Uint("job", 0, "Job ID for progress reporting")`),
+			ir.ExprStatement(ir.Call("flag.Parse")),
+			ir.Var("progress", "lib.ProgressFunc"),
+			ir.If(ir.Gt(ir.Deref(ir.Id("jobID")), ir.Lit(0)),
+				ir.Define(ir.Id("reporter"), ir.Call("lib.NewProgressReporter", ir.Deref(ir.Id("apiURL")), ir.Deref(ir.Id("jobID")))),
+				ir.Assign(ir.Id("progress"), ir.Call("reporter.ReportFunc")),
+				ir.ExprStatement(ir.Call("log.Printf", ir.Lit("Progress reporting enabled: %s/api/internal/jobs/%d/progress"), ir.Deref(ir.Id("apiURL")), ir.Deref(ir.Id("jobID")))),
+			),
+		)
+	}
+
+	body = append(body,
+		ir.IfInit(
+			ir.Define(ir.Id("err"), ir.Call("Execute", ir.Id("ctx"), ir.Id("progress"))),
+			ir.Neq(ir.Id("err"), ir.Nil()),
+			ir.ExprStatement(ir.Call("log.Fatalf", ir.Lit("execution failed: %v"), ir.Id("err"))),
+		),
+		ir.ExprStatement(ir.Call("log.Println", ir.Lit("Pipeline completed successfully"))),
+	)
 
 	return ir.NewFunc("main").
-		Body(
-			ir.Define(ir.Id("ctx"), ir.Call("context.Background")),
-			ir.IfInit(
-				ir.Define(ir.Id("err"), ir.Call("Execute", ir.Id("ctx"))),
-				ir.Neq(ir.Id("err"), ir.Nil()),
-				ir.ExprStatement(ir.Call("log.Fatalf", ir.Lit("execution failed: %v"), ir.Id("err"))),
-			),
-			ir.ExprStatement(ir.Call("log.Println", ir.Lit("Pipeline completed successfully"))),
-		).
+		Body(body...).
 		Build()
 }
 
