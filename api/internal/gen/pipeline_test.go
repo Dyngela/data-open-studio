@@ -8,35 +8,6 @@ import (
 )
 
 func TestJobExecution_Generation(t *testing.T) {
-	// ==========================================================================
-	// Test Database Schema (PostgreSQL):
-	// ==========================================================================
-	//
-	// Database: "data-open-studio"
-	//   Table: test (id SERIAL PRIMARY KEY, nom VARCHAR, prenom VARCHAR, age INT)
-	//   - 1000 rows: Nom_1..Nom_1000, Prenom_1..Prenom_1000, age 18-78
-	//
-	// Database: "test-input"
-	//   Table: receiver (age INT)
-	//   Table: sender (id SERIAL PRIMARY KEY, hobby VARCHAR, nom VARCHAR)
-	//   - 1000 rows: hobby_1..hobby_1000, Nom_1..Nom_1000
-	//
-	// ==========================================================================
-	// Pipeline: ETL with Join and Transform
-	// ==========================================================================
-	//
-	//   Start
-	//     |
-	//     +---> [Read Users] ----+
-	//     |     (data-open-studio.test)   |
-	//     |                      |
-	//     +---> [Read Hobbies] --+---> [Transform & Join] ---> [Write Output]
-	//           (test-input.sender)      (left join on nom,   (test-input.receiver)
-	//                                     concat names,
-	//                                     extract age)
-	//
-	// ==========================================================================
-
 	// Connection configs
 	dataOpenStudioConn := models.DBConnectionConfig{
 		Type:     models.DBTypePostgres,
@@ -69,9 +40,15 @@ func TestJobExecution_Generation(t *testing.T) {
 	}
 	dbOutputNode.SetData(models.DBOutputConfig{
 		Table:      "receiver",
-		Mode:       "INSERT",
+		Mode:       models.DbOutputModeInsert,
 		BatchSize:  500,
 		Connection: testInputConn,
+		DataModels: []models.DataModel{
+			{Name: "age", Type: "integer", GoType: "int"},
+			{Name: "full_name", Type: "varchar", GoType: "string"},
+			{Name: "age_in_months", Type: "integer", GoType: "int"},
+			{Name: "hobby", Type: "varchar", GoType: "string", Nullable: true},
+		},
 	})
 
 	// ==========================================================================
@@ -188,7 +165,7 @@ func TestJobExecution_Generation(t *testing.T) {
 						DataType:   "int",
 						FuncType:   models.FuncTypeCustom,
 						CustomType: models.CustomExpr,
-						Expression: "lib.ToInt(users.age) * 12",
+						Expression: "users.age * 12",
 					},
 					// Pass through hobby (may be nil for non-matching)
 					{
@@ -276,11 +253,17 @@ func TestJobExecution_Generation(t *testing.T) {
 		CreatorID:   1,
 		Active:      true,
 		Nodes:       nodes,
+		OutputPath:  "../../bin",
 	}
 
-	err := NewPipelineExecutor(&job).Run()
+	exec := NewPipelineExecutor(&job)
+	_, err := exec.Build()
 	if err != nil {
-		t.Fatalf("Pipeline execution failed: %v", err)
+		t.Fatalf("Pipeline build failed: %v", err)
 	}
+	require.NoError(t, err)
+
+	// Write generated code to file
+	err = exec.WriteToFile("../../../bin/generated_job.go", "main")
 	require.NoError(t, err)
 }

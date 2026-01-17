@@ -19,7 +19,7 @@ const (
 
 type DBOutputConfig struct {
 	Table      string             `json:"table"`
-	Mode       string             `json:"mode"`
+	Mode       DbOutputMode       `json:"mode"`
 	BatchSize  int                `json:"batchSize"`
 	DbSchema   string             `json:"dbschema"`
 	Connection DBConnectionConfig `json:"connection"`
