@@ -72,4 +72,5 @@ func main() {
 func initAPI(router *graceful.Graceful, hub *websocket.Hub, processor *websocket.MessageProcessor) {
 	endpoints.AuthHandler(router)
 	endpoints.WebSocketHandler(router, hub, processor)
+	endpoints.JobExecutionHandler(router, hub)
 }

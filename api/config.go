@@ -101,6 +101,14 @@ func getEnvOrPanic(key string) string {
 	return value
 }
 
+func GetEnv(key string, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 func getIntEnvOrPanic(key string) int {
 	value, err := strconv.Atoi(os.Getenv(key))
 	if err != nil {
