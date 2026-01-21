@@ -1,0 +1,22 @@
+<div class="node-panel">
+  <h3 class="panel-title">Nodes</h3>
+  <div
+    class="node-list"
+    cdkDropList
+    cdkDropListSortingDisabled
+    id="node-panel-list"
+    [cdkDropListConnectedTo]="['playground-area']"
+  >
+    @for (nodeType of nodeTypes(); track nodeType.id) {
+      <div
+        class="node-item"
+        cdkDrag
+        [cdkDragData]="nodeType"
+        [style.border-left-color]="nodeType.color"
+      >
+        <i [class]="nodeType.icon" [style.color]="nodeType.color"></i>
+        <span class="node-label">{{ nodeType.label }}</span>
+      </div>
+    }
+  </div>
+</div>

@@ -165,7 +165,6 @@ export class Playground implements AfterViewInit {
     if (this.isConnecting() && source) {
       const newConnection: Connection = {
         id: `connection-${this.connectionIdCounter++}`,
-        type: event.portType === 'data' ? ConnectionType.DATA : ConnectionType.FLOW,
         sourceNodeId: source.nodeId,
         sourcePort: source.portIndex,
         sourcePortType: source.portType,

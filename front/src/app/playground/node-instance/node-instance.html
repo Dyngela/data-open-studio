@@ -1,0 +1,79 @@
+<div
+  class="node-instance"
+  [attr.data-node-id]="node().id"
+  [style.border-color]="node().type.color"
+>
+  <div class="node-header" [style.background-color]="node().type.color">
+    <!-- Flow Input Port (avant le titre) -->
+    <div class="flow-input-ports">
+      @for (portIndex of getFlowInputPorts(); track portIndex) {
+        <div
+          class="port input-port flow-port"
+          [attr.data-node-id]="node().id"
+          [attr.data-port-index]="portIndex"
+          [attr.data-port-type]="'flow'"
+          title="Flow Input {{ portIndex }}"
+          (click)="onInputPortClick(portIndex, 'flow', $event)"
+        ></div>
+      }
+    </div>
+
+    <i [class]="node().type.id === 'db-input' ? getDbTypeIcon() : node().type.icon"></i>
+    <span class="node-title">{{ node().type.label }}</span>
+
+    @if (node().type.id === 'db-input' && getDbName(); as dbName) {
+      <span class="db-badge" title="Base connectée">DB: {{ dbName }}</span>
+    }
+
+    <!-- Flow Output Port (après le titre) -->
+    <div class="flow-output-ports">
+      @for (portIndex of getFlowOutputPorts(); track portIndex) {
+        <div
+          class="port output-port flow-port"
+          [attr.data-node-id]="node().id"
+          [attr.data-port-index]="portIndex"
+          [attr.data-port-type]="'flow'"
+          title="Flow Output {{ portIndex }}"
+          (click)="onOutputPortClick(portIndex, 'flow', $event)"
+        ></div>
+      }
+    </div>
+  </div>
+
+  <div class="node-body">
+    <div class="ports-container">
+      <div class="input-ports">
+        <!-- Data Input Ports -->
+        @for (portIndex of getDataInputPorts(); track portIndex) {
+          <div
+            class="port input-port data-port"
+            [attr.data-node-id]="node().id"
+            [attr.data-port-index]="portIndex"
+            [attr.data-port-type]="'data'"
+            title="Data Input {{ portIndex }}"
+            (click)="onInputPortClick(portIndex, 'data', $event)"
+          ></div>
+        }
+      </div>
+
+      <div class="output-ports">
+        <!-- Data Output Ports -->
+        @for (portIndex of getDataOutputPorts(); track portIndex) {
+          <div
+            class="port output-port data-port"
+            [attr.data-node-id]="node().id"
+            [attr.data-port-index]="portIndex"
+            [attr.data-port-type]="'data'"
+            title="Data Output {{ portIndex }}"
+            (click)="onOutputPortClick(portIndex, 'data', $event)"
+          ></div>
+        }
+      </div>
+    </div>
+    @if (node().type.id === 'db-input' && getDbQuery(); as dbQuery) {
+      <div class="db-query-display">
+        {{ dbQuery }}
+      </div>
+    }
+  </div>
+</div>
