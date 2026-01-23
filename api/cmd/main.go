@@ -5,7 +5,6 @@ import (
 	"api/internal/api/handler/endpoints"
 	"api/internal/api/handler/websocket"
 	"api/internal/api/models"
-	"api/internal/api/service"
 	"context"
 	"errors"
 	"os/signal"
@@ -27,7 +26,8 @@ func main() {
 			&models.Job{},
 			&models.Node{},
 			&models.Port{},
-			&models.Metadata{},
+			&models.MetadataDatabase{},
+			&models.MetadataSftp{},
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
@@ -53,8 +53,7 @@ func main() {
 	}))
 
 	// Initialize WebSocket components
-	jobService := service.NewJobService()
-	processor := websocket.NewMessageProcessor(jobService, api.Logger)
+	processor := websocket.NewMessageProcessor()
 	hub := websocket.NewHub(api.Logger)
 	go hub.Run()
 	api.Logger.Info().Msg("WebSocket hub started")

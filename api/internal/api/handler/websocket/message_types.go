@@ -38,11 +38,29 @@ const (
 	MessageTypePing  MessageType = "ping"
 	MessageTypePong  MessageType = "pong"
 
-	// Metadata operations
-	MessageTypeMetadataCreate MessageType = "metadata_create"
-	MessageTypeMetadataUpdate MessageType = "metadata_update"
-	MessageTypeMetadataDelete MessageType = "metadata_delete"
-	MessageTypeMetadataGet    MessageType = "metadata_get"
+	// DB Metadata operations
+	MessageTypeDbMetadataCreate  MessageType = "db_metadata_create"
+	ResponseDbMetadataCreate     MessageType = "response_db_metadata_create"
+	MessageTypeDbMetadataUpdate  MessageType = "db_metadata_update"
+	ResponseDbMetadataUpdate     MessageType = "response_db_metadata_update"
+	MessageTypeDbMetadataDelete  MessageType = "db_metadata_delete"
+	ResponseDbMetadataDelete     MessageType = "response_db_metadata_delete"
+	MessageTypeDbMetadataGet     MessageType = "db_metadata_get"
+	ResponseDbMetadataGet        MessageType = "response_db_metadata_get"
+	MessageTypeDbMetadataGetAll  MessageType = "db_metadata_get_all"
+	ResponseDbMetadataGetAll     MessageType = "response_db_metadata_get_all"
+
+	// SFTP Metadata operations
+	MessageTypeSftpMetadataCreate  MessageType = "sftp_metadata_create"
+	ResponseSftpMetadataCreate     MessageType = "response_sftp_metadata_create"
+	MessageTypeSftpMetadataUpdate  MessageType = "sftp_metadata_update"
+	ResponseSftpMetadataUpdate     MessageType = "response_sftp_metadata_update"
+	MessageTypeSftpMetadataDelete  MessageType = "sftp_metadata_delete"
+	ResponseSftpMetadataDelete     MessageType = "response_sftp_metadata_delete"
+	MessageTypeSftpMetadataGet     MessageType = "sftp_metadata_get"
+	ResponseSftpMetadataGet        MessageType = "response_sftp_metadata_get"
+	MessageTypeSftpMetadataGetAll  MessageType = "sftp_metadata_get_all"
+	ResponseSftpMetadataGetAll     MessageType = "response_sftp_metadata_get_all"
 
 	// DB nodes operations
 	MessageTypeDbNodeGuessDataModel MessageType = "db_node_guess_data_model"

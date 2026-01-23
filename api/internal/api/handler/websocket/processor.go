@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"api"
 	"api/internal/api/models"
 	"api/internal/api/service"
 	"encoding/json"
@@ -11,15 +12,19 @@ import (
 
 // MessageProcessor handles WebSocket messages and performs database operations
 type MessageProcessor struct {
-	jobService *service.JobService
-	logger     zerolog.Logger
+	jobService          *service.JobService
+	metadataService     *service.MetadataService
+	sftpMetadataService *service.SftpMetadataService
+	logger              zerolog.Logger
 }
 
 // NewMessageProcessor creates a new message processor
-func NewMessageProcessor(jobService *service.JobService, logger zerolog.Logger) *MessageProcessor {
+func NewMessageProcessor() *MessageProcessor {
 	return &MessageProcessor{
-		jobService: jobService,
-		logger:     logger,
+		jobService:          service.NewJobService(),
+		metadataService:     service.NewMetadataService(),
+		sftpMetadataService: service.NewSftpMetadataService(),
+		logger:              api.Logger,
 	}
 }
 
@@ -36,14 +41,27 @@ func (p *MessageProcessor) ProcessMessage(msg *Message) (*Message, error) {
 	case MessageTypeJobExecute:
 		return p.processJobExecute(msg)
 
-	case MessageTypeMetadataGet:
-		return p.processMetadataGet(msg)
-	case MessageTypeMetadataUpdate:
-		return p.processMetadataUpdate(msg)
-	case MessageTypeMetadataDelete:
-		return p.processMetadataDelete(msg)
-	case MessageTypeMetadataCreate:
-		return p.processMetadataCreate(msg)
+	case MessageTypeDbMetadataGet:
+		return p.processDbMetadataGet(msg)
+	case MessageTypeDbMetadataGetAll:
+		return p.processDbMetadataGetAll(msg)
+	case MessageTypeDbMetadataUpdate:
+		return p.processDbMetadataUpdate(msg)
+	case MessageTypeDbMetadataDelete:
+		return p.processDbMetadataDelete(msg)
+	case MessageTypeDbMetadataCreate:
+		return p.processDbMetadataCreate(msg)
+
+	case MessageTypeSftpMetadataGet:
+		return p.processSftpMetadataGet(msg)
+	case MessageTypeSftpMetadataGetAll:
+		return p.processSftpMetadataGetAll(msg)
+	case MessageTypeSftpMetadataUpdate:
+		return p.processSftpMetadataUpdate(msg)
+	case MessageTypeSftpMetadataDelete:
+		return p.processSftpMetadataDelete(msg)
+	case MessageTypeSftpMetadataCreate:
+		return p.processSftpMetadataCreate(msg)
 
 	case MessageTypeDbNodeGuessDataModel:
 		return p.processDbNodeGuessDataModel(msg)
@@ -86,7 +104,6 @@ func (p *MessageProcessor) processJobUpdate(msg *Message) (*Message, error) {
 		patch["active"] = *jobData.Active
 	}
 	if jobData.Nodes != nil {
-		// Convert nodes if provided
 		nodesBytes, err := json.Marshal(jobData.Nodes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal nodes: %w", err)
@@ -123,20 +140,165 @@ func (p *MessageProcessor) processJobCreate(msg *Message) (*Message, error) {
 func (p *MessageProcessor) processJobExecute(msg *Message) (*Message, error) {
 	return msg, nil
 }
-func (p *MessageProcessor) processMetadataGet(msg *Message) (*Message, error) {
-	return nil, nil
-}
-func (p *MessageProcessor) processMetadataCreate(msg *Message) (*Message, error) {
-	return nil, nil
+func (p *MessageProcessor) processDbMetadataGet(msg *Message) (*Message, error) {
+	var data struct {
+		ID uint `json:"id"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
 
-}
-func (p *MessageProcessor) processMetadataDelete(msg *Message) (*Message, error) {
-	return nil, nil
+	metadata, err := p.metadataService.FindByID(data.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get db metadata: %w", err)
+	}
 
-}
-func (p *MessageProcessor) processMetadataUpdate(msg *Message) (*Message, error) {
-	return nil, nil
+	msg.Data = metadata
+	msg.Type = ResponseDbMetadataGet
 
+	p.logger.Info().
+		Uint("metadataId", data.ID).
+		Uint("userId", msg.UserID).
+		Msg("DB MetadataDatabase retrieved via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processDbMetadataGetAll(msg *Message) (*Message, error) {
+	metadataList, err := p.metadataService.FindAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all db metadata: %w", err)
+	}
+
+	msg.Data = metadataList
+	msg.Type = ResponseDbMetadataGetAll
+
+	p.logger.Info().
+		Uint("userId", msg.UserID).
+		Int("count", len(metadataList)).
+		Msg("All DB MetadataDatabase retrieved via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processDbMetadataCreate(msg *Message) (*Message, error) {
+	var data struct {
+		Host         string `json:"host"`
+		Port         string `json:"port"`
+		User         string `json:"user"`
+		Password     string `json:"password"`
+		DatabaseName string `json:"databaseName"`
+		SSLMode      string `json:"sslMode"`
+		Extra        string `json:"extra"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	metadata := models.MetadataDatabase{
+		Host:         data.Host,
+		Port:         data.Port,
+		User:         data.User,
+		Password:     data.Password,
+		DatabaseName: data.DatabaseName,
+		SSLMode:      data.SSLMode,
+		Extra:        data.Extra,
+	}
+
+	createdMetadata, err := p.metadataService.Create(metadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create db metadata: %w", err)
+	}
+
+	msg.Data = createdMetadata
+	msg.Type = ResponseDbMetadataCreate
+
+	p.logger.Info().
+		Uint("metadataId", createdMetadata.ID).
+		Uint("userId", msg.UserID).
+		Msg("DB MetadataDatabase created via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processDbMetadataDelete(msg *Message) (*Message, error) {
+	var data struct {
+		ID uint `json:"id"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	if err := p.metadataService.Delete(data.ID); err != nil {
+		return nil, fmt.Errorf("failed to delete db metadata: %w", err)
+	}
+
+	msg.Data = map[string]any{
+		"id":      data.ID,
+		"deleted": true,
+	}
+	msg.Type = ResponseDbMetadataDelete
+
+	p.logger.Info().
+		Uint("metadataId", data.ID).
+		Uint("userId", msg.UserID).
+		Msg("DB MetadataDatabase deleted via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processDbMetadataUpdate(msg *Message) (*Message, error) {
+	var data struct {
+		ID           uint    `json:"id"`
+		Host         *string `json:"host,omitempty"`
+		Port         *string `json:"port,omitempty"`
+		User         *string `json:"user,omitempty"`
+		Password     *string `json:"password,omitempty"`
+		DatabaseName *string `json:"databaseName,omitempty"`
+		SSLMode      *string `json:"sslMode,omitempty"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	if data.ID == 0 {
+		return nil, fmt.Errorf("metadata ID is required for update")
+	}
+
+	patch := make(map[string]any)
+	if data.Host != nil {
+		patch["host"] = *data.Host
+	}
+	if data.Port != nil {
+		patch["port"] = *data.Port
+	}
+	if data.User != nil {
+		patch["user"] = *data.User
+	}
+	if data.Password != nil {
+		patch["password"] = *data.Password
+	}
+	if data.DatabaseName != nil {
+		patch["database_name"] = *data.DatabaseName
+	}
+	if data.SSLMode != nil {
+		patch["ssl_mode"] = *data.SSLMode
+	}
+
+	updatedMetadata, err := p.metadataService.Update(data.ID, patch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update db metadata: %w", err)
+	}
+
+	msg.Data = updatedMetadata
+	msg.Type = ResponseDbMetadataUpdate
+
+	p.logger.Info().
+		Uint("metadataId", data.ID).
+		Uint("userId", msg.UserID).
+		Msg("DB MetadataDatabase updated via WebSocket")
+
+	return msg, nil
 }
 
 func (p *MessageProcessor) processDbNodeGuessDataModel(msg *Message) (*Message, error) {
@@ -188,6 +350,173 @@ func (p *MessageProcessor) processDbNodeGuessDataModel(msg *Message) (*Message, 
 		"dataModels": node.DataModels,
 	}
 	msg.Type = ResponseDbNodeGuessDataModel
+
+	return msg, nil
+}
+
+// SFTP MetadataDatabase CRUD operations
+
+func (p *MessageProcessor) processSftpMetadataGet(msg *Message) (*Message, error) {
+	var data struct {
+		ID uint `json:"id"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	metadata, err := p.sftpMetadataService.FindByID(data.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sftp metadata: %w", err)
+	}
+
+	msg.Data = metadata
+	msg.Type = ResponseSftpMetadataGet
+
+	p.logger.Info().
+		Uint("metadataId", data.ID).
+		Uint("userId", msg.UserID).
+		Msg("SFTP MetadataDatabase retrieved via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processSftpMetadataGetAll(msg *Message) (*Message, error) {
+	metadataList, err := p.sftpMetadataService.FindAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all sftp metadata: %w", err)
+	}
+
+	msg.Data = metadataList
+	msg.Type = ResponseSftpMetadataGetAll
+
+	p.logger.Info().
+		Uint("userId", msg.UserID).
+		Int("count", len(metadataList)).
+		Msg("All SFTP MetadataDatabase retrieved via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processSftpMetadataCreate(msg *Message) (*Message, error) {
+	var data struct {
+		Host       string `json:"host"`
+		Port       string `json:"port"`
+		User       string `json:"user"`
+		Password   string `json:"password"`
+		PrivateKey string `json:"privateKey"`
+		BasePath   string `json:"basePath"`
+		Extra      string `json:"extra"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	metadata := models.MetadataSftp{
+		Host:       data.Host,
+		Port:       data.Port,
+		User:       data.User,
+		Password:   data.Password,
+		PrivateKey: data.PrivateKey,
+		BasePath:   data.BasePath,
+		Extra:      data.Extra,
+	}
+
+	createdMetadata, err := p.sftpMetadataService.Create(metadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sftp metadata: %w", err)
+	}
+
+	msg.Data = createdMetadata
+	msg.Type = ResponseSftpMetadataCreate
+
+	p.logger.Info().
+		Uint("metadataId", createdMetadata.ID).
+		Uint("userId", msg.UserID).
+		Msg("SFTP MetadataDatabase created via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processSftpMetadataDelete(msg *Message) (*Message, error) {
+	var data struct {
+		ID uint `json:"id"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	if err := p.sftpMetadataService.Delete(data.ID); err != nil {
+		return nil, fmt.Errorf("failed to delete sftp metadata: %w", err)
+	}
+
+	msg.Data = map[string]any{
+		"id":      data.ID,
+		"deleted": true,
+	}
+	msg.Type = ResponseSftpMetadataDelete
+
+	p.logger.Info().
+		Uint("metadataId", data.ID).
+		Uint("userId", msg.UserID).
+		Msg("SFTP MetadataDatabase deleted via WebSocket")
+
+	return msg, nil
+}
+
+func (p *MessageProcessor) processSftpMetadataUpdate(msg *Message) (*Message, error) {
+	var data struct {
+		ID         uint    `json:"id"`
+		Host       *string `json:"host,omitempty"`
+		Port       *string `json:"port,omitempty"`
+		User       *string `json:"user,omitempty"`
+		Password   *string `json:"password,omitempty"`
+		PrivateKey *string `json:"privateKey,omitempty"`
+		BasePath   *string `json:"basePath,omitempty"`
+		Extra      *string `json:"extra,omitempty"`
+	}
+	if err := p.validateData(msg, &data); err != nil {
+		return nil, err
+	}
+
+	if data.ID == 0 {
+		return nil, fmt.Errorf("sftp metadata ID is required for update")
+	}
+
+	patch := make(map[string]any)
+	if data.Host != nil {
+		patch["host"] = *data.Host
+	}
+	if data.Port != nil {
+		patch["port"] = *data.Port
+	}
+	if data.User != nil {
+		patch["user"] = *data.User
+	}
+	if data.Password != nil {
+		patch["password"] = *data.Password
+	}
+	if data.PrivateKey != nil {
+		patch["private_key"] = *data.PrivateKey
+	}
+	if data.BasePath != nil {
+		patch["base_path"] = *data.BasePath
+	}
+	if data.Extra != nil {
+		patch["extra"] = *data.Extra
+	}
+
+	updatedMetadata, err := p.sftpMetadataService.Update(data.ID, patch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update sftp metadata: %w", err)
+	}
+
+	msg.Data = updatedMetadata
+	msg.Type = ResponseSftpMetadataUpdate
+
+	p.logger.Info().
+		Uint("metadataId", data.ID).
+		Uint("userId", msg.UserID).
+		Msg("SFTP MetadataDatabase updated via WebSocket")
 
 	return msg, nil
 }

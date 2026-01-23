@@ -10,12 +10,12 @@ import (
 // MetadataMapperImpl implements MetadataMapper
 type MetadataMapperImpl struct{}
 
-func (m MetadataMapperImpl) ToMetadataResponses(entities []models.Metadata) []response.Metadata {
+func (m MetadataMapperImpl) ToMetadataResponses(entities []models.MetadataDatabase) []response.Metadata {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (m MetadataMapperImpl) ToMetadataResponse(mo models.Metadata) response.Metadata {
+func (m MetadataMapperImpl) ToMetadataResponse(mo models.MetadataDatabase) response.Metadata {
 	//TODO implement me
 	panic("implement me")
 }
