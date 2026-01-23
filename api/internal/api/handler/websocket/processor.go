@@ -31,6 +31,7 @@ func NewMessageProcessor() *MessageProcessor {
 // ProcessMessage processes a message and performs necessary database operations
 // Returns the updated message to broadcast, or error if processing failed
 func (p *MessageProcessor) ProcessMessage(msg *Message) (*Message, error) {
+	p.logger.Debug().Msgf("Processing message: %+v", msg)
 	switch msg.Type {
 	case MessageTypeJobUpdate:
 		return p.processJobUpdate(msg)
@@ -302,6 +303,7 @@ func (p *MessageProcessor) processDbMetadataUpdate(msg *Message) (*Message, erro
 }
 
 func (p *MessageProcessor) processDbNodeGuessDataModel(msg *Message) (*Message, error) {
+	p.logger.Debug().Msg("Guessing data model for node")
 	type nodeGuessDataModel struct {
 		NodeID   int               `json:"nodeId"`
 		JobID    uint              `json:"jobId"`
@@ -319,6 +321,7 @@ func (p *MessageProcessor) processDbNodeGuessDataModel(msg *Message) (*Message, 
 	}
 	var data nodeGuessDataModel
 	if err := p.validateData(msg, &data); err != nil {
+		p.logger.Error().Err(err).Msg("Failed to validate node guess data model")
 		return nil, err
 	}
 
@@ -338,11 +341,13 @@ func (p *MessageProcessor) processDbNodeGuessDataModel(msg *Message) (*Message, 
 		},
 		DataModels: nil,
 	}
+	p.logger.Debug().Msgf("Node guess data: %+v", node)
 
 	err := node.FillDataModels()
 	if err != nil {
 		return nil, fmt.Errorf("failed to guess data model: %w", err)
 	}
+	p.logger.Debug().Msgf("Guessed data models: %+v", node.DataModels)
 
 	msg.Data = map[string]any{
 		"nodeId":     data.NodeID,
@@ -351,7 +356,9 @@ func (p *MessageProcessor) processDbNodeGuessDataModel(msg *Message) (*Message, 
 	}
 	msg.Type = ResponseDbNodeGuessDataModel
 
+	p.logger.Info().Msg("Guessed data model for node via WebSocket")
 	return msg, nil
+
 }
 
 // SFTP MetadataDatabase CRUD operations

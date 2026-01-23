@@ -8,4 +8,5 @@ type Metadata struct {
 	Password     string `json:"password"`
 	DatabaseName string `json:"databaseName"`
 	SSLMode      string `json:"sslMode"`
+	Extra        string `json:"extra"`
 }

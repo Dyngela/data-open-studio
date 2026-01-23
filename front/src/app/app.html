@@ -1,1 +1,47 @@
 <app-playground></app-playground>
+
+<!-- Example: Guess Data Model -->
+<div class="p-4 border-t">
+  <h3 class="text-lg font-semibold mb-2">Test Data Model Guess</h3>
+
+  <button
+    (click)="onGuessDataModel()"
+    [disabled]="guessDataModel.isLoading()"
+    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+    @if (guessDataModel.isLoading()) {
+      Loading...
+    } @else {
+      Guess Data Model
+    }
+  </button>
+
+  @if (guessDataModel.error(); as error) {
+    <div class="mt-2 p-2 bg-red-100 text-red-700 rounded">
+      {{ error.message }}
+    </div>
+  }
+
+  @if (guessDataModel.data(); as response) {
+    <div class="mt-2">
+      <h4 class="font-medium">Columns ({{ response.dataModels.length }}):</h4>
+      <table class="mt-1 w-full text-sm border">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="p-2 text-left border">Name</th>
+            <th class="p-2 text-left border">Type</th>
+            <th class="p-2 text-left border">Nullable</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (col of response.dataModels; track col.name) {
+            <tr>
+              <td class="p-2 border">{{ col.name }}</td>
+              <td class="p-2 border">{{ col.type }}</td>
+              <td class="p-2 border">{{ col.nullable ? 'Yes' : 'No' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

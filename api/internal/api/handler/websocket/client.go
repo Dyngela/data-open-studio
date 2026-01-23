@@ -194,6 +194,7 @@ func (c *Client) processWorker() {
 	c.Logger.Debug().Str("clientId", c.ID).Msg("Process worker started")
 
 	for msg := range c.ProcessQueue {
+		c.Logger.Debug().Str("clientId", c.ID).Msg("Processing message")
 		// Process message (DB operation)
 		if c.Processor != nil {
 			processedMsg, err := c.Processor.ProcessMessage(&msg)
@@ -225,7 +226,19 @@ func (c *Client) processWorker() {
 // requiresProcessing checks if a message type requires database processing
 func (c *Client) requiresProcessing(msgType MessageType) bool {
 	switch msgType {
+	// Job operations
 	case MessageTypeJobCreate, MessageTypeJobUpdate, MessageTypeJobDelete, MessageTypeJobExecute:
+		return true
+	// DB Metadata operations
+	case MessageTypeDbMetadataCreate, MessageTypeDbMetadataUpdate, MessageTypeDbMetadataDelete,
+		MessageTypeDbMetadataGet, MessageTypeDbMetadataGetAll:
+		return true
+	// SFTP Metadata operations
+	case MessageTypeSftpMetadataCreate, MessageTypeSftpMetadataUpdate, MessageTypeSftpMetadataDelete,
+		MessageTypeSftpMetadataGet, MessageTypeSftpMetadataGetAll:
+		return true
+	// DB Node operations
+	case MessageTypeDbNodeGuessDataModel:
 		return true
 	default:
 		return false

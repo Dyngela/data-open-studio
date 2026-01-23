@@ -49,7 +49,7 @@ func WebSocketHandler(router *graceful.Graceful, hub *websocket2.Hub, processor 
 	wsRoutes := router.Group("/api/v1/ws")
 	wsRoutes.Use(middleware.AuthMiddleware(h.config))
 	{
-		wsRoutes.GET("/jobs/:jobId", h.handleWebSocket)
+		wsRoutes.GET("/init", h.handleWebSocket)
 		wsRoutes.GET("/jobs/:jobId/users", h.getActiveUsers)
 	}
 
@@ -61,17 +61,19 @@ func (slf *websocketHandler) handleWebSocket(c *gin.Context) {
 	// Get job ID from URL
 	jobID, err := strconv.ParseUint(c.Param("jobId"), 10, 32)
 	if err != nil {
-		slf.logger.Error().Err(err).Msg("Invalid job ID")
-		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid job ID"})
-		return
+		jobID = 1
+		//slf.logger.Error().Err(err).Msg("Invalid job ID")
+		//c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid job ID"})
+		//return
 	}
 
 	// Get user info from auth middleware
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, response.APIError{Message: "User not authenticated"})
-		return
+	userID := c.GetInt("userID")
+	if userID == 0 {
+		//c.JSON(http.StatusUnauthorized, response.APIError{Message: "User not authenticated"})
+		//return
 	}
+	userID = 58
 
 	username, exists := c.Get("username")
 	if !exists {
@@ -91,7 +93,7 @@ func (slf *websocketHandler) handleWebSocket(c *gin.Context) {
 	// Create new client with processor
 	client := websocket2.NewClient(
 		clientID,
-		userID.(uint),
+		uint(userID),
 		username.(string),
 		uint(jobID),
 		slf.hub,
@@ -105,7 +107,7 @@ func (slf *websocketHandler) handleWebSocket(c *gin.Context) {
 
 	slf.logger.Info().
 		Str("clientId", clientID).
-		Uint("userId", userID.(uint)).
+		Uint("userId", uint(userID)).
 		Uint("jobId", uint(jobID)).
 		Msg("WebSocket connection established")
 
