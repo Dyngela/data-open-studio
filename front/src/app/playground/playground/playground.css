@@ -1,0 +1,163 @@
+.playground-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background-color: #1a1a1a;
+  overflow: hidden;
+}
+
+.playground-area {
+  flex: 1;
+  position: relative;
+  background-color: #1a1a1a;
+  background-image: radial-gradient(circle, #333 1px, transparent 1px);
+  background-size: 20px 20px;
+  overflow: hidden;
+  cursor: default;
+  user-select: none; /* Empêche la sélection de texte pendant le drag */
+}
+
+.playground-area.panning {
+  cursor: grabbing !important;
+}
+
+.connections-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+.connection {
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: stroke-width 0.2s ease;
+}
+
+/* Connexions de données - Bleu */
+.connection-data:hover {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 8px rgba(33, 150, 243, 0.6));
+}
+
+/* Connexions de flux - Vert */
+.connection-flow:hover {
+  stroke-width: 5;
+  filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.6));
+}
+
+.connection:hover {
+  stroke-width: 5;
+}
+
+.temp-connection {
+  opacity: 0.6;
+}
+
+/* Wrapper des nodes - drag manuel */
+.node-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  cursor: grab;
+  transition: filter 0.2s ease;
+}
+
+.node-wrapper:hover {
+  filter: brightness(1.1);
+}
+
+.node-wrapper:active {
+  cursor: grabbing;
+  z-index: 100;
+}
+
+/* Preview du CDK pour le drag depuis le panel */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 8px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  opacity: 0.9;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0;
+  display: none;
+}
+
+/* Barre d'outils */
+.toolbar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 1000;
+  background-color: rgba(45, 45, 45, 0.95);
+  padding: 0.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #3a3a3a;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background-color: #4a4a4a;
+  border-color: #4CAF50;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.toolbar-btn i {
+  font-size: 1rem;
+}
+
+.toolbar-btn-danger:hover {
+  border-color: #f44336;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  backdrop-filter: blur(2px);
+}
+
+.modal-container {
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1.25rem;
+  width: 520px;
+  max-width: 90%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}

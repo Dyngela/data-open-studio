@@ -1,0 +1,43 @@
+<div class="minimap-container">
+  <div class="minimap-title">Minimap</div>
+  <svg
+    class="minimap-svg"
+    [attr.width]="minimapWidth"
+    [attr.height]="minimapHeight"
+  >
+    @if (bounds(); as currentBounds) {
+      @for (node of transformedNodes(); track $index) {
+        <rect
+          [attr.x]="node.x"
+          [attr.y]="node.y"
+          [attr.width]="node.width"
+          [attr.height]="node.height"
+          [attr.fill]="node.color"
+          class="minimap-node"
+        />
+      }
+
+      @if (viewportRect(); as viewport) {
+        <rect
+          [attr.x]="viewport.x"
+          [attr.y]="viewport.y"
+          [attr.width]="viewport.width"
+          [attr.height]="viewport.height"
+          class="minimap-viewport"
+        />
+      }
+    }
+
+    @if (!bounds()) {
+      <text
+        x="50%"
+        y="50%"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        class="minimap-empty-text"
+      >
+        No nodes
+      </text>
+    }
+  </svg>
+</div>
