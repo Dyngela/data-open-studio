@@ -32,7 +32,6 @@
       </button>
     </div>
 
-    <!-- Input file caché -->
     <input
       #fileInput
       type="file"
@@ -40,9 +39,7 @@
       style="display: none;"
       (change)="onFileSelected($event)"
     />
-    <!-- Couche SVG pour les connexions entre nodes -->
     <svg class="connections-layer">
-      <!-- Toutes les connexions (data et flow) -->
       @for (connection of connections(); track connection.id) {
       <path
         [attr.d]="getConnectionPath(connection)"
@@ -53,7 +50,6 @@
       />
       }
 
-      <!-- Connexion temporaire (pendant la création) -->
       @if (tempConnection(); as temp) {
       <path
         [attr.d]="getTempConnectionPath()"
@@ -66,7 +62,6 @@
       }
     </svg>
 
-    <!-- Liste des nodes instanciés dans le playground -->
     @for (node of nodes(); track node.id) {
     <div
       class="node-wrapper"
@@ -80,7 +75,6 @@
       (mousedown)="onNodeMouseDown($event, node.id)"
       (dblclick)="openNodeModal(node.id)"
     >
-      <!-- Composant node avec ses ports et son contenu -->
       <app-node-instance
         [node]="node"
         [panOffset]="panOffset()"
@@ -101,11 +95,20 @@
           (save)="onDbInputSave(modal.nodeId, $event)"
         ></app-db-input-modal>
         }
+        @if (modal.nodeTypeId === 'start' && getNodeById(modal.nodeId); as node) {
+        <app-start-modal
+          (close)="closeModal()"
+        ></app-start-modal>
+        }
+        @if (modal.nodeTypeId === 'transform' && getNodeById(modal.nodeId); as node) {
+        <app-transform-modal
+          (close)="closeModal()"
+        ></app-transform-modal>
+        }
       </div>
     </div>
     }
 
-    <!-- Minimap en bas à droite -->
     <app-minimap
       [nodes]="nodes()"
       [viewportWidth]="viewportWidth()"

@@ -1,4 +1,11 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, signal , HostListener} from '@angular/core';
+import {
+  Component,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
+  signal,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDropList, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NodePanel } from '../node-panel/node-panel';
@@ -6,11 +13,13 @@ import { NodeInstanceComponent } from '../node-instance/node-instance';
 import { Minimap } from '../minimap/minimap';
 import { NodeInstance, Connection, NodeType } from '../models/node.model';
 import { DbInputModal } from '../../nodes/db-input/db-input.modal';
+import { StartModal } from '../../nodes/start/start.modal';
+import { TransformModal } from '../../nodes/transform/transform.modal';
 
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, DbInputModal],
+  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, DbInputModal, StartModal, TransformModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
@@ -53,7 +62,6 @@ export class Playground implements AfterViewInit {
   protected isPanning = signal(false);
   private panStart = signal({ x: 0, y: 0 });
 
-  // Pour le drag manuel des nodes
   private isDraggingNode = signal(false);
   private draggedNodeId = signal<string | null>(null);
   private dragNodeOffset = signal({ x: 0, y: 0 });
@@ -100,8 +108,13 @@ export class Playground implements AfterViewInit {
     const node = this.nodes().find((n) => n.id === nodeId);
     if (!node) return;
 
-    // Pour l'instant, seul db-input a une modal dédiée
     if (node.type.id === 'db-input') {
+      this.activeModal.set({ nodeId: node.id, nodeTypeId: node.type.id });
+    }
+    if (node.type.id === 'transform') {
+      this.activeModal.set({ nodeId: node.id, nodeTypeId: node.type.id });
+    }
+    if (node.type.id === 'start') {
       this.activeModal.set({ nodeId: node.id, nodeTypeId: node.type.id });
     }
   }
@@ -112,12 +125,24 @@ export class Playground implements AfterViewInit {
 
   onDbInputSave(
     nodeId: string,
-    config: { connectionString: string; table: string; query: string; database?: string; connectionId?: string; dbType?: string; host?: string; port?: string; username?: string; password?: string; sslMode?: string }
+    config: {
+      connectionString: string;
+      table: string;
+      query: string;
+      database?: string;
+      connectionId?: string;
+      dbType?: string;
+      host?: string;
+      port?: string;
+      username?: string;
+      password?: string;
+      sslMode?: string;
+    },
   ) {
     this.nodes.update((nodes) =>
       nodes.map((node) =>
-        node.id === nodeId ? { ...node, config: { ...node.config, ...config } } : node
-      )
+        node.id === nodeId ? { ...node, config: { ...node.config, ...config } } : node,
+      ),
     );
     this.closeModal();
   }
@@ -209,8 +234,8 @@ export class Playground implements AfterViewInit {
         const adjusted = this.resolveCollision(nodeId, newX, newY);
         this.nodes.update((nodes) =>
           nodes.map((node) =>
-            node.id === nodeId ? { ...node, position: { x: adjusted.x, y: adjusted.y } } : node
-          )
+            node.id === nodeId ? { ...node, position: { x: adjusted.x, y: adjusted.y } } : node,
+          ),
         );
       }
       return;
@@ -240,7 +265,7 @@ export class Playground implements AfterViewInit {
         source.nodeId,
         source.portIndex,
         'output',
-        source.portType
+        source.portType,
       );
 
       this.tempConnection.set({
@@ -285,13 +310,13 @@ export class Playground implements AfterViewInit {
       connection.sourceNodeId,
       connection.sourcePort,
       'output',
-      portType
+      portType,
     );
     const targetPos = this.getPortPosition(
       connection.targetNodeId,
       connection.targetPort,
       'input',
-      connection.targetPortType
+      connection.targetPortType,
     );
 
     const dx = targetPos.x - sourcePos.x;
@@ -320,7 +345,7 @@ export class Playground implements AfterViewInit {
 
   private getNodeSize(nodeId: string): { width: number; height: number } {
     const nodeElement = this.playgroundArea?.nativeElement.querySelector(
-      `[data-node-id="${nodeId}"]`
+      `[data-node-id="${nodeId}"]`,
     ) as HTMLElement | null;
     if (nodeElement) {
       const rect = nodeElement.getBoundingClientRect();
@@ -329,7 +354,11 @@ export class Playground implements AfterViewInit {
     return { width: this.NODE_DIMENSIONS.width, height: this.NODE_DIMENSIONS.estimatedHeight };
   }
 
-  private resolveCollision(nodeId: string, desiredX: number, desiredY: number): { x: number; y: number } {
+  private resolveCollision(
+    nodeId: string,
+    desiredX: number,
+    desiredY: number,
+  ): { x: number; y: number } {
     let x = desiredX;
     let y = desiredY;
     const padding = this.COLLISION_PADDING;
@@ -356,9 +385,11 @@ export class Playground implements AfterViewInit {
           height: size.height,
         };
 
-        const overlapX = Math.min(movingRect.x + movingRect.width, otherRect.x + otherRect.width) -
+        const overlapX =
+          Math.min(movingRect.x + movingRect.width, otherRect.x + otherRect.width) -
           Math.max(movingRect.x, otherRect.x);
-        const overlapY = Math.min(movingRect.y + movingRect.height, otherRect.y + otherRect.height) -
+        const overlapY =
+          Math.min(movingRect.y + movingRect.height, otherRect.y + otherRect.height) -
           Math.max(movingRect.y, otherRect.y);
 
         if (overlapX > 0 && overlapY > 0) {
@@ -402,7 +433,7 @@ export class Playground implements AfterViewInit {
     nodeId: string,
     portIndex: number,
     portType: 'input' | 'output',
-    connectionType: 'data' | 'flow' = 'data'
+    connectionType: 'data' | 'flow' = 'data',
   ): { x: number; y: number } {
     const node = this.nodes().find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
@@ -430,10 +461,10 @@ export class Playground implements AfterViewInit {
     nodeId: string,
     portIndex: number,
     portType: 'input' | 'output',
-    connectionType: 'data' | 'flow' = 'data'
+    connectionType: 'data' | 'flow' = 'data',
   ): HTMLElement | null {
     const nodeElement = this.playgroundArea?.nativeElement.querySelector(
-      `[data-node-id="${nodeId}"]`
+      `[data-node-id="${nodeId}"]`,
     );
     if (!nodeElement) return null;
 
@@ -455,7 +486,7 @@ export class Playground implements AfterViewInit {
     node: NodeInstance,
     portIndex: number,
     portType: 'input' | 'output',
-    connectionType: 'data' | 'flow' = 'data'
+    connectionType: 'data' | 'flow' = 'data',
   ): { x: number; y: number } {
     const dim = this.NODE_DIMENSIONS;
     const offset = this.panOffset();
@@ -484,7 +515,8 @@ export class Playground implements AfterViewInit {
     } else {
       // Data ports - logique existante dans le body
       // Déterminer le nombre de ports selon le type
-      const portCount = portType === 'input' ? (node.type.hasDataInput ? 1 : 0) : (node.type.hasDataOutput ? 1 : 0);
+      const portCount =
+        portType === 'input' ? (node.type.hasDataInput ? 1 : 0) : node.type.hasDataOutput ? 1 : 0;
 
       // Centre du body
       const bodyTop = estimatedHeaderHeight + dim.bodyPadding;
@@ -597,7 +629,7 @@ export class Playground implements AfterViewInit {
           // Format v2.0: migrer vers liste unifiée
           const allConnections = [
             ...(schema.dataConnections || []),
-            ...(schema.flowConnections || [])
+            ...(schema.flowConnections || []),
           ];
           this.connections.set(allConnections);
         } else if (schema.connections) {
@@ -633,5 +665,4 @@ export class Playground implements AfterViewInit {
       this.connectionIdCounter = 0;
     }
   }
-
 }
