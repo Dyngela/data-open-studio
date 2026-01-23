@@ -3,7 +3,6 @@ package service
 import (
 	"api"
 	"api/internal/api/handler/mapper"
-	"api/internal/api/handler/request"
 	"api/internal/api/handler/response"
 	"api/internal/api/models"
 	"api/internal/api/repo"
@@ -25,7 +24,7 @@ func NewMetadataService() *MetadataService {
 	}
 }
 func (s *MetadataService) FindAll() ([]response.Metadata, error) {
-	var entities []models.Metadata
+	var entities []models.MetadataDatabase
 	err := s.metadataRepo.Db.Find(&entities).Error
 	if err != nil {
 		return nil, err
@@ -34,7 +33,7 @@ func (s *MetadataService) FindAll() ([]response.Metadata, error) {
 }
 
 func (s *MetadataService) FindByID(id uint) (*response.Metadata, error) {
-	var entity models.Metadata
+	var entity models.MetadataDatabase
 	err := s.metadataRepo.Db.First(&entity, id).Error
 	if err != nil {
 		return nil, err
@@ -43,14 +42,21 @@ func (s *MetadataService) FindByID(id uint) (*response.Metadata, error) {
 	return &mapped, nil
 }
 
-func (s *MetadataService) Update(update request.UpdateMetadata) error {
-	return s.metadataRepo.Db.Model(&models.Metadata{}).Updates(update).Error
+func (s *MetadataService) Update(id uint, patch map[string]any) (*response.Metadata, error) {
+	if err := s.metadataRepo.Db.Model(&models.MetadataDatabase{}).Where("id = ?", id).Updates(patch).Error; err != nil {
+		return nil, err
+	}
+	return s.FindByID(id)
 }
 
-func (s *MetadataService) Create(metadata models.Metadata) error {
-	return s.metadataRepo.Db.Create(&metadata).Error
+func (s *MetadataService) Create(metadata models.MetadataDatabase) (*response.Metadata, error) {
+	if err := s.metadataRepo.Db.Create(&metadata).Error; err != nil {
+		return nil, err
+	}
+	mapped := s.metadataMapper.ToMetadataResponse(metadata)
+	return &mapped, nil
 }
 
 func (s *MetadataService) Delete(id uint) error {
-	return s.metadataRepo.Db.Delete(&models.Metadata{}, id).Error
+	return s.metadataRepo.Db.Delete(&models.MetadataDatabase{}, id).Error
 }

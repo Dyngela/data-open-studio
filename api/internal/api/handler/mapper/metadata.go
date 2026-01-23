@@ -7,7 +7,6 @@ import (
 
 //go:generate go run ../../../../tools/dtomapper -type=MetadataMapper
 type MetadataMapper interface {
-	ToMetadataResponses(entities []models.Metadata) []response.Metadata
-	ToMetadataResponse(m models.Metadata) response.Metadata
+	ToMetadataResponses(entities []models.MetadataDatabase) []response.Metadata
+	ToMetadataResponse(m models.MetadataDatabase) response.Metadata
 }
-
