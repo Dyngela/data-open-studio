@@ -1,6 +1,5 @@
-version: '3.8'
-
 services:
+  # Main application database
   postgres:
     image: postgres:18
     container_name: data-open-studio-db
@@ -19,5 +18,54 @@ services:
       timeout: 5s
       retries: 5
 
+  # Test PostgreSQL database with sample data
+  postgres-test:
+    image: postgres:18
+    container_name: data-open-studio-pg-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql
+      - ./init/postgres-test:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # SQL Server database with sample data
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: data-open-studio-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TestPass123!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./init/sqlserver:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TestPass123!" -C -Q "SELECT 1" || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    command: >
+      /bin/bash -c "
+      /opt/mssql/bin/sqlservr &
+      sleep 30 &&
+      /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'TestPass123!' -C -i /docker-entrypoint-initdb.d/init.sql &&
+      wait
+      "
+
 volumes:
   postgres_data:
+  postgres_test_data:
+  sqlserver_data:
