@@ -24,6 +24,6 @@ type UpdateJob struct {
 
 // ShareJob is for sharing/unsharing a job with users
 type ShareJob struct {
-	UserIDs []uint `json:"userIds" validate:"required"`
-	Role    string `json:"role"` // viewer or editor (default: viewer)
+	UserIDs []uint           `json:"userIds" validate:"required"`
+	Role    models.OwningJob `json:"role"` // viewer or editor (default: viewer)
 }

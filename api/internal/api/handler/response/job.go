@@ -7,11 +7,11 @@ import (
 
 // SharedUser represents a user who has access to a job
 type SharedUser struct {
-	ID     uint   `json:"id"`
-	Email  string `json:"email"`
-	Prenom string `json:"prenom"`
-	Nom    string `json:"nom"`
-	Role   string `json:"role"` // viewer or editor
+	ID     uint             `json:"id"`
+	Email  string           `json:"email"`
+	Prenom string           `json:"prenom"`
+	Nom    string           `json:"nom"`
+	Role   models.OwningJob `json:"role"` // viewer or editor
 }
 
 // Job response without nodes (for listing)

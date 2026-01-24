@@ -52,17 +52,9 @@ func JobHandler(router *graceful.Graceful) {
 }
 
 // getUserID extracts the user ID from the JWT context
-func (h *jobHandler) getUserID(c *gin.Context) (uint, bool) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, response.APIError{Message: "User not authenticated"})
-		return 0, false
-	}
-	return userID.(uint), true
-}
 
 // checkAccess verifies if the user can access the job and returns the role
-func (h *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRole string) bool {
+func (h *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRole models.OwningJob) bool {
 	canAccess, role, err := h.jobService.CanUserAccess(jobID, userID)
 	if err != nil {
 		h.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to check job access")
@@ -76,11 +68,11 @@ func (h *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRol
 	}
 
 	// Check if role is sufficient
-	if requiredRole == "owner" && role != "owner" {
+	if requiredRole == models.Owner && role != models.Owner {
 		c.JSON(http.StatusForbidden, response.APIError{Message: "Only the owner can perform this action"})
 		return false
 	}
-	if requiredRole == "editor" && role != "owner" && role != "editor" {
+	if requiredRole == models.Editor && role != models.Owner && role != models.Editor {
 		c.JSON(http.StatusForbidden, response.APIError{Message: "You don't have edit permissions for this job"})
 		return false
 	}
@@ -90,7 +82,7 @@ func (h *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRol
 
 // getAll returns all jobs visible to the current user (optionally filtered by filePath)
 func (h *jobHandler) getAll(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -123,7 +115,7 @@ func (h *jobHandler) getAll(c *gin.Context) {
 
 // getByID returns a single job with its nodes
 func (h *jobHandler) getByID(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -135,7 +127,7 @@ func (h *jobHandler) getByID(c *gin.Context) {
 	}
 
 	// Check access before returning job
-	if !h.checkAccess(c, uint(id), userID, "viewer") {
+	if !h.checkAccess(c, uint(id), userID, models.Viewer) {
 		return
 	}
 
@@ -151,7 +143,7 @@ func (h *jobHandler) getByID(c *gin.Context) {
 
 // create creates a new job with optional nodes
 func (h *jobHandler) create(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -176,7 +168,7 @@ func (h *jobHandler) create(c *gin.Context) {
 
 	// Share with specified users if any
 	if len(req.SharedWith) > 0 {
-		if err := h.jobService.ShareJob(created.ID, req.SharedWith, "viewer"); err != nil {
+		if err := h.jobService.ShareJob(created.ID, req.SharedWith, models.Viewer); err != nil {
 			h.logger.Error().Err(err).Msg("Failed to share job with users")
 			// Don't fail the create, just log the error
 		}
@@ -195,7 +187,7 @@ func (h *jobHandler) create(c *gin.Context) {
 
 // update updates an existing job and optionally its nodes
 func (h *jobHandler) update(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -207,7 +199,7 @@ func (h *jobHandler) update(c *gin.Context) {
 	}
 
 	// Check edit access
-	if !h.checkAccess(c, uint(id), userID, "editor") {
+	if !h.checkAccess(c, uint(id), userID, models.Editor) {
 		return
 	}
 
@@ -238,8 +230,8 @@ func (h *jobHandler) update(c *gin.Context) {
 	// Update sharing if specified (only owner can change sharing)
 	if req.SharedWith != nil {
 		canAccess, role, _ := h.jobService.CanUserAccess(uint(id), userID)
-		if canAccess && role == "owner" {
-			if err := h.jobService.UpdateJobSharing(uint(id), req.SharedWith, "viewer"); err != nil {
+		if canAccess && role == models.Owner {
+			if err := h.jobService.UpdateJobSharing(uint(id), req.SharedWith, models.Viewer); err != nil {
 				h.logger.Error().Err(err).Msg("Failed to update job sharing")
 			}
 		}
@@ -257,7 +249,7 @@ func (h *jobHandler) update(c *gin.Context) {
 
 // delete removes a job (only owner can delete)
 func (h *jobHandler) delete(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -269,7 +261,7 @@ func (h *jobHandler) delete(c *gin.Context) {
 	}
 
 	// Only owner can delete
-	if !h.checkAccess(c, uint(id), userID, "owner") {
+	if !h.checkAccess(c, uint(id), userID, models.Owner) {
 		return
 	}
 
@@ -284,7 +276,7 @@ func (h *jobHandler) delete(c *gin.Context) {
 
 // share adds users to a job's shared access list (only owner can share)
 func (h *jobHandler) share(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -296,7 +288,7 @@ func (h *jobHandler) share(c *gin.Context) {
 	}
 
 	// Only owner can share
-	if !h.checkAccess(c, uint(id), userID, "owner") {
+	if !h.checkAccess(c, uint(id), userID, models.Owner) {
 		return
 	}
 
@@ -325,7 +317,7 @@ func (h *jobHandler) share(c *gin.Context) {
 
 // unshare removes users from a job's shared access list (only owner can unshare)
 func (h *jobHandler) unshare(c *gin.Context) {
-	userID, ok := h.getUserID(c)
+	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
 	}
@@ -337,7 +329,7 @@ func (h *jobHandler) unshare(c *gin.Context) {
 	}
 
 	// Only owner can unshare
-	if !h.checkAccess(c, uint(id), userID, "owner") {
+	if !h.checkAccess(c, uint(id), userID, models.Owner) {
 		return
 	}
 

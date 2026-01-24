@@ -155,7 +155,7 @@ func (slf *JobService) Delete(id uint) error {
 }
 
 // CanUserAccess checks if a user can access a job
-func (slf *JobService) CanUserAccess(jobID, userID uint) (bool, string, error) {
+func (slf *JobService) CanUserAccess(jobID, userID uint) (bool, models.OwningJob, error) {
 	var job models.Job
 	if err := slf.jobRepo.Db.First(&job, jobID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -166,12 +166,12 @@ func (slf *JobService) CanUserAccess(jobID, userID uint) (bool, string, error) {
 
 	// Owner has full access
 	if job.CreatorID == userID {
-		return true, "owner", nil
+		return true, models.Owner, nil
 	}
 
 	// Public jobs are accessible to all
 	if job.Visibility == models.JobVisibilityPublic {
-		return true, "viewer", nil
+		return true, models.Viewer, nil
 	}
 
 	// Check if user has explicit access
@@ -188,9 +188,9 @@ func (slf *JobService) CanUserAccess(jobID, userID uint) (bool, string, error) {
 }
 
 // ShareJob shares a job with users
-func (slf *JobService) ShareJob(jobID uint, userIDs []uint, role string) error {
+func (slf *JobService) ShareJob(jobID uint, userIDs []uint, role models.OwningJob) error {
 	if role == "" {
-		role = "viewer"
+		role = models.Viewer
 	}
 
 	tx := slf.jobRepo.Db.Begin()
@@ -235,9 +235,9 @@ func (slf *JobService) GetJobAccess(jobID uint) ([]models.JobUserAccess, error) 
 }
 
 // UpdateJobSharing replaces the sharing list for a job
-func (slf *JobService) UpdateJobSharing(jobID uint, userIDs []uint, role string) error {
+func (slf *JobService) UpdateJobSharing(jobID uint, userIDs []uint, role models.OwningJob) error {
 	if role == "" {
-		role = "viewer"
+		role = models.Viewer
 	}
 
 	tx := slf.jobRepo.Db.Begin()

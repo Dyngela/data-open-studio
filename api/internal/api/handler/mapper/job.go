@@ -8,6 +8,7 @@ import (
 
 // JobMapper handles job-related mappings
 // Note: ToJobResponse methods are implemented manually due to complex Nodes mapping
+//
 //go:generate go run ../../../../tools/dtomapper -type=JobMapper
 type JobMapper interface {
 	// Request mapping
@@ -47,7 +48,7 @@ func ToJobResponseWithNodes(j models.Job, accessList []models.JobUserAccess) res
 	if len(j.SharedWith) > 0 {
 		resp.SharedWith = make([]response.SharedUser, len(j.SharedWith))
 		for i, u := range j.SharedWith {
-			role := "viewer" // default
+			role := models.Viewer // default
 			for _, access := range accessList {
 				if access.UserID == u.ID {
 					role = access.Role

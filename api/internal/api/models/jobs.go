@@ -9,6 +9,14 @@ const (
 	JobVisibilityPrivate JobVisibility = "private"
 )
 
+type OwningJob string
+
+const (
+	Owner  OwningJob = "owner"
+	Editor OwningJob = "editor"
+	Viewer OwningJob = "viewer"
+)
+
 type Job struct {
 	ID          uint          `gorm:"primaryKey" json:"id"`
 	Name        string        `json:"name"`
@@ -30,6 +38,6 @@ type Job struct {
 type JobUserAccess struct {
 	JobID     uint      `gorm:"primaryKey"`
 	UserID    uint      `gorm:"primaryKey"`
-	Role      string    `gorm:"default:viewer"` // viewer, editor
+	Role      OwningJob `gorm:"default:viewer"` // viewer, editor
 	CreatedAt time.Time `json:"createdAt"`
 }
