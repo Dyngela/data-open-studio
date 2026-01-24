@@ -1,6 +1,6 @@
 import { Component, input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NodeInstance } from '../models/node.model';
+import { NodeInstance } from '../../nodes/node.type';
 
 interface MinimapBounds {
   minX: number;

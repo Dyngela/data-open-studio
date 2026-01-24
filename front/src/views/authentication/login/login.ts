@@ -1,5 +1,5 @@
 import {Component, effect, inject} from '@angular/core';
-import {AuthService} from '../../../../core/api/auth.service';
+import {AuthService} from '../../../core/api/auth.service';
 import {Router} from '@angular/router';
 import {FormControl, FormGroup, Validators} from '@angular/forms';
 

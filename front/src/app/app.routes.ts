@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { Playground } from './playground/playground/playground';
+import { Playground } from '../views/graph/playground/playground';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'playground', pathMatch: 'full' },

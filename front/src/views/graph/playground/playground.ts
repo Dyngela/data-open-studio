@@ -11,7 +11,7 @@ import { CdkDropList, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NodePanel } from '../node-panel/node-panel';
 import { NodeInstanceComponent } from '../node-instance/node-instance';
 import { Minimap } from '../minimap/minimap';
-import { NodeInstance, Connection, NodeType } from '../models/node.model';
+import { NodeInstance, Connection, NodeType } from '../../nodes/node.type';
 import { DbInputModal } from '../../nodes/db-input/db-input.modal';
 import { StartModal } from '../../nodes/start/start.modal';
 import { TransformModal } from '../../nodes/transform/transform.modal';

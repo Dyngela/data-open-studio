@@ -1,5 +1,3 @@
-import { MinValidator } from "@angular/forms";
-
 export interface NodeType {
   id: string;
   label: string;

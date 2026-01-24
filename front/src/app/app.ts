@@ -1,8 +1,6 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
-import { Playground } from './playground/playground/playground';
-import { JobsWsService } from '../core/api/job.service';
+import { Playground } from '../views/graph/playground/playground';
 import { DbType } from '../core/api/metadata.type';
-import {BaseWebSocketService} from '../core/services/base-ws.service';
 import {DbNodeService} from '../core/api/db-node.service';
 
 @Component({

@@ -1,8 +1,8 @@
 import { Component, input, output, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NodeInstance } from '../../playground/models/node.model';
-import { ConnectionService, DbConnection, DbType } from '../../playground/services/connection.service';
+import { NodeInstance } from '../node.type';
+import { ConnectionService, DbConnection, DbType } from '../connection.service';
 import { BaseWebSocketService } from '../../../core/services/base-ws.service';
 import { DataModel, DbNodeGuessDataModelRequest, DbType as WsDbType, } from '../../../core/api/metadata.type';
 

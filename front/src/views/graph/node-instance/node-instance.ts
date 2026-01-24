@@ -1,6 +1,6 @@
 import { Component, input, output, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NodeInstance } from '../models/node.model';
+import { NodeInstance } from '../../nodes/node.type';
 
 @Component({
   selector: 'app-node-instance',
@@ -69,7 +69,7 @@ export class NodeInstanceComponent {
   getDbTypeIcon(): string {
     const cfg = (this.node().config as Record<string, any>) || {};
     const dbType = cfg['dbType'] || 'postgresql';
-    
+
     switch (dbType) {
       case 'postgresql':
         return 'pi pi-database';
@@ -81,7 +81,7 @@ export class NodeInstanceComponent {
         return 'pi pi-database';
     }
   }
-  
+
   getDbQuery(): string {
     const query = this.node().config?.['query'];
     if (Array.isArray(query)) return query.join('\n');
