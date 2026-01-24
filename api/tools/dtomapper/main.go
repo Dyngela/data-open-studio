@@ -45,13 +45,6 @@ func main() {
 		packageName = pkgName
 
 		for _, file := range pkg.Files {
-			// Extract imports from the source file
-			for _, imp := range file.Imports {
-				if imp.Path != nil {
-					fileImports = append(fileImports, imp.Path.Value)
-				}
-			}
-
 			ast.Inspect(file, func(n ast.Node) bool {
 				typeSpec, ok := n.(*ast.TypeSpec)
 				if !ok || typeSpec.Name.Name != *typeName {
@@ -68,6 +61,12 @@ func main() {
 			})
 
 			if interfaceInfo != nil {
+				// Extract imports only from the file containing the target interface
+				for _, imp := range file.Imports {
+					if imp.Path != nil {
+						fileImports = append(fileImports, imp.Path.Value)
+					}
+				}
 				break
 			}
 		}
@@ -126,6 +125,7 @@ type MethodInfo struct {
 	Params     []ParamInfo
 	Returns    []string
 	IsUpdate   bool
+	IsPatch    bool
 	DocComment string
 }
 
@@ -170,12 +170,15 @@ func parseInterface(name string, iface *ast.InterfaceType, fset *token.FileSet) 
 			Returns: []string{},
 		}
 
-		// Check for --update comment
+		// Check for special comments: update, patch
 		if method.Doc != nil {
 			for _, comment := range method.Doc.List {
 				methodInfo.DocComment = comment.Text
-				if strings.Contains(comment.Text, "--update") {
+				if strings.Contains(comment.Text, "update") {
 					methodInfo.IsUpdate = true
+				}
+				if strings.Contains(comment.Text, "patch") {
+					methodInfo.IsPatch = true
 				}
 			}
 		}
@@ -294,6 +297,8 @@ func exprToString(expr ast.Expr) string {
 		return "*" + exprToString(t.X)
 	case *ast.ArrayType:
 		return "[]" + exprToString(t.Elt)
+	case *ast.MapType:
+		return "map[" + exprToString(t.Key) + "]" + exprToString(t.Value)
 	default:
 		return ""
 	}
@@ -316,7 +321,7 @@ func New{{.InterfaceName}}() {{.InterfaceName}} {
 }
 {{range .Methods}}
 // {{.Name}} {{.Comment}}
-func (m *{{$.ImplName}}) {{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{if .Returns}}{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{$r}}{{end}}{{end}} {
+func (mapper *{{$.ImplName}}) {{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{if .Returns}}{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{$r}}{{end}}{{end}} {
 {{.Body}}
 }
 {{end}}
@@ -375,26 +380,38 @@ func generateMapperImpl(packageName string, iface *InterfaceInfo, structMap map[
 }
 
 func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) string {
-	if len(method.Returns) == 0 {
-		return "\t// TODO: implement\n\tpanic(\"not implemented\")"
-	}
-
 	if len(method.Params) == 0 {
 		return "\t// TODO: implement (no parameters)\n\tpanic(\"not implemented\")"
+	}
+
+	// Handle update pattern: UpdateDbMetadata(req Request, m *Model)
+	// Modifies the target struct pointer with non-nil fields from source
+	if method.IsUpdate && len(method.Params) >= 2 && len(method.Returns) == 0 {
+		return generateUpdateMethodBody(method, structMap)
+	}
+
+	// Handle patch pattern: PatchDbMetadata(req Request) map[string]any
+	// Returns a map with non-nil fields from source
+	if method.IsPatch && len(method.Params) >= 1 && len(method.Returns) == 1 && strings.HasPrefix(method.Returns[0], "map[") {
+		return generatePatchMethodBody(method, structMap)
+	}
+
+	if len(method.Returns) == 0 {
+		return "\t// TODO: implement\n\tpanic(\"not implemented\")"
 	}
 
 	sourceType := method.Params[0].Type
 	targetType := method.Returns[0]
 
-	// Clean up types and extract package prefixes
+	// Handle slice-to-slice mapping: ToResponses([]Entity) []Response
+	// Delegates to single-item mapper method
+	if strings.HasPrefix(sourceType, "[]") && strings.HasPrefix(targetType, "[]") {
+		return generateSliceMapperBody(method, structMap)
+	}
+
+	// Clean up types
 	sourceType = strings.TrimPrefix(sourceType, "*")
 	targetType = strings.TrimPrefix(targetType, "*")
-
-	// Extract package prefix from target type (e.g., "models.Vehicle" -> "models")
-	targetPackagePrefix := ""
-	if idx := strings.LastIndex(targetType, "."); idx >= 0 {
-		targetPackagePrefix = targetType[:idx+1]
-	}
 
 	sourceStruct := findStruct(sourceType, structMap)
 	targetStruct := findStruct(targetType, structMap)
@@ -414,88 +431,24 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 
 	paramName := method.Params[0].Name
 
-	for _, sourceField := range sourceStruct.Fields {
+	for i := range sourceStruct.Fields {
+		sourceField := &sourceStruct.Fields[i]
 		targetField, exists := targetFieldMap[sourceField.Name]
 		if !exists {
 			continue
 		}
 
-		// Handle slice fields with nested struct mapping
-		if strings.HasPrefix(sourceField.Type, "[]") && strings.HasPrefix(targetField.Type, "[]") {
-			sourceElemType := strings.TrimPrefix(sourceField.Type, "[]")
-			targetElemType := strings.TrimPrefix(targetField.Type, "[]")
-
-			// Apply package prefix if target element type doesn't have one
-			targetElemTypeForMake := targetElemType
-			if !strings.Contains(targetElemType, ".") && targetPackagePrefix != "" {
-				targetElemTypeForMake = targetPackagePrefix + targetElemType
-			}
-
-			sourceElemStruct := findStruct(sourceElemType, structMap)
-			targetElemStruct := findStruct(targetElemType, structMap)
-
-			if sourceElemStruct != nil && targetElemStruct != nil {
-				// Map fields within the slice element
-				targetElemFieldMap := make(map[string]*FieldInfo)
-				for i := range targetElemStruct.Fields {
-					targetElemFieldMap[targetElemStruct.Fields[i].Name] = &targetElemStruct.Fields[i]
-				}
-
-				// Collect field mappings
-				var fieldMappings []string
-				for _, srcField := range sourceElemStruct.Fields {
-					tgtField, exists := targetElemFieldMap[srcField.Name]
-					if !exists {
-						continue
-					}
-
-					// Skip nested slices for now
-					if strings.HasPrefix(srcField.Type, "[]") || strings.HasPrefix(tgtField.Type, "[]") {
-						continue
-					}
-
-					// Handle pointer conversions in slice elements
-					if tgtField.IsPtr && !srcField.IsPtr {
-						fieldMappings = append(fieldMappings,
-							fmt.Sprintf("\t\t\tval%s := src.%s\n\t\t\tresult.%s[i].%s = &val%s",
-								srcField.Name, srcField.Name, targetField.Name, tgtField.Name, srcField.Name))
-					} else if !tgtField.IsPtr && srcField.IsPtr {
-						fieldMappings = append(fieldMappings,
-							fmt.Sprintf("\t\t\tif src.%s != nil {\n\t\t\t\tresult.%s[i].%s = *src.%s\n\t\t\t}",
-								srcField.Name, targetField.Name, tgtField.Name, srcField.Name))
-					} else {
-						fieldMappings = append(fieldMappings,
-							fmt.Sprintf("\t\t\tresult.%s[i].%s = src.%s", targetField.Name, tgtField.Name, srcField.Name))
-					}
-				}
-
-				// Only generate the loop if there are fields to map
-				if len(fieldMappings) > 0 {
-					buf.WriteString(fmt.Sprintf("\tif len(%s.%s) > 0 {\n", paramName, sourceField.Name))
-					buf.WriteString(fmt.Sprintf("\t\tresult.%s = make([]%s, len(%s.%s))\n",
-						targetField.Name, targetElemTypeForMake, paramName, sourceField.Name))
-					buf.WriteString(fmt.Sprintf("\t\tfor i, src := range %s.%s {\n", paramName, sourceField.Name))
-
-					for _, mapping := range fieldMappings {
-						buf.WriteString(mapping + "\n")
-					}
-
-					buf.WriteString("\t\t}\n")
-					buf.WriteString("\t}\n")
-				} else {
-					// No fields to map
-					buf.WriteString(fmt.Sprintf("\t// TODO: No matching fields to map for slice %s (%s -> %s)\n",
-						sourceField.Name, sourceElemType, targetElemType))
-				}
-				continue
-			}
-
-			// If we can't find struct definitions, add TODO
-			buf.WriteString(fmt.Sprintf("\t// TODO: Handle slice field %s manually (struct not found)\n", sourceField.Name))
+		// Handle slice fields
+		if strings.HasPrefix(sourceField.Type, "[]") || strings.HasPrefix(targetField.Type, "[]") {
+			sliceCode := generateSliceFieldMapping(sourceField, targetField, paramName, "result", structMap, false)
+			buf.WriteString(sliceCode)
 			continue
-		} else if strings.HasPrefix(sourceField.Type, "[]") || strings.HasPrefix(targetField.Type, "[]") {
-			// Only one side is a slice or types don't match
-			buf.WriteString(fmt.Sprintf("\t// TODO: Handle slice field %s manually (type mismatch)\n", sourceField.Name))
+		}
+
+		// Handle pointer-to-slice fields (e.g., *[]Type)
+		if strings.HasPrefix(sourceField.BaseType, "[]") || strings.HasPrefix(targetField.BaseType, "[]") {
+			sliceCode := generatePtrSliceFieldMapping(sourceField, targetField, paramName, "result", structMap)
+			buf.WriteString(sliceCode)
 			continue
 		}
 
@@ -538,6 +491,385 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 
 	buf.WriteString("\treturn result\n")
 	return buf.String()
+}
+
+// generateSliceMapperBody generates code for slice-to-slice mapping
+// Pattern: ToResponses(entities []models.Entity) []response.Response
+// It looks for a corresponding single-item mapper method to delegate to
+func generateSliceMapperBody(method MethodInfo, structMap map[string]*StructInfo) string {
+	sourceType := strings.TrimPrefix(method.Params[0].Type, "[]")
+	targetType := strings.TrimPrefix(method.Returns[0], "[]")
+	paramName := method.Params[0].Name
+
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("\tresult := make(%s, len(%s))\n", method.Returns[0], paramName))
+	buf.WriteString(fmt.Sprintf("\tfor i, item := range %s {\n", paramName))
+
+	// Try to find a matching single-item mapper method
+	// Look for a method that takes sourceType and returns targetType
+	singleMapperName := findSingleMapperMethod(method.Name, sourceType, targetType)
+	if singleMapperName != "" {
+		buf.WriteString(fmt.Sprintf("\t\tresult[i] = mapper.%s(item)\n", singleMapperName))
+	} else {
+		// Inline the mapping
+		sourceStruct := findStruct(sourceType, structMap)
+		targetStruct := findStruct(targetType, structMap)
+
+		if sourceStruct != nil && targetStruct != nil {
+			targetFieldMap := make(map[string]*FieldInfo)
+			for i := range targetStruct.Fields {
+				targetFieldMap[targetStruct.Fields[i].Name] = &targetStruct.Fields[i]
+			}
+
+			for _, sourceField := range sourceStruct.Fields {
+				targetField, exists := targetFieldMap[sourceField.Name]
+				if !exists || strings.HasPrefix(sourceField.Type, "[]") {
+					continue
+				}
+
+				if targetField.IsPtr && !sourceField.IsPtr {
+					buf.WriteString(fmt.Sprintf("\t\tval%s := item.%s\n", sourceField.Name, sourceField.Name))
+					buf.WriteString(fmt.Sprintf("\t\tresult[i].%s = &val%s\n", targetField.Name, sourceField.Name))
+				} else if !targetField.IsPtr && sourceField.IsPtr {
+					buf.WriteString(fmt.Sprintf("\t\tif item.%s != nil {\n", sourceField.Name))
+					buf.WriteString(fmt.Sprintf("\t\t\tresult[i].%s = *item.%s\n", targetField.Name, sourceField.Name))
+					buf.WriteString("\t\t}\n")
+				} else {
+					buf.WriteString(fmt.Sprintf("\t\tresult[i].%s = item.%s\n", targetField.Name, sourceField.Name))
+				}
+			}
+		} else {
+			buf.WriteString("\t\t// TODO: implement field mapping\n")
+			buf.WriteString(fmt.Sprintf("\t\t_ = item // placeholder\n"))
+		}
+	}
+
+	buf.WriteString("\t}\n")
+	buf.WriteString("\treturn result\n")
+	return buf.String()
+}
+
+// findSingleMapperMethod tries to find a corresponding single-item method name
+// e.g., ToMetadataResponses -> ToMetadataResponse
+func findSingleMapperMethod(sliceMethodName, sourceType, targetType string) string {
+	// Try common patterns: ToXxxs -> ToXxx, ToXxxList -> ToXxx
+	if strings.HasSuffix(sliceMethodName, "s") && !strings.HasSuffix(sliceMethodName, "ss") {
+		return strings.TrimSuffix(sliceMethodName, "s")
+	}
+	if strings.HasSuffix(sliceMethodName, "List") {
+		return strings.TrimSuffix(sliceMethodName, "List")
+	}
+	if strings.HasSuffix(sliceMethodName, "es") {
+		return strings.TrimSuffix(sliceMethodName, "es")
+	}
+	return ""
+}
+
+// generateUpdateMethodBody generates code for update methods that modify an existing struct
+// Pattern: UpdateDbMetadata(req request.UpdateMetadata, m *models.MetadataDatabase)
+func generateUpdateMethodBody(method MethodInfo, structMap map[string]*StructInfo) string {
+	sourceType := strings.TrimPrefix(method.Params[0].Type, "*")
+	targetType := strings.TrimPrefix(method.Params[1].Type, "*")
+
+	sourceStruct := findStruct(sourceType, structMap)
+	targetStruct := findStruct(targetType, structMap)
+
+	if sourceStruct == nil || targetStruct == nil {
+		return fmt.Sprintf("\t// TODO: Could not find struct definitions for %s or %s\n\tpanic(\"not implemented\")", sourceType, targetType)
+	}
+
+	var buf bytes.Buffer
+	reqParam := method.Params[0].Name
+	targetParam := method.Params[1].Name
+
+	// Build target field map for matching
+	targetFieldMap := make(map[string]*FieldInfo)
+	for i := range targetStruct.Fields {
+		targetFieldMap[targetStruct.Fields[i].Name] = &targetStruct.Fields[i]
+	}
+
+	for i := range sourceStruct.Fields {
+		sourceField := &sourceStruct.Fields[i]
+		targetField, exists := targetFieldMap[sourceField.Name]
+		if !exists {
+			continue
+		}
+
+		// Handle slice fields
+		if strings.HasPrefix(sourceField.Type, "[]") || strings.HasPrefix(targetField.Type, "[]") {
+			sliceCode := generateSliceFieldMapping(sourceField, targetField, reqParam, targetParam, structMap, true)
+			buf.WriteString(sliceCode)
+			continue
+		}
+
+		// Handle pointer-to-slice fields (e.g., *[]Type)
+		if strings.HasPrefix(sourceField.BaseType, "[]") || strings.HasPrefix(targetField.BaseType, "[]") {
+			sliceCode := generatePtrSliceFieldMapping(sourceField, targetField, reqParam, targetParam, structMap)
+			buf.WriteString(sliceCode)
+			continue
+		}
+
+		// For update methods, only update if source field is non-nil (pointer fields)
+		if sourceField.IsPtr {
+			buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", reqParam, sourceField.Name))
+
+			if targetField.IsPtr && sourceField.IsPtr {
+				// Both pointers: direct assignment
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = %s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+			} else if !targetField.IsPtr && sourceField.IsPtr {
+				// Source is pointer, target is not: dereference
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = *%s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+			} else if targetField.IsPtr && !sourceField.IsPtr {
+				// Source is not pointer, target is: take address
+				buf.WriteString(fmt.Sprintf("\t\tval := %s.%s\n", reqParam, sourceField.Name))
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = &val\n", targetParam, targetField.Name))
+			}
+
+			buf.WriteString("\t}\n")
+		} else {
+			// Non-pointer source field: always assign
+			if targetField.IsPtr && !sourceField.IsPtr {
+				buf.WriteString(fmt.Sprintf("\tval%s := %s.%s\n", sourceField.Name, reqParam, sourceField.Name))
+				buf.WriteString(fmt.Sprintf("\t%s.%s = &val%s\n", targetParam, targetField.Name, sourceField.Name))
+			} else if !targetField.IsPtr && sourceField.IsPtr {
+				buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", reqParam, sourceField.Name))
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = *%s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+				buf.WriteString("\t}\n")
+			} else {
+				buf.WriteString(fmt.Sprintf("\t%s.%s = %s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+			}
+		}
+	}
+
+	return buf.String()
+}
+
+// generateSliceFieldMapping generates code for mapping slice fields
+// isUpdate: if true, generates code for update pattern (modifying existing struct)
+func generateSliceFieldMapping(sourceField, targetField *FieldInfo, srcParam, tgtParam string, structMap map[string]*StructInfo, isUpdate bool) string {
+	var buf bytes.Buffer
+
+	sourceElemType := strings.TrimPrefix(sourceField.Type, "[]")
+	targetElemType := strings.TrimPrefix(targetField.Type, "[]")
+
+	// Check if element types are the same (simple slice copy)
+	if sourceElemType == targetElemType {
+		if isUpdate {
+			buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\t%s.%s = make(%s, len(%s.%s))\n", tgtParam, targetField.Name, targetField.Type, srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\tcopy(%s.%s, %s.%s)\n", tgtParam, targetField.Name, srcParam, sourceField.Name))
+			buf.WriteString("\t}\n")
+		} else {
+			buf.WriteString(fmt.Sprintf("\tif len(%s.%s) > 0 {\n", srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\t%s.%s = make(%s, len(%s.%s))\n", tgtParam, targetField.Name, targetField.Type, srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\tcopy(%s.%s, %s.%s)\n", tgtParam, targetField.Name, srcParam, sourceField.Name))
+			buf.WriteString("\t}\n")
+		}
+		return buf.String()
+	}
+
+	// Element types differ - need to map each element
+	sourceElemStruct := findStruct(sourceElemType, structMap)
+	targetElemStruct := findStruct(targetElemType, structMap)
+
+	if sourceElemStruct == nil || targetElemStruct == nil {
+		buf.WriteString(fmt.Sprintf("\t// TODO: Handle slice field %s manually (element struct not found: %s -> %s)\n",
+			sourceField.Name, sourceElemType, targetElemType))
+		return buf.String()
+	}
+
+	// Build target element field map
+	targetElemFieldMap := make(map[string]*FieldInfo)
+	for i := range targetElemStruct.Fields {
+		targetElemFieldMap[targetElemStruct.Fields[i].Name] = &targetElemStruct.Fields[i]
+	}
+
+	// Collect field mappings for elements
+	var fieldMappings []string
+	for _, srcField := range sourceElemStruct.Fields {
+		tgtField, exists := targetElemFieldMap[srcField.Name]
+		if !exists {
+			continue
+		}
+
+		// Skip nested slices
+		if strings.HasPrefix(srcField.Type, "[]") || strings.HasPrefix(tgtField.Type, "[]") {
+			continue
+		}
+
+		if tgtField.IsPtr && !srcField.IsPtr {
+			fieldMappings = append(fieldMappings,
+				fmt.Sprintf("\t\t\tval%s := src.%s\n\t\t\t%s.%s[i].%s = &val%s",
+					srcField.Name, srcField.Name, tgtParam, targetField.Name, tgtField.Name, srcField.Name))
+		} else if !tgtField.IsPtr && srcField.IsPtr {
+			fieldMappings = append(fieldMappings,
+				fmt.Sprintf("\t\t\tif src.%s != nil {\n\t\t\t\t%s.%s[i].%s = *src.%s\n\t\t\t}",
+					srcField.Name, tgtParam, targetField.Name, tgtField.Name, srcField.Name))
+		} else {
+			fieldMappings = append(fieldMappings,
+				fmt.Sprintf("\t\t\t%s.%s[i].%s = src.%s", tgtParam, targetField.Name, tgtField.Name, srcField.Name))
+		}
+	}
+
+	if len(fieldMappings) == 0 {
+		buf.WriteString(fmt.Sprintf("\t// TODO: No matching fields to map for slice %s (%s -> %s)\n",
+			sourceField.Name, sourceElemType, targetElemType))
+		return buf.String()
+	}
+
+	if isUpdate {
+		buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", srcParam, sourceField.Name))
+	} else {
+		buf.WriteString(fmt.Sprintf("\tif len(%s.%s) > 0 {\n", srcParam, sourceField.Name))
+	}
+	buf.WriteString(fmt.Sprintf("\t\t%s.%s = make(%s, len(%s.%s))\n",
+		tgtParam, targetField.Name, targetField.Type, srcParam, sourceField.Name))
+	buf.WriteString(fmt.Sprintf("\t\tfor i, src := range %s.%s {\n", srcParam, sourceField.Name))
+
+	for _, mapping := range fieldMappings {
+		buf.WriteString(mapping + "\n")
+	}
+
+	buf.WriteString("\t\t}\n")
+	buf.WriteString("\t}\n")
+
+	return buf.String()
+}
+
+// generatePtrSliceFieldMapping generates code for pointer-to-slice fields (e.g., *[]Type)
+func generatePtrSliceFieldMapping(sourceField, targetField *FieldInfo, srcParam, tgtParam string, structMap map[string]*StructInfo) string {
+	var buf bytes.Buffer
+
+	// For pointer-to-slice, check if pointer is non-nil, then map the slice
+	sourceElemType := strings.TrimPrefix(sourceField.BaseType, "[]")
+	targetElemType := strings.TrimPrefix(targetField.BaseType, "[]")
+
+	buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", srcParam, sourceField.Name))
+
+	if sourceElemType == targetElemType {
+		// Same element types - simple copy
+		if targetField.IsPtr {
+			buf.WriteString(fmt.Sprintf("\t\tslice := make(%s, len(*%s.%s))\n", sourceField.BaseType, srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\tcopy(slice, *%s.%s)\n", srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\t%s.%s = &slice\n", tgtParam, targetField.Name))
+		} else {
+			buf.WriteString(fmt.Sprintf("\t\t%s.%s = make(%s, len(*%s.%s))\n", tgtParam, targetField.Name, targetField.Type, srcParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\tcopy(%s.%s, *%s.%s)\n", tgtParam, targetField.Name, srcParam, sourceField.Name))
+		}
+	} else {
+		// Different element types - need element-wise mapping
+		sourceElemStruct := findStruct(sourceElemType, structMap)
+		targetElemStruct := findStruct(targetElemType, structMap)
+
+		if sourceElemStruct == nil || targetElemStruct == nil {
+			buf.WriteString(fmt.Sprintf("\t\t// TODO: Handle ptr slice field %s manually (element struct not found)\n", sourceField.Name))
+		} else {
+			targetElemFieldMap := make(map[string]*FieldInfo)
+			for i := range targetElemStruct.Fields {
+				targetElemFieldMap[targetElemStruct.Fields[i].Name] = &targetElemStruct.Fields[i]
+			}
+
+			if targetField.IsPtr {
+				buf.WriteString(fmt.Sprintf("\t\tslice := make(%s, len(*%s.%s))\n", targetField.BaseType, srcParam, sourceField.Name))
+				buf.WriteString(fmt.Sprintf("\t\tfor i, src := range *%s.%s {\n", srcParam, sourceField.Name))
+			} else {
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = make(%s, len(*%s.%s))\n", tgtParam, targetField.Name, targetField.Type, srcParam, sourceField.Name))
+				buf.WriteString(fmt.Sprintf("\t\tfor i, src := range *%s.%s {\n", srcParam, sourceField.Name))
+			}
+
+			for _, srcField := range sourceElemStruct.Fields {
+				tgtField, exists := targetElemFieldMap[srcField.Name]
+				if !exists || strings.HasPrefix(srcField.Type, "[]") {
+					continue
+				}
+
+				tgtRef := fmt.Sprintf("%s.%s[i]", tgtParam, targetField.Name)
+				if targetField.IsPtr {
+					tgtRef = "slice[i]"
+				}
+
+				if tgtField.IsPtr && !srcField.IsPtr {
+					buf.WriteString(fmt.Sprintf("\t\t\tval%s := src.%s\n", srcField.Name, srcField.Name))
+					buf.WriteString(fmt.Sprintf("\t\t\t%s.%s = &val%s\n", tgtRef, tgtField.Name, srcField.Name))
+				} else if !tgtField.IsPtr && srcField.IsPtr {
+					buf.WriteString(fmt.Sprintf("\t\t\tif src.%s != nil {\n", srcField.Name))
+					buf.WriteString(fmt.Sprintf("\t\t\t\t%s.%s = *src.%s\n", tgtRef, tgtField.Name, srcField.Name))
+					buf.WriteString("\t\t\t}\n")
+				} else {
+					buf.WriteString(fmt.Sprintf("\t\t\t%s.%s = src.%s\n", tgtRef, tgtField.Name, srcField.Name))
+				}
+			}
+
+			buf.WriteString("\t\t}\n")
+			if targetField.IsPtr {
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = &slice\n", tgtParam, targetField.Name))
+			}
+		}
+	}
+
+	buf.WriteString("\t}\n")
+	return buf.String()
+}
+
+// generatePatchMethodBody generates code for patch methods that return a map with non-nil fields
+// Pattern: PatchDbMetadata(req request.UpdateMetadata) map[string]any
+func generatePatchMethodBody(method MethodInfo, structMap map[string]*StructInfo) string {
+	sourceType := strings.TrimPrefix(method.Params[0].Type, "*")
+
+	sourceStruct := findStruct(sourceType, structMap)
+
+	if sourceStruct == nil {
+		return fmt.Sprintf("\t// TODO: Could not find struct definition for %s\n\tpanic(\"not implemented\")", sourceType)
+	}
+
+	var buf bytes.Buffer
+	reqParam := method.Params[0].Name
+
+	// Create the result map
+	buf.WriteString("\tresult := make(map[string]any)\n")
+
+	for _, sourceField := range sourceStruct.Fields {
+		// Skip slice fields for now
+		if strings.HasPrefix(sourceField.Type, "[]") {
+			buf.WriteString(fmt.Sprintf("\t// TODO: Handle slice field %s manually\n", sourceField.Name))
+			continue
+		}
+
+		// Convert field name to snake_case for database column name
+		snakeCaseName := toSnakeCase(sourceField.Name)
+
+		if sourceField.IsPtr {
+			// Pointer field: only add to map if non-nil
+			buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", reqParam, sourceField.Name))
+			buf.WriteString(fmt.Sprintf("\t\tresult[\"%s\"] = *%s.%s\n", snakeCaseName, reqParam, sourceField.Name))
+			buf.WriteString("\t}\n")
+		} else {
+			// Non-pointer field: always add to map
+			buf.WriteString(fmt.Sprintf("\tresult[\"%s\"] = %s.%s\n", snakeCaseName, reqParam, sourceField.Name))
+		}
+	}
+
+	buf.WriteString("\treturn result\n")
+	return buf.String()
+}
+
+// toSnakeCase converts a CamelCase string to snake_case
+// Handles acronyms like ID, SSL, URL properly
+func toSnakeCase(s string) string {
+	var result bytes.Buffer
+	runes := []rune(s)
+	for i, r := range runes {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			// Check if previous char was lowercase OR if next char is lowercase (end of acronym)
+			prevLower := runes[i-1] >= 'a' && runes[i-1] <= 'z'
+			nextLower := i+1 < len(runes) && runes[i+1] >= 'a' && runes[i+1] <= 'z'
+			if prevLower || nextLower {
+				result.WriteByte('_')
+			}
+		}
+		result.WriteRune(r)
+	}
+	return strings.ToLower(result.String())
 }
 
 func findStruct(typeName string, structMap map[string]*StructInfo) *StructInfo {

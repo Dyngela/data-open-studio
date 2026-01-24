@@ -1,8 +1,10 @@
-import { Component, input, output, signal, inject } from '@angular/core';
+import { Component, input, output, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NodeInstance } from '../../playground/models/node.model';
 import { ConnectionService, DbConnection, DbType } from '../../playground/services/connection.service';
+import { BaseWebSocketService } from '../../../core/services/base-ws.service';
+import { DataModel, DbNodeGuessDataModelRequest, DbType as WsDbType, } from '../../../core/api/metadata.type';
 
 @Component({
   selector: 'app-db-input-modal',
@@ -17,10 +19,16 @@ export class DbInputModal {
   save = output<{ connectionString: string; table: string; query: string; database?: string; connectionId?: string; dbType?: DbType; host?: string; port?: string; username?: string; password?: string; sslMode?: string }>();
 
   private connectionService = inject(ConnectionService);
+  private wsService = inject(BaseWebSocketService);
 
   mode = signal<'select' | 'new' | 'edit'>('select');
   selectedConnectionId = signal<string>('');
-  
+
+  // Schema guessing state
+  isGuessingSchema = signal(false);
+  guessedSchema = signal<DataModel[]>([]);
+  guessError = signal<string | null>(null);
+
   formState = {
     connectionString: '',
     table: '',
@@ -36,6 +44,10 @@ export class DbInputModal {
   };
 
   connections = signal<DbConnection[]>([]);
+
+  constructor() {
+    // Listen for guess schema responses
+  }
 
   ngOnInit() {
     this.connections.set(this.connectionService.getConnections());
@@ -229,5 +241,17 @@ export class DbInputModal {
       );
       this.switchMode('select');
     }
+  }
+
+  /**
+   * Guess the schema/data model from the query
+   */
+  guessSchema() {
+    if (!this.formState.query?.trim()) {
+      this.guessError.set('Please enter a query first');
+      return;
+    }
+
+
   }
 }

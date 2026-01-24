@@ -432,19 +432,73 @@
     <span class="field-label">
       <i class="pi pi-code"></i>
       Requête SQL
-      <button class="btn-icon" type="button" title="Générer automatiquement">
-        <i class="pi pi-sparkles"></i>
-        Trouver le schéma
+      <button
+        class="btn-icon"
+        type="button"
+        title="Deviner le schéma depuis la requête"
+        (click)="guessSchema()"
+        [disabled]="isGuessingSchema()"
+      >
+        @if (isGuessingSchema()) {
+          <i class="pi pi-spin pi-spinner"></i>
+          Analyse...
+        } @else {
+          <i class="pi pi-sparkles"></i>
+          Trouver le schéma
+        }
       </button>
     </span>
-    <textarea 
-      rows="5" 
-      [(ngModel)]="formState.query" 
+    <textarea
+      rows="5"
+      [(ngModel)]="formState.query"
       placeholder="SELECT * FROM customers WHERE active = true;"
       class="code-input"
     ></textarea>
     <span class="field-hint">Optionnel : Laissez vide pour récupérer toutes les données</span>
   </label>
+
+  <!-- Schema guess error -->
+  @if (guessError()) {
+    <div class="schema-error">
+      <i class="pi pi-exclamation-triangle"></i>
+      {{ guessError() }}
+    </div>
+  }
+
+  <!-- Guessed schema results -->
+  @if (guessedSchema().length > 0) {
+    <div class="schema-results">
+      <div class="schema-header">
+        <i class="pi pi-check-circle" style="color: #4caf50;"></i>
+        <span>Schéma détecté ({{ guessedSchema().length }} colonnes)</span>
+      </div>
+      <div class="schema-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Colonne</th>
+              <th>Type DB</th>
+              <th>Type Go</th>
+              <th>Nullable</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (col of guessedSchema(); track col.name) {
+              <tr>
+                <td class="col-name">{{ col.name }}</td>
+                <td class="col-type">{{ col.type }}</td>
+                <td class="col-go-type">{{ col.goType }}</td>
+                <td class="col-nullable">
+                  <i [class]="col.nullable ? 'pi pi-check' : 'pi pi-times'"
+                     [style.color]="col.nullable ? '#4caf50' : '#888'"></i>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
 
 </div>
 

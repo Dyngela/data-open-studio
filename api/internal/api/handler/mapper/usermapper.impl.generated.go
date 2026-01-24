@@ -17,13 +17,24 @@ func NewUserMapper() UserMapper {
 }
 
 // DtoToUpdate  --update
-func (m *UserMapperImpl) DtoToUpdate(req request.UpdateUser, vehicle *models.User) {
-	// TODO: implement
-	panic("not implemented")
+func (mapper *UserMapperImpl) DtoToUpdate(req request.UpdateUser, vehicle *models.User) {
+	if req.Email != nil {
+		vehicle.Email = *req.Email
+	}
+	if req.Prenom != nil {
+		vehicle.Prenom = *req.Prenom
+	}
+	if req.Nom != nil {
+		vehicle.Nom = *req.Nom
+	}
+	if req.Actif != nil {
+		vehicle.Actif = *req.Actif
+	}
+
 }
 
 // EntityToUserResponse
-func (m *UserMapperImpl) EntityToUserResponse(user models.User) response.UserResponseDTO {
+func (mapper *UserMapperImpl) EntityToUserResponse(user models.User) response.UserResponseDTO {
 	var result response.UserResponseDTO
 	result.ID = user.ID
 	result.Email = user.Email

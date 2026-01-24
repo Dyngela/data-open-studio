@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"gorm.io/driver/postgres"
@@ -137,13 +138,6 @@ func connectToPostgres(host string, username string, password string, dbname str
 			CreateBatchSize:      1000,
 			TranslateError:       true,
 			NowFunc: func() time.Time {
-				//loc, err := time.LoadLocation("Europe/Paris")
-				//if err != nil {
-				//	panic(err)
-				//}
-				// No idea why but it's not working without adding 1 hour
-				//return time.Now().In(loc).Add(time.Hour * 1)
-				//return time.Now().Add(time.Hour * 1)
 				return time.Now()
 			},
 			NamingStrategy: schema.NamingStrategy{
@@ -165,5 +159,23 @@ func connectToPostgres(host string, username string, password string, dbname str
 }
 
 func initLogger() zerolog.Logger {
-	return zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
+	output := zerolog.ConsoleWriter{
+		Out:        os.Stdout,
+		TimeFormat: "15:04:05",
+		NoColor:    false,
+		FormatLevel: func(i interface{}) string {
+			return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+		},
+		FormatMessage: func(i interface{}) string {
+			return fmt.Sprintf("  %s  ", i)
+		},
+		FormatFieldName: func(i interface{}) string {
+			return fmt.Sprintf("%s=", i)
+		},
+		FormatFieldValue: func(i interface{}) string {
+			return fmt.Sprintf("%s", i)
+		},
+	}
+
+	return zerolog.New(output).With().Timestamp().Caller().Logger()
 }
