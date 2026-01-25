@@ -52,9 +52,6 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Initialize WebSocket components
-	api.Logger.Info().Msg("WebSocket hub started")
-
 	initAPI(router)
 
 	api.Logger.Debug().Msgf("Starting CORE API on port %s", api.GetConfig().ApiPort)
@@ -67,9 +64,7 @@ func main() {
 
 func initAPI(router *graceful.Graceful) {
 	endpoints.AuthHandler(router)
-	// Metadata handlers
 	endpoints.DbMetadataHandler(router)
-
-	// DB Node handlers
 	endpoints.DbNodeHandler(router)
+	endpoints.JobHandler(router)
 }

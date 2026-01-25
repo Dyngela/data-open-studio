@@ -150,6 +150,67 @@
   box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
 }
 
+/* Job indicator */
+.job-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.job-indicator i {
+  color: #3b82f6;
+}
+
+.job-name {
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.job-visibility {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.job-visibility.public {
+  color: #10b981;
+}
+
+.job-visibility.private {
+  color: #6b7280;
+}
+
+.toolbar-separator {
+  width: 1px;
+  background: #555;
+  margin: 0 0.25rem;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  color: #e5e7eb;
+  gap: 1rem;
+}
+
+.loading-overlay i {
+  font-size: 2rem;
+  color: #3b82f6;
+}
+
 /* Modal overlay */
 .modal-overlay {
   position: absolute;

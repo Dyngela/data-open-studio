@@ -1,33 +1,35 @@
-import {Component, inject, OnInit, signal} from '@angular/core';
-import {DbNodeService} from '../core/api/db-node.service';
-import {DbType} from '../core/api/metadata.type';
-import {RouterOutlet, RouterLink, RouterLinkActive} from '@angular/router';
+import { Component, inject, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { AuthService } from '../core/api/auth.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  standalone: true,
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App implements OnInit {
-  protected readonly title = signal('front');
-  private readonly dbNodeService = inject(DbNodeService)
+export class App {
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
-  protected guessDataModel =
-    this.dbNodeService.guessSchema( (response) => {
-    console.log('Guessed Data Models:', response.dataModels);
-  })
+  currentUser = this.authService.currentUser;
+  isAuthenticated = computed(() => {
+    console.log('Auth check:', this.authService.isAuthenticated());
+    return this.authService.isAuthenticated()
+  });
 
-  ngOnInit(): void {
-      //   this.guessDataModel.execute({
-      //   nodeId: 'node-123',
-      //   query: 'SELECT * FROM job',
-      //   dbType: DbType.Postgres,
-      //   host: 'localhost',
-      //   port: 5433,
-      //   database: 'data-open-studio',
-      //   username: 'postgres',
-      //   password: 'postgres'
-      // })
+  userInitials = computed(() => {
+    const user = this.currentUser();
+    if (!user) return 'U';
+    const first = user.prenom?.charAt(0) || '';
+    const last = user.nom?.charAt(0) || '';
+    return (first + last).toUpperCase() || 'U';
+  });
+
+  logout() {
+    this.authService.logout();
+    this.router.navigate(['/auth/login']);
   }
 }

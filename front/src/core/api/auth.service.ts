@@ -25,8 +25,8 @@ export class AuthService {
   /**
    * Register new user
    */
-  register(): ApiMutation<AuthResponse> {
-    return this.api.post<AuthResponse>(
+  register(): ApiMutation<AuthResponse, RegisterDto> {
+    return this.api.post<AuthResponse, RegisterDto>(
       '/auth/register',
       (response) => this.setSession(response),
     );

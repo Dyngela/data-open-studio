@@ -3,10 +3,13 @@ import {
   ViewChild,
   ElementRef,
   AfterViewInit,
+  OnInit,
   signal,
+  inject,
   HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 import { CdkDropList, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NodePanel } from '../node-panel/node-panel';
 import { NodeInstanceComponent } from '../node-instance/node-instance';
@@ -16,6 +19,8 @@ import { NodeInstance, Connection, NodeType } from '../../nodes/node.type';
 import { DbInputModal } from '../../nodes/db-input/db-input.modal';
 import { StartModal } from '../../nodes/start/start.modal';
 import { TransformModal } from '../../nodes/transform/transform.modal';
+import { JobService } from '../../../core/api/job.service';
+import { JobWithNodes } from '../../../core/api/job.type';
 
 @Component({
   selector: 'app-playground',
@@ -24,10 +29,18 @@ import { TransformModal } from '../../nodes/transform/transform.modal';
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
-export class Playground implements AfterViewInit {
+export class Playground implements OnInit, AfterViewInit {
+  private route = inject(ActivatedRoute);
+  private jobService = inject(JobService);
+
   @ViewChild('playgroundArea', { static: false }) playgroundArea!: ElementRef;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;
   @ViewChild('consoleComponent') consoleComponent?: Console;
+
+  // Current job
+  currentJobId = signal<number | null>(null);
+  currentJob = signal<JobWithNodes | null>(null);
+  isLoadingJob = signal(false);
 
   nodes = signal<NodeInstance[]>([]);
   connections = signal<Connection[]>([]); // Liste unifiée pour data et flow
@@ -70,9 +83,66 @@ export class Playground implements AfterViewInit {
 
   protected activeModal = signal<{ nodeId: string; nodeTypeId: string } | null>(null);
 
+  ngOnInit() {
+    // Load job from route params
+    this.route.params.subscribe(params => {
+      const jobId = params['id'];
+      if (jobId) {
+        this.loadJob(parseInt(jobId, 10));
+      }
+    });
+  }
+
   ngAfterViewInit() {
     this.updateViewportSize();
     window.addEventListener('resize', () => this.updateViewportSize());
+  }
+
+  loadJob(jobId: number) {
+    this.isLoadingJob.set(true);
+    this.currentJobId.set(jobId);
+
+    const result = this.jobService.getById(jobId);
+
+    // Watch for data changes
+    const checkLoaded = setInterval(() => {
+      if (!result.isLoading()) {
+        clearInterval(checkLoaded);
+        this.isLoadingJob.set(false);
+
+        const job = result.data();
+        if (job) {
+          this.currentJob.set(job);
+          this.loadJobNodes(job);
+        }
+      }
+    }, 100);
+  }
+
+  loadJobNodes(job: JobWithNodes) {
+    // Convert API nodes to NodeInstance format
+    if (job.nodes && job.nodes.length > 0) {
+      const nodeInstances: NodeInstance[] = job.nodes.map(apiNode => ({
+        id: `node-${apiNode.id}`,
+        type: this.getNodeTypeFromApiType(apiNode.type),
+        position: { x: apiNode.xpos, y: apiNode.ypos },
+        config: apiNode.data as Record<string, any> || {},
+        status: 'idle' as const,
+      }));
+      this.nodes.set(nodeInstances);
+      this.nodeIdCounter = Math.max(...job.nodes.map(n => n.id)) + 1;
+    }
+  }
+
+  private getNodeTypeFromApiType(apiType: string): NodeType {
+    // Map API node types to frontend NodeType
+    const typeMap: Record<string, NodeType> = {
+      'start': { id: 'start', label: 'Start', icon: 'pi-play', type: 'start', hasFlowInput: false, hasFlowOutput: true, hasDataInput: false, hasDataOutput: false },
+      'db_input': { id: 'db-input', label: 'DB Input', icon: 'pi-database', type: 'input', hasFlowInput: true, hasFlowOutput: true, hasDataInput: false, hasDataOutput: true },
+      'db_output': { id: 'db-output', label: 'DB Output', icon: 'pi-database', type: 'output', hasFlowInput: true, hasFlowOutput: true, hasDataInput: true, hasDataOutput: false },
+      'map': { id: 'transform', label: 'Transform', icon: 'pi-cog', type: 'process', hasFlowInput: true, hasFlowOutput: true, hasDataInput: true, hasDataOutput: true },
+    };
+    return typeMap[apiType] || typeMap['start'];
   }
 
   private updateViewportSize() {

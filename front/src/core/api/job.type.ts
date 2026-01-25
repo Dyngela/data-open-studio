@@ -86,3 +86,24 @@ export interface DeleteResponse {
   id: number;
   deleted: boolean;
 }
+
+// User type (mock for now)
+export interface User {
+  id: number;
+  email: string;
+  prenom: string;
+  nom: string;
+}
+
+// Tree node for job explorer
+export interface JobTreeNode {
+  key: string;
+  label: string;
+  data?: Job;
+  icon?: string;
+  expandedIcon?: string;
+  collapsedIcon?: string;
+  children?: JobTreeNode[];
+  leaf?: boolean;
+  type: 'folder' | 'job';
+}
