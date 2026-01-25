@@ -55,6 +55,9 @@ func (slf *DBInputConfig) FillDataModels() error {
 	if slf.Query == "" {
 		return fmt.Errorf("query is empty, can fill data models")
 	}
+	if slf.Query[len(slf.Query)-1] == ';' {
+		slf.Query = slf.Query[:len(slf.Query)-1]
+	}
 	slf.EnforceSchema()
 	switch slf.Connection.Type {
 	case DBTypePostgres:
@@ -94,7 +97,7 @@ func (slf *DBInputConfig) findDefaultSchema() string {
 
 func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
 	// Exécute la requête avec LIMIT 0 pour ne récupérer que les métadonnées
-	query := fmt.Sprintf("SELECT * FROM (%s) AS subquery LIMIT 0", slf.QueryWithSchema)
+	query := fmt.Sprintf("SELECT * FROM (%s) AS subquery LIMIT 0", slf.Query)
 
 	rows, err := conn.Query(query)
 	if err != nil {
@@ -139,7 +142,7 @@ func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
 }
 
 func (slf *DBInputConfig) findSqlServerDataModels(conn *sql.DB) error {
-	query := fmt.Sprintf("SELECT TOP 0 * FROM (%s) AS subquery", slf.QueryWithSchema)
+	query := fmt.Sprintf("SELECT TOP 0 * FROM (%s) AS subquery", slf.Query)
 
 	rows, err := conn.Query(query)
 	if err != nil {

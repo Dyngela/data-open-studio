@@ -1,8 +1,9 @@
 import {inject, Injectable, signal} from '@angular/core';
 import { Observable, tap, of } from 'rxjs';
-import {ApiMutation, ApiResult, BaseApiService} from './base-api.service';
-import {AuthResponse, LoginDto, RegisterDto, User} from '../models/user.model';
+import {BaseApiService} from '../services/base-api.service';
+import {AuthResponse, LoginDto, RegisterDto, User} from './auth.type';
 import {CookieService} from 'ngx-cookie-service';
+import {ApiMutation, ApiResult} from '../services/base-api.type';
 
 /**
  * Authentication service
@@ -24,8 +25,8 @@ export class AuthService {
   /**
    * Register new user
    */
-  register(): ApiMutation<AuthResponse> {
-    return this.api.post<AuthResponse>(
+  register(): ApiMutation<AuthResponse, RegisterDto> {
+    return this.api.post<AuthResponse, RegisterDto>(
       '/auth/register',
       (response) => this.setSession(response),
     );

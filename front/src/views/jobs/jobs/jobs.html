@@ -1,0 +1,223 @@
+<div class="jobs-container">
+  <!-- Header -->
+  <div class="jobs-header">
+    <div class="header-left">
+      <h1>Jobs</h1>
+      <p class="subtitle">Gérez vos jobs ETL</p>
+    </div>
+    <div class="header-right">
+      <!-- Search -->
+      <p-autoComplete
+        [(ngModel)]="searchQuery"
+        [suggestions]="filteredJobs()"
+        (completeMethod)="searchJobs($event)"
+        (onSelect)="onJobSelect($event)"
+        field="name"
+        placeholder="Rechercher un job..."
+        [minLength]="1"
+        [style]="{ width: '300px' }"
+      >
+        <ng-template let-job pTemplate="item">
+          <div class="search-item">
+            <i [class]="job.visibility === 'public' ? 'pi pi-globe' : 'pi pi-lock'"></i>
+            <div class="search-item-info">
+              <span class="search-item-name">{{ job.name }}</span>
+              <span class="search-item-path">{{ job.filePath || '/' }}</span>
+            </div>
+          </div>
+        </ng-template>
+      </p-autoComplete>
+
+      <p-button
+        label="Nouveau job"
+        icon="pi pi-plus"
+        (onClick)="openCreateModal()"
+      />
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="jobs-content">
+    @if (isLoading()) {
+      <div class="loading-state">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Chargement des jobs...</span>
+      </div>
+    } @else {
+      <div class="tree-container">
+        <p-tree
+          [value]="treeNodes()"
+          selectionMode="single"
+          [(selection)]="selectedNode"
+          (onNodeSelect)="onNodeSelect($event)"
+          (onNodeContextMenuSelect)="onNodeContextMenu($event)"
+          [contextMenu]="cm"
+          [filter]="true"
+          filterPlaceholder="Filtrer..."
+          scrollHeight="calc(100vh - 250px)"
+        >
+          <ng-template let-node pTemplate="default">
+            <div class="tree-node" [class.job-node]="node.data?.type === 'job'">
+              <span class="node-label">{{ node.label }}</span>
+              @if (node.data?.type === 'job') {
+                <span class="node-meta">
+                  @if (node.data?.visibility === 'public') {
+                    <span class="visibility-badge public" pTooltip="Public">
+                      <i class="pi pi-globe"></i>
+                    </span>
+                  } @else {
+                    <span class="visibility-badge private" pTooltip="Privé">
+                      <i class="pi pi-lock"></i>
+                    </span>
+                  }
+                </span>
+              }
+            </div>
+          </ng-template>
+        </p-tree>
+      </div>
+    }
+  </div>
+
+  <!-- Context Menu -->
+  <p-contextMenu #cm [model]="contextMenuItems" />
+</div>
+
+<!-- Create Job Modal -->
+<p-dialog
+  header="Nouveau job"
+  [(visible)]="showCreateModal"
+  [modal]="true"
+  [style]="{ width: '500px' }"
+  [draggable]="false"
+  [resizable]="false"
+>
+  <form [formGroup]="createForm" (ngSubmit)="onCreateJob()">
+    <!-- Folder path -->
+    <div class="form-field">
+      <label>Emplacement</label>
+      <div class="folder-path">
+        <i class="pi pi-folder"></i>
+        <span>{{ selectedFolder() }}</span>
+      </div>
+    </div>
+
+    <!-- Name -->
+    <div class="form-field">
+      <label for="jobName">Nom du job <span class="required">*</span></label>
+      <input
+        id="jobName"
+        type="text"
+        pInputText
+        formControlName="name"
+        placeholder="Mon nouveau job"
+        [class.ng-invalid]="isFieldInvalid('name')"
+      />
+      @if (isFieldInvalid('name')) {
+        <small class="p-error">{{ getFieldError('name') }}</small>
+      }
+    </div>
+
+    <!-- Description -->
+    <div class="form-field">
+      <label for="jobDescription">Description</label>
+      <textarea
+        id="jobDescription"
+        pInputText
+        formControlName="description"
+        placeholder="Description du job..."
+        rows="3"
+      ></textarea>
+    </div>
+
+    <!-- Visibility -->
+    <div class="form-field">
+      <label>Visibilité</label>
+      <div class="visibility-options">
+        <div class="visibility-option">
+          <p-radioButton
+            inputId="visPrivate"
+            value="private"
+            formControlName="visibility"
+          />
+          <label for="visPrivate" class="visibility-label">
+            <i class="pi pi-lock"></i>
+            <div>
+              <span class="visibility-title">Privé</span>
+              <span class="visibility-desc">Seuls vous et les personnes invitées peuvent voir ce job</span>
+            </div>
+          </label>
+        </div>
+        <div class="visibility-option">
+          <p-radioButton
+            inputId="visPublic"
+            value="public"
+            formControlName="visibility"
+          />
+          <label for="visPublic" class="visibility-label">
+            <i class="pi pi-globe"></i>
+            <div>
+              <span class="visibility-title">Public</span>
+              <span class="visibility-desc">Tous les utilisateurs peuvent voir ce job</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Share with users (only for private) -->
+    @if (createForm.get('visibility')?.value === 'private') {
+      <div class="form-field">
+        <label>Partager avec</label>
+        <p-autoComplete
+          #userAutoComplete
+          [suggestions]="filteredUsers()"
+          (completeMethod)="searchUsers($event)"
+          (onSelect)="onUserSelect($event)"
+          field="email"
+          placeholder="Rechercher un utilisateur..."
+          [style]="{ width: '100%' }"
+        >
+          <ng-template let-user pTemplate="item">
+            <div class="user-item">
+              <div class="user-avatar">{{ user.prenom.charAt(0) }}{{ user.nom.charAt(0) }}</div>
+              <div class="user-info">
+                <span class="user-name">{{ user.prenom }} {{ user.nom }}</span>
+                <span class="user-email">{{ user.email }}</span>
+              </div>
+            </div>
+          </ng-template>
+        </p-autoComplete>
+
+        <!-- Selected users -->
+        @if (selectedUsers().length > 0) {
+          <div class="selected-users">
+            @for (user of selectedUsers(); track user.id) {
+              <div class="user-chip">
+                <span>{{ getUserDisplayName(user) }}</span>
+                <button type="button" class="remove-user" (click)="removeUser(user)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      label="Annuler"
+      severity="secondary"
+      (onClick)="closeCreateModal()"
+    />
+    <p-button
+      label="Créer"
+      icon="pi pi-check"
+      (onClick)="onCreateJob()"
+      [loading]="isSubmitting()"
+      [disabled]="createForm.invalid"
+    />
+  </ng-template>
+</p-dialog>

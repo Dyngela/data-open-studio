@@ -1,21 +1,109 @@
-import {BaseWebSocketService} from './base-ws.service';
-import {inject, Injectable} from '@angular/core';
-import {Job} from './job.model';
+import { Injectable } from '@angular/core';
+import { BaseApiService } from '../services/base-api.service';
+import { ApiMutation, ApiResult, SearchCriteria } from '../services/base-api.type';
+import {
+  Job,
+  JobWithNodes,
+  CreateJobRequest,
+  UpdateJobRequest,
+  ShareJobRequest,
+  DeleteResponse
+} from './job.type';
 
 @Injectable({ providedIn: 'root' })
-export class JobsWsService {
-  private ws = inject(BaseWebSocketService); // your base WS runtime
-  private userId = 123;           // optional metadata
-  private username = 'John';
+export class JobService extends BaseApiService {
 
-  // Observe job_update events
-  jobUpdates = this.ws.channel<Job>('job_update');
+  private readonly basePath = '/jobs';
 
-  constructor() {
-    this.ws.connect('wss://api.example.com/ws');
+  /**
+   * Get all jobs for the current user
+   * Optionally filter by filePath
+   */
+  getAll(filePath?: string): ApiResult<Job[]> {
+    const criteria: SearchCriteria[] = filePath
+      ? [{ name: 'filePath', value: filePath }]
+      : [];
+    return this.get<Job[]>(this.basePath, criteria);
   }
 
-  emitJobUpdate(job: Job) {
-    this.jobUpdates.send(job);
+  /**
+   * Get a single job by ID with its nodes and sharing info
+   */
+  getById(id: number): ApiResult<JobWithNodes> {
+    return this.get<JobWithNodes>(`${this.basePath}/${id}`);
+  }
+
+  /**
+   * Create a new job
+   */
+  create(
+    onSuccess?: (data: JobWithNodes) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<JobWithNodes, CreateJobRequest> {
+    return this.post<JobWithNodes, CreateJobRequest>(
+      this.basePath,
+      onSuccess,
+      onError
+    );
+  }
+
+  /**
+   * Update an existing job
+   */
+  update(
+    id: number,
+    onSuccess?: (data: JobWithNodes) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<JobWithNodes, UpdateJobRequest> {
+    return this.put<JobWithNodes, UpdateJobRequest>(
+      `${this.basePath}/${id}`,
+      onSuccess,
+      onError
+    );
+  }
+
+  /**
+   * Delete a job (only owner can delete)
+   */
+  deleteJob(
+    id: number,
+    onSuccess?: (data: DeleteResponse) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<DeleteResponse, void> {
+    return this.delete<DeleteResponse, void>(
+      `${this.basePath}/${id}`,
+      onSuccess,
+      onError
+    );
+  }
+
+  /**
+   * Share a job with users (only owner can share)
+   */
+  share(
+    id: number,
+    onSuccess?: (data: JobWithNodes) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<JobWithNodes, ShareJobRequest> {
+    return this.post<JobWithNodes, ShareJobRequest>(
+      `${this.basePath}/${id}/share`,
+      onSuccess,
+      onError
+    );
+  }
+
+  /**
+   * Remove users from job access (only owner can unshare)
+   */
+  unshare(
+    id: number,
+    onSuccess?: (data: JobWithNodes) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<JobWithNodes, ShareJobRequest> {
+    return this.delete<JobWithNodes, ShareJobRequest>(
+      `${this.basePath}/${id}/share`,
+      onSuccess,
+      onError
+    );
   }
 }

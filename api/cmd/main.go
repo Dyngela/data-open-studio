@@ -3,7 +3,6 @@ package main
 import (
 	"api"
 	"api/internal/api/handler/endpoints"
-	"api/internal/api/handler/websocket"
 	"api/internal/api/models"
 	"context"
 	"errors"
@@ -28,6 +27,7 @@ func main() {
 			&models.Port{},
 			&models.MetadataDatabase{},
 			&models.MetadataSftp{},
+			&models.JobUserAccess{},
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
@@ -52,13 +52,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Initialize WebSocket components
-	processor := websocket.NewMessageProcessor()
-	hub := websocket.NewHub(api.Logger)
-	go hub.Run()
-	api.Logger.Info().Msg("WebSocket hub started")
-
-	initAPI(router, hub, processor)
+	initAPI(router)
 
 	api.Logger.Debug().Msgf("Starting CORE API on port %s", api.GetConfig().ApiPort)
 	if err = router.RunWithContext(ctx); err != nil && !errors.Is(err, context.Canceled) {
@@ -68,8 +62,9 @@ func main() {
 
 }
 
-func initAPI(router *graceful.Graceful, hub *websocket.Hub, processor *websocket.MessageProcessor) {
+func initAPI(router *graceful.Graceful) {
 	endpoints.AuthHandler(router)
-	endpoints.WebSocketHandler(router, hub, processor)
-	endpoints.JobExecutionHandler(router, hub)
+	endpoints.DbMetadataHandler(router)
+	endpoints.DbNodeHandler(router)
+	endpoints.JobHandler(router)
 }

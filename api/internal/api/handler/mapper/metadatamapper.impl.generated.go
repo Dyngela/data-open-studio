@@ -3,6 +3,7 @@
 package mapper
 
 import (
+	"api/internal/api/handler/request"
 	"api/internal/api/handler/response"
 	"api/internal/api/models"
 )
@@ -10,18 +11,162 @@ import (
 // MetadataMapperImpl implements MetadataMapper
 type MetadataMapperImpl struct{}
 
-func (m MetadataMapperImpl) ToMetadataResponses(entities []models.MetadataDatabase) []response.Metadata {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (m MetadataMapperImpl) ToMetadataResponse(mo models.MetadataDatabase) response.Metadata {
-	//TODO implement me
-	panic("implement me")
-}
-
 // NewMetadataMapper creates a new instance of MetadataMapperImpl
 func NewMetadataMapper() MetadataMapper {
 	return &MetadataMapperImpl{}
 }
 
+// ToMetadataResponses  Database metadata
+func (mapper *MetadataMapperImpl) ToMetadataResponses(entities []models.MetadataDatabase) []response.Metadata {
+	result := make([]response.Metadata, len(entities))
+	for i, item := range entities {
+		result[i] = mapper.ToMetadataResponse(item)
+	}
+	return result
+
+}
+
+// ToMetadataResponse
+func (mapper *MetadataMapperImpl) ToMetadataResponse(m models.MetadataDatabase) response.Metadata {
+	var result response.Metadata
+	result.ID = m.ID
+	result.Host = m.Host
+	result.Port = m.Port
+	result.User = m.User
+	result.Password = m.Password
+	result.DatabaseName = m.DatabaseName
+	result.SSLMode = m.SSLMode
+	result.Extra = m.Extra
+	return result
+
+}
+
+// CreateDbMetadata
+func (mapper *MetadataMapperImpl) CreateDbMetadata(req request.CreateMetadata) models.MetadataDatabase {
+	var result models.MetadataDatabase
+	result.Host = req.Host
+	result.Port = req.Port
+	result.User = req.User
+	result.Password = req.Password
+	result.DatabaseName = req.DatabaseName
+	result.SSLMode = req.SSLMode
+	return result
+
+}
+
+// UpdateDbMetadata  update
+func (mapper *MetadataMapperImpl) UpdateDbMetadata(req request.UpdateMetadata, m *models.MetadataDatabase) {
+	m.ID = req.ID
+	if req.Host != nil {
+		m.Host = *req.Host
+	}
+	if req.Port != nil {
+		m.Port = *req.Port
+	}
+	if req.User != nil {
+		m.User = *req.User
+	}
+	if req.Password != nil {
+		m.Password = *req.Password
+	}
+	if req.DatabaseName != nil {
+		m.DatabaseName = *req.DatabaseName
+	}
+	if req.SSLMode != nil {
+		m.SSLMode = *req.SSLMode
+	}
+
+}
+
+// PatchDbMetadata  patch
+func (mapper *MetadataMapperImpl) PatchDbMetadata(req request.UpdateMetadata) map[string]any {
+	result := make(map[string]any)
+	result["id"] = req.ID
+	if req.Host != nil {
+		result["host"] = *req.Host
+	}
+	if req.Port != nil {
+		result["port"] = *req.Port
+	}
+	if req.User != nil {
+		result["user"] = *req.User
+	}
+	if req.Password != nil {
+		result["password"] = *req.Password
+	}
+	if req.DatabaseName != nil {
+		result["database_name"] = *req.DatabaseName
+	}
+	if req.SSLMode != nil {
+		result["ssl_mode"] = *req.SSLMode
+	}
+	return result
+
+}
+
+// ToSftpMetadataResponses  SFTP metadata
+func (mapper *MetadataMapperImpl) ToSftpMetadataResponses(entities []models.MetadataSftp) []response.SftpMetadata {
+	result := make([]response.SftpMetadata, len(entities))
+	for i, item := range entities {
+		result[i] = mapper.ToSftpMetadataResponse(item)
+	}
+	return result
+
+}
+
+// ToSftpMetadataResponse
+func (mapper *MetadataMapperImpl) ToSftpMetadataResponse(m models.MetadataSftp) response.SftpMetadata {
+	var result response.SftpMetadata
+	result.ID = m.ID
+	result.Host = m.Host
+	result.Port = m.Port
+	result.User = m.User
+	result.Password = m.Password
+	result.PrivateKey = m.PrivateKey
+	result.BasePath = m.BasePath
+	result.Extra = m.Extra
+	return result
+
+}
+
+// CreateSftpMetadata
+func (mapper *MetadataMapperImpl) CreateSftpMetadata(req request.CreateSftpMetadata) models.MetadataSftp {
+	var result models.MetadataSftp
+	result.Host = req.Host
+	result.Port = req.Port
+	result.User = req.User
+	result.Password = req.Password
+	result.PrivateKey = req.PrivateKey
+	result.BasePath = req.BasePath
+	result.Extra = req.Extra
+	return result
+
+}
+
+// PatchSftpMetadata  patch
+func (mapper *MetadataMapperImpl) PatchSftpMetadata(req request.UpdateSftpMetadata) map[string]any {
+	result := make(map[string]any)
+	if req.Host != nil {
+		result["host"] = *req.Host
+	}
+	if req.Port != nil {
+		result["port"] = *req.Port
+	}
+	if req.User != nil {
+		result["user"] = *req.User
+	}
+	if req.Password != nil {
+		result["password"] = *req.Password
+	}
+	if req.PrivateKey != nil {
+		result["private_key"] = *req.PrivateKey
+	}
+	if req.BasePath != nil {
+		result["base_path"] = *req.BasePath
+	}
+	if req.Extra != nil {
+		result["extra"] = *req.Extra
+	}
+	return result
+
+}

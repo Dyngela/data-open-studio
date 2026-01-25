@@ -1,0 +1,62 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1>Connexion</h1>
+      <p>Connectez-vous à votre compte</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+      @if (loginMutation.error(); as error) {
+        <div class="error-banner">
+          <i class="pi pi-exclamation-circle"></i>
+          <span>{{ error.message || 'Identifiants invalides' }}</span>
+        </div>
+      }
+
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="votre@email.com"
+          [class.invalid]="isFieldInvalid('email')"
+        />
+        @if (isFieldInvalid('email')) {
+          <span class="field-error">{{ getFieldError('email') }}</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="password">Mot de passe</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="••••••••"
+          [class.invalid]="isFieldInvalid('password')"
+        />
+        @if (isFieldInvalid('password')) {
+          <span class="field-error">{{ getFieldError('password') }}</span>
+        }
+      </div>
+
+      <button
+        type="submit"
+        class="btn-primary"
+        [disabled]="loginMutation.isLoading()"
+      >
+        @if (loginMutation.isLoading()) {
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Connexion...</span>
+        } @else {
+          <span>Se connecter</span>
+        }
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Pas encore de compte ? <a routerLink="/auth/register">Créer un compte</a></p>
+    </div>
+  </div>
+</div>

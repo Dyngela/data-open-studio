@@ -1,0 +1,106 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1>Créer un compte</h1>
+      <p>Inscrivez-vous pour commencer</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+      @if (registerMutation.error(); as error) {
+        <div class="error-banner">
+          <i class="pi pi-exclamation-circle"></i>
+          <span>{{ error.message || 'Erreur lors de l\'inscription' }}</span>
+        </div>
+      }
+
+      <div class="form-row">
+        <div class="form-field">
+          <label for="prenom">Prénom</label>
+          <input
+            id="prenom"
+            type="text"
+            formControlName="prenom"
+            placeholder="Jean"
+            [class.invalid]="isFieldInvalid('prenom')"
+          />
+          @if (isFieldInvalid('prenom')) {
+            <span class="field-error">{{ getFieldError('prenom') }}</span>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="nom">Nom</label>
+          <input
+            id="nom"
+            type="text"
+            formControlName="nom"
+            placeholder="Dupont"
+            [class.invalid]="isFieldInvalid('nom')"
+          />
+          @if (isFieldInvalid('nom')) {
+            <span class="field-error">{{ getFieldError('nom') }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="votre@email.com"
+          [class.invalid]="isFieldInvalid('email')"
+        />
+        @if (isFieldInvalid('email')) {
+          <span class="field-error">{{ getFieldError('email') }}</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="password">Mot de passe</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="••••••••"
+          [class.invalid]="isFieldInvalid('password')"
+        />
+        @if (isFieldInvalid('password')) {
+          <span class="field-error">{{ getFieldError('password') }}</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="confirmPassword">Confirmer le mot de passe</label>
+        <input
+          id="confirmPassword"
+          type="password"
+          formControlName="confirmPassword"
+          placeholder="••••••••"
+          [class.invalid]="isFieldInvalid('confirmPassword')"
+        />
+        @if (isFieldInvalid('confirmPassword')) {
+          <span class="field-error">{{ getFieldError('confirmPassword') }}</span>
+        }
+      </div>
+
+      <button
+        type="submit"
+        class="btn-primary"
+        [disabled]="registerMutation.isLoading()"
+      >
+        @if (registerMutation.isLoading()) {
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Inscription...</span>
+        } @else {
+          <span>Créer mon compte</span>
+        }
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Déjà un compte ? <a routerLink="/auth/login">Se connecter</a></p>
+    </div>
+  </div>
+</div>

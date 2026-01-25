@@ -1,0 +1,212 @@
+<div class="metadata-list">
+  <div class="list-header">
+    <div class="header-info">
+      <h2>Connexions SFTP</h2>
+      <p>Gérez vos connexions aux serveurs SFTP</p>
+    </div>
+    <button class="btn primary" (click)="openCreateModal()">
+      <i class="pi pi-plus"></i>
+      Nouvelle connexion
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <i class="pi pi-spin pi-spinner"></i>
+      <span>Chargement...</span>
+    </div>
+  } @else if (metadata().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-cloud"></i>
+      <h3>Aucune connexion</h3>
+      <p>Créez votre première connexion SFTP</p>
+      <button class="btn primary" (click)="openCreateModal()">
+        <i class="pi pi-plus"></i>
+        Créer une connexion
+      </button>
+    </div>
+  } @else {
+    <div class="metadata-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>Port</th>
+            <th>Utilisateur</th>
+            <th>Chemin de base</th>
+            <th>Auth</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of metadata(); track item.id) {
+            <tr>
+              <td class="host-name">
+                <i class="pi pi-cloud"></i>
+                {{ item.host }}
+              </td>
+              <td>{{ item.port }}</td>
+              <td>{{ item.user }}</td>
+              <td>{{ item.basePath || '/' }}</td>
+              <td>
+                <span class="auth-badge" [class.key]="item.privateKey">
+                  <i [class]="item.privateKey ? 'pi pi-key' : 'pi pi-lock'"></i>
+                  {{ item.privateKey ? 'Clé' : 'Mot de passe' }}
+                </span>
+              </td>
+              <td class="actions-col">
+                <button class="btn-icon" title="Modifier" (click)="openEditModal(item)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="btn-icon danger" title="Supprimer" (click)="onDelete(item)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Modal -->
+@if (showModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingItem() ? 'Modifier la connexion' : 'Nouvelle connexion SFTP' }}</h3>
+        <button class="btn-icon" type="button" (click)="closeModal()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <form class="modal-body" [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="host">Host <span class="required">*</span></label>
+            <input
+              id="host"
+              type="text"
+              formControlName="host"
+              placeholder="sftp.example.com"
+              [class.invalid]="isFieldInvalid('host')"
+            />
+            @if (isFieldInvalid('host')) {
+              <span class="field-error">{{ getFieldError('host') }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="port">Port <span class="required">*</span></label>
+            <input
+              id="port"
+              type="text"
+              formControlName="port"
+              placeholder="22"
+              [class.invalid]="isFieldInvalid('port')"
+            />
+            @if (isFieldInvalid('port')) {
+              <span class="field-error">{{ getFieldError('port') }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="user">Utilisateur <span class="required">*</span></label>
+          <input
+            id="user"
+            type="text"
+            formControlName="user"
+            placeholder="user"
+            [class.invalid]="isFieldInvalid('user')"
+          />
+          @if (isFieldInvalid('user')) {
+            <span class="field-error">{{ getFieldError('user') }}</span>
+          }
+        </div>
+
+        <div class="auth-selector">
+          <span class="field-label">Authentification <span class="required">*</span></span>
+          <div class="auth-options">
+            <button
+              type="button"
+              class="auth-option"
+              [class.active]="authMode() === 'password'"
+              (click)="switchAuthMode('password')"
+            >
+              <i class="pi pi-lock"></i>
+              Mot de passe
+            </button>
+            <button
+              type="button"
+              class="auth-option"
+              [class.active]="authMode() === 'key'"
+              (click)="switchAuthMode('key')"
+            >
+              <i class="pi pi-key"></i>
+              Clé privée
+            </button>
+          </div>
+          @if (hasAuthError()) {
+            <span class="field-error">Mot de passe ou clé privée requis</span>
+          }
+        </div>
+
+        @if (authMode() === 'password') {
+          <div class="field">
+            <label class="field-label" for="password">Mot de passe</label>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              placeholder="••••••"
+              [class.invalid]="isFieldInvalid('password')"
+            />
+            @if (isFieldInvalid('password')) {
+              <span class="field-error">{{ getFieldError('password') }}</span>
+            }
+          </div>
+        } @else {
+          <div class="field">
+            <label class="field-label" for="privateKey">Clé privée</label>
+            <textarea
+              id="privateKey"
+              formControlName="privateKey"
+              placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
+              rows="6"
+              [class.invalid]="isFieldInvalid('privateKey')"
+            ></textarea>
+            @if (isFieldInvalid('privateKey')) {
+              <span class="field-error">{{ getFieldError('privateKey') }}</span>
+            }
+          </div>
+        }
+
+        <div class="field">
+          <label class="field-label" for="basePath">Chemin de base (optionnel)</label>
+          <input
+            id="basePath"
+            type="text"
+            formControlName="basePath"
+            placeholder="/home/user/data"
+            [class.invalid]="isFieldInvalid('basePath')"
+          />
+          @if (isFieldInvalid('basePath')) {
+            <span class="field-error">{{ getFieldError('basePath') }}</span>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" (click)="closeModal()">Annuler</button>
+          <button type="submit" class="btn primary" [disabled]="isSubmitting()">
+            @if (isSubmitting()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            }
+            {{ editingItem() ? 'Enregistrer' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
