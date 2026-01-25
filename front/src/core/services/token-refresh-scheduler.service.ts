@@ -33,7 +33,6 @@ export class TokenRefreshSchedulerService {
         this.checkAndRefreshToken();
       });
 
-    // Also check immediately on start
     this.checkAndRefreshToken();
   }
 
@@ -54,7 +53,6 @@ export class TokenRefreshSchedulerService {
       const currentTime = Date.now();
       const timeUntilExpiry = expirationTime - currentTime;
 
-      // Refresh if token expires in less than 5 minutes
       const fiveMinutes = 5 * 60 * 1000;
 
       if (timeUntilExpiry < fiveMinutes && timeUntilExpiry > 0) {

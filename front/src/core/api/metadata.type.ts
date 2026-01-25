@@ -5,7 +5,6 @@ export enum DbType {
   MySQL = 'mysql',
 }
 
-// Data model returned from DB schema introspection
 export interface DataModel {
   name: string;
   type: string;
@@ -16,31 +15,9 @@ export interface DataModel {
   scale?: number;
 }
 
-// Request payload for guessing data model
-export interface DbNodeGuessDataModelRequest {
-  nodeId: string;
-  jobId: number;
-  query: string;
-  dbType: DbType;
-  dbSchema: string;
-  host: string;
-  port: number;
-  database: string;
-  username: string;
-  password: string;
-  sslMode: string;
-  extra?: Record<string, string>;
-  dsn?: string;
-}
+// ============ DB Metadata ============
 
-// Response payload for guessed data model
-export interface DbNodeGuessDataModelResponse {
-  nodeId: number;
-  jobId: number;
-  dataModels: DataModel[];
-}
-
-// DB MetadataService types
+// Response: DB Metadata
 export interface DbMetadata {
   id: number;
   host: string;
@@ -52,7 +29,29 @@ export interface DbMetadata {
   extra: string;
 }
 
-// SFTP MetadataService types
+// Request: Create DB Metadata
+export interface CreateDbMetadataRequest {
+  host: string;
+  port: string;
+  user: string;
+  password: string;
+  databaseName: string;
+  sslMode?: string;
+}
+
+// Request: Update DB Metadata
+export interface UpdateDbMetadataRequest {
+  host?: string;
+  port?: string;
+  user?: string;
+  password?: string;
+  databaseName?: string;
+  sslMode?: string;
+}
+
+// ============ SFTP Metadata ============
+
+// Response: SFTP Metadata
 export interface SftpMetadata {
   id: number;
   host: string;
@@ -62,4 +61,34 @@ export interface SftpMetadata {
   privateKey: string;
   basePath: string;
   extra: string;
+}
+
+// Request: Create SFTP Metadata
+export interface CreateSftpMetadataRequest {
+  host: string;
+  port: string;
+  user: string;
+  password?: string;
+  privateKey?: string;
+  basePath?: string;
+  extra?: string;
+}
+
+// Request: Update SFTP Metadata
+export interface UpdateSftpMetadataRequest {
+  host?: string;
+  port?: string;
+  user?: string;
+  password?: string;
+  privateKey?: string;
+  basePath?: string;
+  extra?: string;
+}
+
+// ============ Common ============
+
+// Response: Delete operation
+export interface DeleteResponse {
+  id: number;
+  deleted: boolean;
 }

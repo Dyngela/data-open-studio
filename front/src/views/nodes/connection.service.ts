@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { signal } from '@angular/core';
+import {DbType} from '../../core/api/metadata.type';
 
-export type DbType = 'postgresql' | 'sqlserver' | 'mysql';
 
 export interface DbConnection {
   id: string;

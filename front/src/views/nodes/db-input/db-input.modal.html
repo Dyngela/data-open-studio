@@ -48,40 +48,40 @@
             <i class="pi pi-check-circle" style="color: #4caf50;"></i>
             <span>Détails de la connexion</span>
           </div>
-          
+
           <div class="connection-details-grid">
             <div class="detail-item">
               <span class="detail-label">Type:</span>
               <span class="detail-value">
                 <i [class]="getConnectionDbIcon(formState.dbType)"></i>
-                {{ formState.dbType === 'postgresql' ? 'PostgreSQL' : formState.dbType === 'sqlserver' ? 'SQL Server' : 'MySQL' }}
+                {{ formState.dbType === 'postgres' ? 'PostgreSQL' : formState.dbType === 'sqlserver' ? 'SQL Server' : 'MySQL' }}
               </span>
             </div>
-            
+
             <div class="detail-item">
               <span class="detail-label">Host:</span>
               <span class="detail-value">{{ formState.host || '—' }}</span>
             </div>
-            
+
             <div class="detail-item">
               <span class="detail-label">Port:</span>
               <span class="detail-value">{{ formState.port || '—' }}</span>
             </div>
-            
+
             <div class="detail-item">
               <span class="detail-label">Base de données:</span>
               <span class="detail-value">{{ formState.database || '—' }}</span>
             </div>
-            
+
             <div class="detail-item">
               <span class="detail-label">Utilisateur:</span>
               <span class="detail-value">{{ formState.username || '—' }}</span>
             </div>
-            
+
             <div class="detail-item">
               <span class="detail-label">SSL:</span>
               <span class="detail-value">
-                <i [class]="formState.sslMode === 'require' ? 'pi pi-check-circle' : 'pi pi-times-circle'" 
+                <i [class]="formState.sslMode === 'require' ? 'pi pi-check-circle' : 'pi pi-times-circle'"
                    [style.color]="formState.sslMode === 'require' ? '#4caf50' : '#ff6b6b'"></i>
                 {{ formState.sslMode === 'require' ? 'Activé' : 'Désactivé' }}
               </span>
@@ -256,10 +256,10 @@
         </span>
         <div class="db-type-selector">
           <label class="db-type-option">
-            <input 
-              type="radio" 
-              name="dbType" 
-              value="postgresql" 
+            <input
+              type="radio"
+              name="dbType"
+              value="postgresql"
               [(ngModel)]="formState.dbType"
               required
             />
@@ -269,10 +269,10 @@
             </div>
           </label>
           <label class="db-type-option">
-            <input 
-              type="radio" 
-              name="dbType" 
-              value="sqlserver" 
+            <input
+              type="radio"
+              name="dbType"
+              value="sqlserver"
               [(ngModel)]="formState.dbType"
               required
             />
@@ -282,10 +282,10 @@
             </div>
           </label>
           <label class="db-type-option">
-            <input 
-              type="radio" 
-              name="dbType" 
-              value="mysql" 
+            <input
+              type="radio"
+              name="dbType"
+              value="mysql"
               [(ngModel)]="formState.dbType"
               required
             />
@@ -330,7 +330,7 @@
           <span class="option-title">Option 2 : Détails séparés</span>
           <span class="option-badge recommended">Recommandé</span>
         </div>
-        
+
         <div class="field-grid">
           <label class="field">
             <span class="field-label">

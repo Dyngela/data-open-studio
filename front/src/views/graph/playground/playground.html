@@ -2,12 +2,12 @@
   <!-- Panel latéral avec les nodes disponibles -->
   <app-node-panel></app-node-panel>
 
-  <!-- Zone principale du playground -->
+  <!-- Zone principale (playground + console) -->
+  <div class="main-area">
   <div
     #playgroundArea
     class="playground-area"
     cdkDropList
-    cdkDropListSortingDisabled
     id="playground-area"
     [cdkDropListConnectedTo]="['node-panel-list']"
     (cdkDropListDropped)="onDrop($event)"
@@ -115,6 +115,14 @@
       [viewportHeight]="viewportHeight()"
       [panOffset]="panOffset()"
     ></app-minimap>
+  </div>
+
+  <!-- Console en bas -->
+  <app-console
+    #consoleComponent
+    (onExecute)="onJobExecute()"
+    (onStop)="onJobStop()"
+  ></app-console>
   </div>
 </div>
 

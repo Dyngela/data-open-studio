@@ -1,11 +1,11 @@
 import {Component, inject, OnInit, signal} from '@angular/core';
-import { Playground } from '../views/graph/playground/playground';
-import { DbType } from '../core/api/metadata.type';
 import {DbNodeService} from '../core/api/db-node.service';
+import {DbType} from '../core/api/metadata.type';
+import {RouterOutlet, RouterLink, RouterLinkActive} from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [Playground],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -13,7 +13,8 @@ export class App implements OnInit {
   protected readonly title = signal('front');
   private readonly dbNodeService = inject(DbNodeService)
 
-  protected guessDataModel =   this.dbNodeService.guessSchema( (response) => {
+  protected guessDataModel =
+    this.dbNodeService.guessSchema( (response) => {
     console.log('Guessed Data Models:', response.dataModels);
   })
 
@@ -28,13 +29,5 @@ export class App implements OnInit {
         username: 'postgres',
         password: 'postgres'
       })
-  }
-
-
-
-  onGuessDataModel() {
-
-
-
   }
 }

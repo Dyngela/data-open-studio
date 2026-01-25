@@ -11,6 +11,7 @@ import { CdkDropList, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NodePanel } from '../node-panel/node-panel';
 import { NodeInstanceComponent } from '../node-instance/node-instance';
 import { Minimap } from '../minimap/minimap';
+import { Console } from '../console/console';
 import { NodeInstance, Connection, NodeType } from '../../nodes/node.type';
 import { DbInputModal } from '../../nodes/db-input/db-input.modal';
 import { StartModal } from '../../nodes/start/start.modal';
@@ -19,13 +20,14 @@ import { TransformModal } from '../../nodes/transform/transform.modal';
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, DbInputModal, StartModal, TransformModal],
+  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, Console, DbInputModal, StartModal, TransformModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
 export class Playground implements AfterViewInit {
   @ViewChild('playgroundArea', { static: false }) playgroundArea!: ElementRef;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('consoleComponent') consoleComponent?: Console;
 
   nodes = signal<NodeInstance[]>([]);
   connections = signal<Connection[]>([]); // Liste unifiée pour data et flow
@@ -664,5 +666,31 @@ export class Playground implements AfterViewInit {
       this.nodeIdCounter = 0;
       this.connectionIdCounter = 0;
     }
+  }
+
+  // Console integration
+  onJobExecute() {
+    if (!this.consoleComponent) return;
+
+    const nodeCount = this.nodes().length;
+    const connectionCount = this.connections().length;
+
+    this.consoleComponent.addLog('info', `Analyse du schéma: ${nodeCount} nodes, ${connectionCount} connexions`);
+
+    // Simulation d'exécution - à remplacer par vraie logique
+    this.nodes().forEach((node, index) => {
+      setTimeout(() => {
+        this.consoleComponent?.addLog('info', `Traitement du node: ${node.type.label} (${node.id})`);
+      }, (index + 1) * 500);
+    });
+
+    // Simulation de fin
+    setTimeout(() => {
+      this.consoleComponent?.markSuccess();
+    }, (this.nodes().length + 1) * 500 + 500);
+  }
+
+  onJobStop() {
+    this.consoleComponent?.addLog('warn', 'Exécution interrompue par l\'utilisateur');
   }
 }

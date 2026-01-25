@@ -2,9 +2,9 @@ import { Component, input, output, signal, inject, effect } from '@angular/core'
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NodeInstance } from '../node.type';
-import { ConnectionService, DbConnection, DbType } from '../connection.service';
+import { ConnectionService, DbConnection } from '../connection.service';
 import { BaseWebSocketService } from '../../../core/services/base-ws.service';
-import { DataModel, DbNodeGuessDataModelRequest, DbType as WsDbType, } from '../../../core/api/metadata.type';
+import {DataModel, DbType} from '../../../core/api/metadata.type';
 
 @Component({
   selector: 'app-db-input-modal',
@@ -40,7 +40,7 @@ export class DbInputModal {
     username: '',
     password: '',
     sslMode: 'disable',
-    dbType: 'postgresql' as DbType,
+    dbType: DbType.Postgres,
   };
 
   connections = signal<DbConnection[]>([]);
@@ -89,7 +89,7 @@ export class DbInputModal {
       this.formState.password = '';
       this.formState.database = '';
       this.formState.sslMode = 'disable';
-      this.formState.dbType = 'postgresql';
+      this.formState.dbType = <DbType>'postgresql';
       this.formState.connectionName = '';
       this.selectedConnectionId.set('');
     } else if (newMode === 'select' && this.selectedConnectionId()) {

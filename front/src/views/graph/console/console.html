@@ -1,0 +1,91 @@
+<div class="console-container" [style.height.px]="height()">
+  <!-- Resize Handle -->
+  <div
+    class="resize-handle"
+    (mousedown)="onResizeStart($event)"
+  >
+    <div class="resize-grip"></div>
+  </div>
+
+  <!-- Console Header -->
+  <div class="console-header">
+    <div class="console-title">
+      <i class="pi pi-terminal"></i>
+      <span>Console</span>
+      @if (isRunning()) {
+        <span class="status-badge running">
+          <i class="pi pi-spin pi-spinner"></i>
+          En cours...
+        </span>
+      }
+    </div>
+
+    <div class="console-actions">
+      <button
+        class="action-btn run-btn"
+        (click)="executeJob()"
+        [disabled]="isRunning()"
+        title="Exécuter le job"
+      >
+        <i class="pi pi-play"></i>
+        <span>Exécuter</span>
+      </button>
+
+      <button
+        class="action-btn stop-btn"
+        (click)="stopJob()"
+        [disabled]="!isRunning()"
+        title="Arrêter"
+      >
+        <i class="pi pi-stop"></i>
+      </button>
+
+      <div class="separator"></div>
+
+      <button
+        class="action-btn"
+        (click)="clearLogs()"
+        title="Effacer les logs"
+      >
+        <i class="pi pi-trash"></i>
+      </button>
+
+      <button
+        class="action-btn"
+        (click)="toggleAutoScroll()"
+        [class.active]="autoScroll()"
+        title="Auto-scroll"
+      >
+        <i class="pi pi-arrow-down"></i>
+      </button>
+
+      <button
+        class="action-btn"
+        (click)="toggleCollapse()"
+        title="Réduire/Agrandir"
+      >
+        <i [class]="isCollapsed() ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Console Body -->
+  @if (!isCollapsed()) {
+    <div #logContainer class="console-body">
+      @if (logs().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-info-circle"></i>
+          <span>Aucun log. Exécutez un job pour voir les résultats.</span>
+        </div>
+      } @else {
+        @for (log of logs(); track log.id) {
+          <div class="log-entry" [class]="'log-' + log.level">
+            <span class="log-timestamp">{{ log.timestamp | date:'HH:mm:ss.SSS' }}</span>
+            <span class="log-level">{{ log.level | uppercase }}</span>
+            <span class="log-message">{{ log.message }}</span>
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
