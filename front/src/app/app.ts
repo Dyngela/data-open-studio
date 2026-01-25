@@ -19,15 +19,15 @@ export class App implements OnInit {
   })
 
   ngOnInit(): void {
-        this.guessDataModel.execute({
-          nodeId: 'node-123',
-        query: 'SELECT * FROM job',
-        dbType: DbType.Postgres,
-        host: 'localhost',
-        port: 5433,
-        database: 'data-open-studio',
-        username: 'postgres',
-        password: 'postgres'
-      })
+      //   this.guessDataModel.execute({
+      //   nodeId: 'node-123',
+      //   query: 'SELECT * FROM job',
+      //   dbType: DbType.Postgres,
+      //   host: 'localhost',
+      //   port: 5433,
+      //   database: 'data-open-studio',
+      //   username: 'postgres',
+      //   password: 'postgres'
+      // })
   }
 }

@@ -1,0 +1,180 @@
+<div class="metadata-list">
+  <div class="list-header">
+    <div class="header-info">
+      <h2>Connexions Base de données</h2>
+      <p>Gérez vos connexions aux bases de données</p>
+    </div>
+    <button class="btn primary" (click)="openCreateModal()">
+      <i class="pi pi-plus"></i>
+      Nouvelle connexion
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <i class="pi pi-spin pi-spinner"></i>
+      <span>Chargement...</span>
+    </div>
+  } @else if (metadata().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-database"></i>
+      <h3>Aucune connexion</h3>
+      <p>Créez votre première connexion à une base de données</p>
+      <button class="btn primary" (click)="openCreateModal()">
+        <i class="pi pi-plus"></i>
+        Créer une connexion
+      </button>
+    </div>
+  } @else {
+    <div class="metadata-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Host</th>
+            <th>Port</th>
+            <th>Base de données</th>
+            <th>Utilisateur</th>
+            <th>SSL</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of metadata(); track item.id) {
+            <tr>
+              <td>{{ item.host }}</td>
+              <td>{{ item.port }}</td>
+              <td class="db-name">
+                <i class="pi pi-database"></i>
+                {{ item.databaseName }}
+              </td>
+              <td>{{ item.user }}</td>
+              <td>
+                <span class="ssl-badge" [class.enabled]="item.sslMode === 'require'">
+                  {{ item.sslMode === 'require' ? 'Activé' : 'Désactivé' }}
+                </span>
+              </td>
+              <td class="actions-col">
+                <button class="btn-icon" title="Modifier" (click)="openEditModal(item)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="btn-icon danger" title="Supprimer" (click)="onDelete(item)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Modal -->
+@if (showModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingItem() ? 'Modifier la connexion' : 'Nouvelle connexion' }}</h3>
+        <button class="btn-icon" type="button" (click)="closeModal()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <form class="modal-body" [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="host">Host <span class="required">*</span></label>
+            <input
+              id="host"
+              type="text"
+              formControlName="host"
+              placeholder="localhost"
+              [class.invalid]="isFieldInvalid('host')"
+            />
+            @if (isFieldInvalid('host')) {
+              <span class="field-error">{{ getFieldError('host') }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="port">Port <span class="required">*</span></label>
+            <input
+              id="port"
+              type="text"
+              formControlName="port"
+              placeholder="5432"
+              [class.invalid]="isFieldInvalid('port')"
+            />
+            @if (isFieldInvalid('port')) {
+              <span class="field-error">{{ getFieldError('port') }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="databaseName">Base de données <span class="required">*</span></label>
+          <input
+            id="databaseName"
+            type="text"
+            formControlName="databaseName"
+            placeholder="mydb"
+            [class.invalid]="isFieldInvalid('databaseName')"
+          />
+          @if (isFieldInvalid('databaseName')) {
+            <span class="field-error">{{ getFieldError('databaseName') }}</span>
+          }
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="user">Utilisateur <span class="required">*</span></label>
+            <input
+              id="user"
+              type="text"
+              formControlName="user"
+              placeholder="postgres"
+              [class.invalid]="isFieldInvalid('user')"
+            />
+            @if (isFieldInvalid('user')) {
+              <span class="field-error">{{ getFieldError('user') }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="password">Mot de passe <span class="required">*</span></label>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              placeholder="••••••"
+              [class.invalid]="isFieldInvalid('password')"
+            />
+            @if (isFieldInvalid('password')) {
+              <span class="field-error">{{ getFieldError('password') }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="sslMode">Mode SSL</label>
+          <select id="sslMode" formControlName="sslMode">
+            <option value="disable">Désactivé</option>
+            <option value="require">Activé (require)</option>
+            <option value="verify-ca">Verify CA</option>
+            <option value="verify-full">Verify Full</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" (click)="closeModal()">Annuler</button>
+          <button type="submit" class="btn primary" [disabled]="isSubmitting()">
+            @if (isSubmitting()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            }
+            {{ editingItem() ? 'Enregistrer' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
