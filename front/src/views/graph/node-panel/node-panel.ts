@@ -1,8 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
-import { NodeRegistryService } from '../../nodes/node-registry.service';
-import { NodeType } from '../../nodes/node.type';
+import { NodeRegistryService } from '../../../core/services/node-registry.service';
+import { NodeType } from '../../../core/services/node.type';
 
 @Component({
   selector: 'app-node-panel',

@@ -1,8 +1,8 @@
 import { Component, input, output, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NodeInstance } from '../node.type';
-import { ConnectionService, DbConnection } from '../connection.service';
+import { NodeInstance } from '../../../core/services/node.type';
+import { ConnectionService, DbConnection } from '../../../core/services/connection.service';
 import { BaseWebSocketService } from '../../../core/services/base-ws.service';
 import {DataModel, DbType} from '../../../core/api/metadata.type';
 

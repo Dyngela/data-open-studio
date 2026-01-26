@@ -15,7 +15,7 @@ import { NodePanel } from '../node-panel/node-panel';
 import { NodeInstanceComponent } from '../node-instance/node-instance';
 import { Minimap } from '../minimap/minimap';
 import { Console } from '../console/console';
-import { NodeInstance, Connection, NodeType } from '../../nodes/node.type';
+import { NodeInstance, Connection, NodeType } from '../../../core/services/node.type';
 import { DbInputModal } from '../../nodes/db-input/db-input.modal';
 import { StartModal } from '../../nodes/start/start.modal';
 import { TransformModal } from '../../nodes/transform/transform.modal';
@@ -739,6 +739,7 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   // Console integration
+  // TODO : Faire en sorte que les logs viennent du ws d'interaction
   onJobExecute() {
     if (!this.consoleComponent) return;
 

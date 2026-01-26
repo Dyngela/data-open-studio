@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { signal } from '@angular/core';
-import {DbType} from '../../core/api/metadata.type';
+import {DbType} from '../api/metadata.type';
 
 
 export interface DbConnection {

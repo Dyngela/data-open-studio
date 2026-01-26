@@ -1,6 +1,6 @@
 import { Component, input, output, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NodeInstance } from '../../nodes/node.type';
+import { NodeInstance } from '../../../core/services/node.type';
 
 @Component({
   selector: 'app-node-instance',
