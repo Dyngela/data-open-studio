@@ -1,0 +1,34 @@
+<div class="bottom-bar-container" [style.height.px]="height()">
+  <!-- Resize Handle -->
+  <div class="resize-handle" (mousedown)="onResizeStart($event)">
+    <div class="resize-grip"></div>
+  </div>
+
+  <!-- Tabs -->
+  <p-tabs [(value)]="activeTab" class="bottom-bar-tabs">
+    <p-tablist>
+      <p-tab value="console">
+        <i class="pi pi-terminal"></i>
+        <span>Console</span>
+      </p-tab>
+      <p-tab value="config">
+        <i class="pi pi-cog"></i>
+        <span>Configuration</span>
+      </p-tab>
+    </p-tablist>
+
+    <p-tabpanels>
+      <p-tabpanel value="console">
+        <app-console
+          #consoleComponent
+          (onExecute)="onConsoleExecute()"
+          (onStop)="onConsoleStop()"
+        ></app-console>
+      </p-tabpanel>
+
+      <p-tabpanel value="config">
+        <app-job-config></app-job-config>
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+</div>

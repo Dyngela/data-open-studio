@@ -136,12 +136,12 @@
     ></app-minimap>
   </div>
 
-  <!-- Console en bas -->
-  <app-console
-    #consoleComponent
+  <!-- Bottom bar avec onglets Console/Config -->
+  <app-playground-bottom-bar
+    #bottomBar
     (onExecute)="onJobExecute()"
     (onStop)="onJobStop()"
-  ></app-console>
+  ></app-playground-bottom-bar>
   </div>
 </div>
 

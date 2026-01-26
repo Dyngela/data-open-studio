@@ -14,7 +14,7 @@ import { CdkDropList, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { NodePanel } from '../node-panel/node-panel';
 import { NodeInstanceComponent } from '../node-instance/node-instance';
 import { Minimap } from '../minimap/minimap';
-import { Console } from '../console/console';
+import { PlaygroundBottomBar } from '../playground-bottom-bar/playground-bottom-bar';
 import { NodeInstance, Connection, NodeType } from '../../../core/services/node.type';
 import { DbInputModal } from '../../nodes/db-input/db-input.modal';
 import { StartModal } from '../../nodes/start/start.modal';
@@ -25,7 +25,7 @@ import { JobWithNodes } from '../../../core/api/job.type';
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, Console, DbInputModal, StartModal, TransformModal],
+  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
@@ -35,7 +35,7 @@ export class Playground implements OnInit, AfterViewInit {
 
   @ViewChild('playgroundArea', { static: false }) playgroundArea!: ElementRef;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('consoleComponent') consoleComponent?: Console;
+  @ViewChild('bottomBar') bottomBar?: PlaygroundBottomBar;
 
   // Current job
   currentJobId = signal<number | null>(null);
@@ -741,27 +741,28 @@ export class Playground implements OnInit, AfterViewInit {
   // Console integration
   // TODO : Faire en sorte que les logs viennent du ws d'interaction
   onJobExecute() {
-    if (!this.consoleComponent) return;
+    const console = this.bottomBar?.getConsole();
+    if (!console) return;
 
     const nodeCount = this.nodes().length;
     const connectionCount = this.connections().length;
 
-    this.consoleComponent.addLog('info', `Analyse du schéma: ${nodeCount} nodes, ${connectionCount} connexions`);
+    console.addLog('info', `Analyse du schéma: ${nodeCount} nodes, ${connectionCount} connexions`);
 
     // Simulation d'exécution - à remplacer par vraie logique
     this.nodes().forEach((node, index) => {
       setTimeout(() => {
-        this.consoleComponent?.addLog('info', `Traitement du node: ${node.type.label} (${node.id})`);
+        this.bottomBar?.getConsole()?.addLog('info', `Traitement du node: ${node.type.label} (${node.id})`);
       }, (index + 1) * 500);
     });
 
     // Simulation de fin
     setTimeout(() => {
-      this.consoleComponent?.markSuccess();
+      this.bottomBar?.getConsole()?.markSuccess();
     }, (this.nodes().length + 1) * 500 + 500);
   }
 
   onJobStop() {
-    this.consoleComponent?.addLog('warn', 'Exécution interrompue par l\'utilisateur');
+    this.bottomBar?.getConsole()?.addLog('warn', 'Exécution interrompue par l\'utilisateur');
   }
 }

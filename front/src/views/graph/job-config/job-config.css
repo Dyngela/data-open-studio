@@ -1,0 +1,33 @@
+.job-config-container {
+  height: 100%;
+  background-color: #1e1e1e;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  gap: 0.5rem;
+}
+
+.empty-state i {
+  font-size: 2rem;
+  color: #4ec9b0;
+}
+
+.empty-state span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ccc;
+}
+
+.empty-state .hint {
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0;
+}
