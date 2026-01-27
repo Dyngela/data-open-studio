@@ -101,7 +101,7 @@ func (g *MapGenerator) generateSingleInputFunc(node *models.Node, config *models
 	output := config.Outputs[0]
 	progressInterval := 1000
 
-	// Build the transformation statements for each output column
+	// build the transformation statements for each output column
 	transformStmts := g.buildTransformStatements(input.Name, output.Columns, config, ctx)
 
 	body := []ir.Stmt{
@@ -208,7 +208,7 @@ func (g *MapGenerator) generateJoinFunc(node *models.Node, config *models.MapCon
 	leftKeyField := toPascalCase(leftKey)
 	rightKeyField := toPascalCase(rightKey)
 
-	// Build transform statements
+	// build transform statements
 	transformStmts := g.buildJoinTransformStatements(join.LeftInput, join.RightInput, output.Columns, config, ctx)
 
 	var body []ir.Stmt
@@ -277,7 +277,7 @@ func (g *MapGenerator) generateLeftJoinBody(node *models.Node, leftType, rightTy
 	progressInterval := 1000
 
 	return []ir.Stmt{
-		// Build right index: map[key]*RightRow
+		// build right index: map[key]*RightRow
 		ir.Define(ir.Id("rightIndex"), ir.Call("make", ir.Raw(fmt.Sprintf("map[string]*%s", rightType)))),
 
 		// Drain right channel into index
@@ -325,7 +325,7 @@ func (g *MapGenerator) generateInnerJoinBody(node *models.Node, leftType, rightT
 	_ = node // Used for progress reporting in wrapper
 
 	return []ir.Stmt{
-		// Build right index
+		// build right index
 		ir.Define(ir.Id("rightIndex"), ir.Call("make", ir.Raw(fmt.Sprintf("map[string]*%s", rightType)))),
 		ir.RangeValue("r", ir.Id("rightIn"),
 			ir.Assign(
@@ -364,7 +364,7 @@ func (g *MapGenerator) generateRightJoinBody(node *models.Node, leftType, rightT
 	_ = node // Used for progress reporting in wrapper
 
 	return []ir.Stmt{
-		// Build left index
+		// build left index
 		ir.Define(ir.Id("leftIndex"), ir.Call("make", ir.Raw(fmt.Sprintf("map[string]*%s", leftType)))),
 		ir.RangeValue("l", ir.Id("leftIn"),
 			ir.Assign(

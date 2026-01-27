@@ -46,7 +46,7 @@ func ToJobResponseWithNodes(j models.Job, accessList []models.JobUserAccess) res
 			resp.Nodes[i] = toNodeResponse(n)
 		}
 
-		// Build node lookup for resolving target port indices
+		// build node lookup for resolving target port indices
 		nodeByID := make(map[int]models.Node, len(j.Nodes))
 		for _, n := range j.Nodes {
 			nodeByID[n.ID] = n

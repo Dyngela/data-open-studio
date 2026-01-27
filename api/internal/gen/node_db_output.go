@@ -41,7 +41,7 @@ func (g *DBOutputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContex
 		inputRowType = "any" // fallback
 	}
 
-	// Build the function based on mode
+	// build the function based on mode
 	switch config.Mode {
 	case models.DbOutputModeInsert:
 		return g.generateInsertFunc(node, &config, ctx, funcName, inputRowType)
@@ -84,14 +84,14 @@ func (g *DBOutputGenerator) generateInsertFunc(node *models.Node, config *models
 		batchSize = 500
 	}
 
-	// Build column names for INSERT
+	// build column names for INSERT
 	columns := make([]string, len(config.DataModels))
 	for i, col := range config.DataModels {
 		columns[i] = col.Name
 	}
 	columnsStr := strings.Join(columns, ", ")
 
-	// Build schema-qualified table name
+	// build schema-qualified table name
 	tableName := config.Table
 	if config.DbSchema != "" {
 		tableName = fmt.Sprintf("%s.%s", config.DbSchema, config.Table)
@@ -178,7 +178,7 @@ func (g *DBOutputGenerator) generateInsertFunc(node *models.Node, config *models
 func (g *DBOutputGenerator) generateFlushBatchBody(node *models.Node, config *models.DBOutputConfig, tableName, columnsStr, inputRowType string) []ir.Stmt {
 	numCols := len(config.DataModels)
 
-	// Build field accessors for the row
+	// build field accessors for the row
 	fieldAccessors := make([]string, numCols)
 	for i, col := range config.DataModels {
 		fieldAccessors[i] = fmt.Sprintf("row.%s", col.GoFieldName())
@@ -193,7 +193,7 @@ func (g *DBOutputGenerator) generateFlushBatchBody(node *models.Node, config *mo
 		// batchLen := int64(len(batch))
 		ir.Define(ir.Id("batchLen"), ir.Call("int64", ir.Call("len", ir.Id("batch")))),
 
-		// Build VALUES placeholders
+		// build VALUES placeholders
 		// var placeholders []string
 		ir.Var("placeholders", "[]string"),
 
@@ -202,7 +202,7 @@ func (g *DBOutputGenerator) generateFlushBatchBody(node *models.Node, config *mo
 
 		// for i, row := range batch { ... }
 		ir.Range("i", "row", ir.Id("batch"),
-			// Build placeholder like ($1, $2, $3) for each row
+			// build placeholder like ($1, $2, $3) for each row
 			ir.Define(ir.Id("offset"), ir.Mul(ir.Id("i"), ir.Lit(numCols))),
 			ir.Define(ir.Id("ph"), ir.Call("make", ir.Raw("[]string"), ir.Lit(0), ir.Lit(numCols))),
 

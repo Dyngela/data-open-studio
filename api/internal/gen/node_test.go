@@ -61,14 +61,14 @@ func TestDBInputAlone(t *testing.T) {
 	}
 
 	exec := NewJobExecution(&job)
-	_, err := exec.Build()
+	_, err := exec.build()
 	if err != nil {
-		t.Fatalf("Build failed: %v", err)
+		t.Fatalf("build failed: %v", err)
 	}
 
-	source, err := exec.GenerateSource("main")
+	source, err := exec.generateSource("main")
 	if err != nil {
-		t.Fatalf("GenerateSource failed: %v", err)
+		t.Fatalf("generateSource failed: %v", err)
 	}
 
 	fmt.Println("=== DB INPUT GENERATED CODE ===")
@@ -120,10 +120,10 @@ func TestDBOutputAlone(t *testing.T) {
 		JobID: 1,
 	}
 	outputNode.SetData(models.DBOutputConfig{
-		Table:     "orders_backup",
-		Mode:      "INSERT",
-		BatchSize: 250,
-		DbSchema:  "archive",
+		Table:      "orders_backup",
+		Mode:       "INSERT",
+		BatchSize:  250,
+		DbSchema:   "archive",
 		Connection: conn,
 		DataModels: []models.DataModel{
 			{Name: "id", Type: "integer", GoType: "int"},
@@ -155,14 +155,14 @@ func TestDBOutputAlone(t *testing.T) {
 	}
 
 	exec := NewJobExecution(&job)
-	_, err := exec.Build()
+	_, err := exec.build()
 	if err != nil {
-		t.Fatalf("Build failed: %v", err)
+		t.Fatalf("build failed: %v", err)
 	}
 
-	source, err := exec.GenerateSource("main")
+	source, err := exec.generateSource("main")
 	if err != nil {
-		t.Fatalf("GenerateSource failed: %v", err)
+		t.Fatalf("generateSource failed: %v", err)
 	}
 
 	fmt.Println("=== DB OUTPUT GENERATED CODE ===")

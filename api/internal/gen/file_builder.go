@@ -104,8 +104,8 @@ func (b *FileBuilder) Build() error {
 }
 
 // EmitFile generates the complete Go source file
-func (b *FileBuilder) EmitFile(pkgName string) ([]byte, error) {
-	file := ir.NewFile(pkgName)
+func (b *FileBuilder) EmitFile() ([]byte, error) {
+	file := ir.NewFile("main")
 
 	// Generate main executor and entrypoint functions first (they add imports)
 	executorFunc := b.generateMainFunc()
@@ -232,7 +232,7 @@ func (b *FileBuilder) generateMainFunc() *ir.FuncDecl {
 		ir.Return(ir.Id("firstErr")),
 	)
 
-	return ir.NewFunc("Execute").
+	return ir.NewFunc("execute").
 		Param("ctx", "context.Context").
 		Param("progress", "lib.ProgressFunc").
 		Returns("error").
@@ -263,11 +263,11 @@ func (b *FileBuilder) collectChannels() []channelInfo {
 			if port.Type == models.PortTypeOutput && !seen[port.ID] {
 				seen[port.ID] = true
 				// port.Node is the destination node, port.NodeID is the owner (source) node
-				toNodeID := port.Node.ID
+				toNodeID := port.NodeID
 				channels = append(channels, channelInfo{
 					portID:     port.ID,
 					fromNodeID: node.ID,
-					toNodeID:   toNodeID,
+					toNodeID:   int(toNodeID),
 					rowType:    b.ctx.StructName(&node),
 					bufferSize: 1000, // default buffer size
 				})
@@ -541,7 +541,7 @@ func (b *FileBuilder) generateJoinMapLaunch(node *models.Node, config *models.Ma
 	}
 }
 
-// generateEntrypoint generates the main function that calls Execute
+// generateEntrypoint generates the main function that calls execute
 func (b *FileBuilder) generateEntrypoint() *ir.FuncDecl {
 	b.ctx.AddImport("context")
 	b.ctx.AddImport("log")
@@ -577,7 +577,7 @@ func (b *FileBuilder) generateEntrypoint() *ir.FuncDecl {
 
 	body = append(body,
 		ir.IfInit(
-			ir.Define(ir.Id("err"), ir.Call("Execute", ir.Id("ctx"), ir.Id("progress"))),
+			ir.Define(ir.Id("err"), ir.Call("execute", ir.Id("ctx"), ir.Id("progress"))),
 			ir.Neq(ir.Id("err"), ir.Nil()),
 			ir.ExprStatement(ir.Call("log.Fatalf", ir.Lit("execution failed: %v"), ir.Id("err"))),
 		),

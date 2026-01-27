@@ -14,4 +14,5 @@ type Port struct {
 	Type            PortType
 	NodeID          uint // owning node (GORM foreign key for has-many)
 	ConnectedNodeID uint // the node on the other end of the connection
+	Node            Node
 }

@@ -402,23 +402,21 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   onJobExecute() {
-    const console = this.bottomBar()?.getConsole();
-    if (!console) return;
-
-    const nodeCount = this.nodes().length;
-    const connectionCount = this.connections().length;
-
-    console.addLog('info', `Analyse du schéma: ${nodeCount} nodes, ${connectionCount} connexions`);
-
-    this.nodes().forEach((node, index) => {
-      setTimeout(() => {
-        this.bottomBar()?.getConsole()?.addLog('info', `Traitement du node: ${node.type.label} (${node.id})`);
-      }, (index + 1) * 500);
-    });
-
-    setTimeout(() => {
-      this.bottomBar()?.getConsole()?.markSuccess();
-    }, (this.nodes().length + 1) * 500 + 500);
+    console.log("execute")
+    const localConsole = this.bottomBar()?.getConsole();
+    if (!localConsole) return;
+    const id = this.currentJobId()
+    if (!id) {
+      return
+    }
+    const mutation = this.jobService.execute(id, () => {
+        console.log("ok")
+    },
+      (error) => {
+        console.log(error)
+      }
+      );
+    mutation.execute(null);
   }
 
   onJobStop() {

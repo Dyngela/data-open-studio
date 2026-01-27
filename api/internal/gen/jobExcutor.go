@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type Step struct {
@@ -18,6 +23,7 @@ type JobExecution struct {
 	Context     *ExecutionContext
 	Steps       []Step
 	FileBuilder *FileBuilder
+	logger      zerolog.Logger
 }
 
 // NewJobExecution creates a new pipeline from a job
@@ -26,6 +32,7 @@ func NewJobExecution(job *models.Job) *JobExecution {
 		Job:         job,
 		Context:     NewExecutionContext(),
 		FileBuilder: NewFileBuilder(job),
+		logger:      api.Logger,
 	}
 }
 
@@ -36,10 +43,42 @@ func NewPipelineExecutor(job *models.Job) *JobExecution {
 
 // Run builds and executes the pipeline
 func (j *JobExecution) Run() error {
-	if _, err := j.Build(); err != nil {
+	if _, err := j.build(); err != nil {
 		return err
 	}
-	return j.Execute()
+	// TODO assainir le nom du job
+	binRepo := os.Getenv("BIN_REPO")
+	jobFile := j.Job.Name + ".go"
+	jobPath := filepath.Join(binRepo, jobFile)
+	j.logger.Info().Msgf("Writing job to %s", jobPath)
+	if err := j.writeToFile(jobPath); err != nil {
+		return err
+	}
+
+	modName := fmt.Sprintf("job_%s", uuid.NewString())
+	if err := runCmd(binRepo, "go", "mod", "init", modName); err != nil {
+		return err
+	}
+
+	if err := runCmd(binRepo, "go", "mod", "tidy"); err != nil {
+		return err
+	}
+
+	if err := runCmd(binRepo, "go", "run", jobFile); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runCmd(dir string, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	return cmd.Run()
 }
 
 // withDbConnection adds a database connection to the execution context if not already present
@@ -150,7 +189,7 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 		}
 	}
 
-	// Build execution steps
+	// build execution steps
 	j.Steps = make([]Step, 0, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
 		if nodes := levelNodes[level]; len(nodes) > 0 {
@@ -191,8 +230,8 @@ func (j *JobExecution) withGlobalVariables(node models.Node) (*JobExecution, err
 	return j, nil
 }
 
-// Build builds the job file for compilation
-func (j *JobExecution) Build() (*JobExecution, error) {
+// build builds the job file for compilation
+func (j *JobExecution) build() (*JobExecution, error) {
 	// Setup execution steps
 	j, err := j.withStepsSetup()
 	if err != nil {
@@ -231,14 +270,14 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 	return j, nil
 }
 
-// GenerateSource generates the Go source code for this job
-func (j *JobExecution) GenerateSource(pkgName string) ([]byte, error) {
-	return j.FileBuilder.EmitFile(pkgName)
+// generateSource generates the Go source code for this job
+func (j *JobExecution) generateSource() ([]byte, error) {
+	return j.FileBuilder.EmitFile()
 }
 
-// WriteToFile writes the generated code to a file
-func (j *JobExecution) WriteToFile(outputPath string, pkgName string) error {
-	source, err := j.GenerateSource(pkgName)
+// writeToFile writes the generated code to a file
+func (j *JobExecution) writeToFile(outputPath string) error {
+	source, err := j.generateSource()
 	if err != nil {
 		return fmt.Errorf("failed to generate source: %w", err)
 	}
@@ -248,11 +287,5 @@ func (j *JobExecution) WriteToFile(outputPath string, pkgName string) error {
 	}
 
 	log.Printf("Generated code written to %s", outputPath)
-	return nil
-}
-
-func (j *JobExecution) Execute() error {
-	// TODO: Compile and run the generated code
-	// For now, just return nil
 	return nil
 }

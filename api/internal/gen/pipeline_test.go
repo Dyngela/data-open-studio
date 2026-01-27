@@ -234,7 +234,7 @@ func TestJobExecution_Generation(t *testing.T) {
 	}
 
 	// ==========================================================================
-	// Build and execute
+	// build and execute
 	// ==========================================================================
 	nodes := []models.Node{
 		startNode,
@@ -257,13 +257,13 @@ func TestJobExecution_Generation(t *testing.T) {
 	}
 
 	exec := NewPipelineExecutor(&job)
-	_, err := exec.Build()
+	_, err := exec.build()
 	if err != nil {
 		t.Fatalf("Pipeline build failed: %v", err)
 	}
 	require.NoError(t, err)
 
 	// Write generated code to file
-	err = exec.WriteToFile("../../../bin/generated_job.go", "main")
+	err = exec.writeToFile("../../../bin/generated_job.go", "main")
 	require.NoError(t, err)
 }

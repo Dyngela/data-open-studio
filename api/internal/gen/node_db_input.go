@@ -50,7 +50,7 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 	funcName := ctx.FuncName(node)
 	connID := config.Connection.GetConnectionID()
 
-	// Build scan arguments: &row.Field1, &row.Field2, ...
+	// build scan arguments: &row.Field1, &row.Field2, ...
 	scanArgs := make([]ir.Expr, len(config.DataModels))
 	for i, col := range config.DataModels {
 		scanArgs[i] = ir.Addr(ir.Sel(ir.Id("row"), col.GoFieldName()))

@@ -4,6 +4,7 @@ import (
 	"api"
 	"api/internal/api/models"
 	"api/internal/api/repo"
+	"api/internal/gen"
 	"errors"
 
 	"github.com/rs/zerolog"
@@ -147,7 +148,7 @@ func (slf *JobService) UpdateWithNodes(id uint, patch map[string]any, nodes []mo
 			return nil, err
 		}
 
-		// Build old→new ID mapping
+		// build old→new ID mapping
 		oldToNewID := make(map[int]uint, len(nodes))
 		for i := range nodes {
 			oldToNewID[oldIDs[i]] = uint(nodes[i].ID)
@@ -337,4 +338,20 @@ func (slf *JobService) FindByIDWithAccess(id uint) (*models.Job, []models.JobUse
 	}
 
 	return &job, accessList, nil
+}
+
+func (slf *JobService) Execute(id uint) error {
+	job, err := slf.jobRepo.FindByID(id)
+	if err != nil {
+		return err
+	}
+	executer := gen.NewJobExecution(&job)
+	err = executer.Run()
+
+	slf.logger.Info().Msgf("%v", err)
+	slf.logger.Info().Msgf("steps: %v", executer.Steps)
+	slf.logger.Info().Msgf("context: %v", executer.Context)
+
+	return err
+
 }

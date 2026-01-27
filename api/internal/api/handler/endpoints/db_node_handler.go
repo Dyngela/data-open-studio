@@ -54,10 +54,10 @@ func (slf *dbNodeHandler) guessSchema(c *gin.Context) {
 		Str("host", req.Host).
 		Msg("Guessing schema for query")
 
-	// Build the DB input config
+	// build the DB input config
 	node := slf.nodeMapper.GuessSchemaRequestToDBInputConfig(req)
 
-	// Execute schema introspection
+	// execute schema introspection
 	if err := node.FillDataModels(); err != nil {
 		slf.logger.Error().Err(err).Msg("Failed to guess data model")
 		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to guess schema: " + err.Error()})
