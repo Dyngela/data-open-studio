@@ -10,8 +10,8 @@ const (
 )
 
 type Port struct {
-	ID     uint
-	Type   PortType
-	Node   Node `gorm:"foreignKey:NodeID"`
-	NodeID uint
+	ID              uint
+	Type            PortType
+	NodeID          uint // owning node (GORM foreign key for has-many)
+	ConnectedNodeID uint // the node on the other end of the connection
 }

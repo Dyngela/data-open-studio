@@ -13,8 +13,8 @@ export class NodeInstanceComponent {
   node = input.required<NodeInstance>();
   panOffset = input({ x: 0, y: 0 });
   isPanning = input(false);
-  outputPortClick = output<{ nodeId: string; portIndex: number; portType: PortType }>();
-  inputPortClick = output<{ nodeId: string; portIndex: number; portType: PortType }>();
+  outputPortClick = output<{ nodeId: number; portIndex: number; portType: PortType }>();
+  inputPortClick = output<{ nodeId: number; portIndex: number; portType: PortType }>();
 
   constructor(private elementRef: ElementRef) {}
 

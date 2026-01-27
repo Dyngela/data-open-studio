@@ -42,7 +42,7 @@ export class Playground implements OnInit, AfterViewInit {
   // Canvas interaction state
   private isConnecting = signal(false);
   private sourcePort = signal<{
-    nodeId: string;
+    nodeId: number;
     portIndex: number;
     portType: PortType;
   } | null>(null);
@@ -53,10 +53,10 @@ export class Playground implements OnInit, AfterViewInit {
   private panStart = signal({ x: 0, y: 0 });
 
   private isDraggingNode = signal(false);
-  private draggedNodeId = signal<string | null>(null);
+  private draggedNodeId = signal<number | null>(null);
   private dragNodeOffset = signal({ x: 0, y: 0 });
 
-  protected activeModal = signal<{ nodeId: string; nodeTypeId: string } | null>(null);
+  protected activeModal = signal<{ nodeId: number; nodeTypeId: string } | null>(null);
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -70,7 +70,6 @@ export class Playground implements OnInit, AfterViewInit {
   ngAfterViewInit() {
     window.addEventListener('resize', () => {
       if (this.playgroundArea) {
-        console.log("zae")
         const rect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
         this.viewportWidth.set(rect.width);
         this.viewportHeight.set(rect.height);
@@ -80,7 +79,7 @@ export class Playground implements OnInit, AfterViewInit {
 
   //#region Node callbacks
   onDbInputSave(
-    nodeId: string,
+    nodeId: number,
     config: {
       connectionString: string;
       table: string;
@@ -103,7 +102,7 @@ export class Playground implements OnInit, AfterViewInit {
 
 
   //#region Mouse event handlers
-  onNodeMouseDown(event: MouseEvent, nodeId: string) {
+  onNodeMouseDown(event: MouseEvent, nodeId: number) {
     if (this.isConnecting() || this.isPanning() || event.button !== 0) {
       return;
     }
@@ -127,7 +126,7 @@ export class Playground implements OnInit, AfterViewInit {
     }
   }
 
-  onOutputPortClick(event: { nodeId: string; portIndex: number; portType: PortType }) {
+  onOutputPortClick(event: { nodeId: number; portIndex: number; portType: PortType }) {
     if (!this.isConnecting()) {
       this.isConnecting.set(true);
       this.sourcePort.set({
@@ -138,7 +137,7 @@ export class Playground implements OnInit, AfterViewInit {
     }
   }
 
-  onInputPortClick(event: { nodeId: string; portIndex: number; portType: PortType }) {
+  onInputPortClick(event: { nodeId: number; portIndex: number; portType: PortType }) {
     const source = this.sourcePort();
     if (this.isConnecting() && source) {
       this.nodeGraph.createConnection(source, {
@@ -266,7 +265,7 @@ export class Playground implements OnInit, AfterViewInit {
     }
   }
 
-  openNodeModal(nodeId: string) {
+  openNodeModal(nodeId: number) {
     const node = this.nodeGraph.getNodeById(nodeId);
     if (!node) return;
 
@@ -279,7 +278,7 @@ export class Playground implements OnInit, AfterViewInit {
     this.activeModal.set(null);
   }
 
-  private getNodeSize(nodeId: string): { width: number; height: number } {
+  private getNodeSize(nodeId: number): { width: number; height: number } {
     const nodeElement = this.playgroundArea()?.nativeElement.querySelector(
       `[data-node-id="${nodeId}"]`,
     ) as HTMLElement | null;
@@ -294,7 +293,7 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   private getPortPosition(
-    nodeId: string,
+    nodeId: number,
     portIndex: number,
     portType: Direction,
     connectionType: PortType = PortType.DATA,
@@ -319,7 +318,7 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   private getPortElement(
-    nodeId: string,
+    nodeId: number,
     portIndex: number,
     portType: Direction,
     connectionType: PortType = PortType.DATA,
@@ -352,6 +351,8 @@ export class Playground implements OnInit, AfterViewInit {
       if (!result.isLoading()) {
         clearInterval(checkLoaded);
         this.isLoadingJob.set(false);
+        console.log(result.data())
+
 
         const job = result.data();
         if (job) {
@@ -363,34 +364,37 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   onJobSave() {
-    const console = this.bottomBar()?.getConsole();
+    const localConsole = this.bottomBar()?.getConsole();
     const jobId = this.currentJobId();
 
     if (!jobId) {
-      console?.addLog('warn', 'Aucun job chargé. Impossible de sauvegarder.');
-      console?.isSaving.set(false);
+      localConsole?.addLog('warn', 'Aucun job chargé. Impossible de sauvegarder.');
+      localConsole?.isSaving.set(false);
       return;
     }
 
-    console?.isSaving.set(true);
-    console?.addLog('info', 'Sauvegarde du job en cours...');
+    localConsole?.isSaving.set(true);
+    localConsole?.addLog('info', 'Sauvegarde du job en cours...');
 
     const apiNodes = this.nodeGraph.toApiNodes(jobId);
 
     const request: UpdateJobRequest = {
       nodes: apiNodes,
+      connexions: this.nodeGraph.connections(),
     };
+
+    console.log(request)
 
     const mutation = this.jobService.update(
       jobId,
       (updatedJob) => {
         this.currentJob.set(updatedJob);
-        console?.addLog('success', 'Job sauvegardé avec succès.');
-        console?.isSaving.set(false);
+        localConsole?.addLog('success', 'Job sauvegardé avec succès.');
+        localConsole?.isSaving.set(false);
       },
       () => {
-        console?.addLog('error', 'Erreur lors de la sauvegarde du job.');
-        console?.isSaving.set(false);
+        localConsole?.addLog('error', 'Erreur lors de la sauvegarde du job.');
+        localConsole?.isSaving.set(false);
       }
     );
 

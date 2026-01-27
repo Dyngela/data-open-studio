@@ -41,5 +41,15 @@ type JobWithNodes struct {
 	CreatedAt   time.Time            `json:"createdAt"`
 	UpdatedAt   time.Time            `json:"updatedAt"`
 	Nodes       []Node               `json:"nodes"`
-	SharedWith  []SharedUser         `json:"sharedWith,omitempty"`
+	Connexions  []Connexion          `json:"connexions"`
+	SharedUser  []SharedUser         `json:"sharedUser"`
+}
+
+type Connexion struct {
+	SourceNodeId   int             `json:"sourceNodeId"`
+	SourcePort     int             `json:"sourcePort"`
+	SourcePortType models.PortType `json:"sourcePortType"`
+	TargetNodeId   int             `json:"targetNodeId"`
+	TargetPort     int             `json:"targetPort"`
+	TargetPortType models.PortType `json:"targetPortType"`
 }

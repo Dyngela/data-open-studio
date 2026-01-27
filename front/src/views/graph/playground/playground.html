@@ -26,7 +26,7 @@
     }
 
     <svg class="connections-layer">
-      @for (connection of connections(); track connection.id) {
+      @for (connection of connections(); track $index) {
       <path
         [attr.d]="getConnectionPath(connection)"
         [class]="'connection connection-' + nodeGraph.getConnectionKind(connection)"

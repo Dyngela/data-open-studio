@@ -1,14 +1,9 @@
 // Enums
+import {Connection} from '../nodes-services/node.type';
+
 export type JobVisibility = 'public' | 'private';
 export type OwningRole = 'owner' | 'editor' | 'viewer';
 export type NodeType = 'start' | 'db_input' | 'db_output' | 'map';
-
-// Port type
-export interface Port {
-  id: number;
-  type: string;
-  nodeId: number;
-}
 
 // Node type
 export interface Node {
@@ -17,10 +12,7 @@ export interface Node {
   name: string;
   xpos: number;
   ypos: number;
-  inputPort: Port[];
-  outputPort: Port[];
   data: unknown;
-  jobId: number;
 }
 
 // SharedUser - a user with access to a job
@@ -44,12 +36,13 @@ export interface Job {
   outputPath: string;
   createdAt: string;
   updatedAt: string;
+  sharedUser: SharedUser[];
 }
 
 // Job response with nodes (for single job get)
 export interface JobWithNodes extends Job {
   nodes: Node[];
-  sharedWith?: SharedUser[];
+  connexions?: Connection[];
 }
 
 // Request: Create a new job
@@ -73,6 +66,7 @@ export interface UpdateJobRequest {
   visibility?: JobVisibility;
   sharedWith?: number[];
   nodes?: Node[];
+  connexions?: Connection[];
 }
 
 // Request: Share/Unshare job
@@ -93,17 +87,4 @@ export interface User {
   email: string;
   prenom: string;
   nom: string;
-}
-
-// Tree node for job explorer
-export interface JobTreeNode {
-  key: string;
-  label: string;
-  data?: Job;
-  icon?: string;
-  expandedIcon?: string;
-  collapsedIcon?: string;
-  children?: JobTreeNode[];
-  leaf?: boolean;
-  type: 'folder' | 'job';
 }

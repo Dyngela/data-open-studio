@@ -109,24 +109,74 @@ func (slf *JobService) UpdateWithNodes(id uint, patch map[string]any, nodes []mo
 		}
 	}
 
-	// Delete existing nodes and create new ones
+	// Delete existing ports for this job's nodes, then delete the nodes
+	if err := tx.Where("node_id IN (?)", tx.Model(&models.Node{}).Select("id").Where("job_id = ?", id)).
+		Delete(&models.Port{}).Error; err != nil {
+		tx.Rollback()
+		slf.logger.Error().Err(err).Uint("jobId", id).Msg("Error deleting old ports")
+		return nil, err
+	}
 	if err := tx.Where("job_id = ?", id).Delete(&models.Node{}).Error; err != nil {
 		tx.Rollback()
 		slf.logger.Error().Err(err).Uint("jobId", id).Msg("Error deleting old nodes")
 		return nil, err
 	}
 
-	// Set JobID for all nodes and create them
-	for i := range nodes {
-		nodes[i].JobID = id
-		nodes[i].ID = 0 // Reset ID to allow auto-increment
-	}
-
 	if len(nodes) > 0 {
+		// Save old IDs and strip ports before creating nodes
+		oldIDs := make([]int, len(nodes))
+		nodePorts := make([]struct {
+			input  []models.Port
+			output []models.Port
+		}, len(nodes))
+
+		for i := range nodes {
+			oldIDs[i] = nodes[i].ID
+			nodePorts[i].input = nodes[i].InputPort
+			nodePorts[i].output = nodes[i].OutputPort
+			nodes[i].InputPort = nil
+			nodes[i].OutputPort = nil
+			nodes[i].JobID = id
+			nodes[i].ID = 0
+		}
+
+		// Create nodes (without ports) to get new auto-generated IDs
 		if err := tx.Create(&nodes).Error; err != nil {
 			tx.Rollback()
 			slf.logger.Error().Err(err).Uint("jobId", id).Msg("Error creating new nodes")
 			return nil, err
+		}
+
+		// Build old→new ID mapping
+		oldToNewID := make(map[int]uint, len(nodes))
+		for i := range nodes {
+			oldToNewID[oldIDs[i]] = uint(nodes[i].ID)
+		}
+
+		// Remap ConnectedNodeID and create ports
+		var allPorts []models.Port
+		for i := range nodes {
+			newNodeID := uint(nodes[i].ID)
+			for _, p := range nodePorts[i].output {
+				p.ID = 0
+				p.NodeID = newNodeID
+				p.ConnectedNodeID = oldToNewID[int(p.ConnectedNodeID)]
+				allPorts = append(allPorts, p)
+			}
+			for _, p := range nodePorts[i].input {
+				p.ID = 0
+				p.NodeID = newNodeID
+				p.ConnectedNodeID = oldToNewID[int(p.ConnectedNodeID)]
+				allPorts = append(allPorts, p)
+			}
+		}
+
+		if len(allPorts) > 0 {
+			if err := tx.Create(&allPorts).Error; err != nil {
+				tx.Rollback()
+				slf.logger.Error().Err(err).Uint("jobId", id).Msg("Error creating ports")
+				return nil, err
+			}
 		}
 	}
 
@@ -269,8 +319,8 @@ func (slf *JobService) FindByIDWithAccess(id uint) (*models.Job, []models.JobUse
 	var job models.Job
 	err := slf.jobRepo.Db.
 		Preload("Nodes").
-		Preload("Nodes.InputPort").
-		Preload("Nodes.OutputPort").
+		Preload("Nodes.InputPort", "type IN ?", []string{"input", "node_flow_input"}).
+		Preload("Nodes.OutputPort", "type IN ?", []string{"output", "node_flow_output"}).
 		Preload("SharedWith").
 		First(&job, id).Error
 

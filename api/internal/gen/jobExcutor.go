@@ -85,17 +85,19 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 			return level
 		}
 
-		prevNodes := node.GetPrevFlowNode()
-		if len(prevNodes) == 0 {
+		prevIDs := node.GetPrevFlowNodeIDs()
+		if len(prevIDs) == 0 {
 			levels[node.ID] = 0
 			return 0
 		}
 
 		maxPredLevel := -1
-		for i := range prevNodes {
-			predLevel := calculateLevel(&prevNodes[i])
-			if predLevel > maxPredLevel {
-				maxPredLevel = predLevel
+		for _, prevID := range prevIDs {
+			if prev := nodeByID[prevID]; prev != nil {
+				predLevel := calculateLevel(prev)
+				if predLevel > maxPredLevel {
+					maxPredLevel = predLevel
+				}
 			}
 		}
 
@@ -117,10 +119,10 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 
 			calculateLevel(current)
 
-			for _, next := range current.GetNextFlowNode() {
-				if !visited[next.ID] {
-					visited[next.ID] = true
-					if n := nodeByID[next.ID]; n != nil {
+			for _, nextID := range current.GetNextFlowNodeIDs() {
+				if !visited[nextID] {
+					visited[nextID] = true
+					if n := nodeByID[nextID]; n != nil {
 						queue = append(queue, n)
 					}
 				}

@@ -11,7 +11,7 @@ export interface NodeType {
 }
 
 export interface NodeInstance {
-  id: string;
+  id: number;
   type: NodeType;
   position: { x: number; y: number };
   config?: Record<string, any>;
@@ -19,41 +19,20 @@ export interface NodeInstance {
 }
 
 export interface Connection {
-  id: string;
-  sourceNodeId: string;
+  sourceNodeId: number;
   sourcePort: number;
   sourcePortType: PortType;
-  targetNodeId: string;
+  targetNodeId: number;
   targetPort: number;
   targetPortType: PortType;
-  //  DATA ONLY
-  dataSchema?: {
-    columns: { name: string; type: string }[];
-  };
-  rowCount?: number;
-}
-
-export interface Port {
-  nodeId: string;
-  portType: PortType;
-  portIndex: number;
-  position: { x: number; y: number };
-  direction: Direction;
-}
-
-export interface Pipeline {
-  id: string;
-  name: string;
-  nodes: NodeInstance[];
-  connections: Connection[]; // Liste unifiée contenant data et flow connections
 }
 
 /** Callback to retrieve a node's rendered size from the DOM */
-export type NodeSizeFn = (nodeId: string) => { width: number; height: number };
+export type NodeSizeFn = (nodeId: number) => { width: number; height: number };
 
 /** Callback to retrieve a port's rendered position from the DOM */
 export type PortPositionFn = (
-  nodeId: string,
+  nodeId: number,
   portIndex: number,
   portType: Direction,
   connectionType: PortType,

@@ -139,56 +139,56 @@ func (slf Node) GetMapConfig() (MapConfig, error) {
 	return GetTypedData[MapConfig](slf)
 }
 
-func (slf Node) GetNextFlowNode() []Node {
+func (slf Node) GetNextFlowNodeIDs() []int {
 	if len(slf.OutputPort) == 0 {
 		return nil
 	}
-	var nextNodes []Node
+	var ids []int
 	for _, conn := range slf.OutputPort {
 		if conn.Type == PortNodeFlowOutput {
-			nextNodes = append(nextNodes, conn.Node)
+			ids = append(ids, int(conn.ConnectedNodeID))
 		}
 	}
-	return nextNodes
+	return ids
 }
 
-func (slf Node) GetPrevFlowNode() []Node {
+func (slf Node) GetPrevFlowNodeIDs() []int {
 	if len(slf.InputPort) == 0 {
 		return nil
 	}
-	var previousNodes []Node
+	var ids []int
 	for _, conn := range slf.InputPort {
 		if conn.Type == PortNodeFlowInput {
-			previousNodes = append(previousNodes, conn.Node)
+			ids = append(ids, int(conn.ConnectedNodeID))
 		}
 	}
-	return previousNodes
+	return ids
 }
 
-// GetDataInputNodes returns nodes that provide data input to this node
-func (slf Node) GetDataInputNodes() []Node {
+// GetDataInputNodeIDs returns IDs of nodes that provide data input to this node
+func (slf Node) GetDataInputNodeIDs() []int {
 	if len(slf.InputPort) == 0 {
 		return nil
 	}
-	var inputNodes []Node
+	var ids []int
 	for _, conn := range slf.InputPort {
 		if conn.Type == PortTypeInput {
-			inputNodes = append(inputNodes, conn.Node)
+			ids = append(ids, int(conn.ConnectedNodeID))
 		}
 	}
-	return inputNodes
+	return ids
 }
 
-// GetDataOutputNodes returns nodes that receive data output from this node
-func (slf Node) GetDataOutputNodes() []Node {
+// GetDataOutputNodeIDs returns IDs of nodes that receive data output from this node
+func (slf Node) GetDataOutputNodeIDs() []int {
 	if len(slf.OutputPort) == 0 {
 		return nil
 	}
-	var outputNodes []Node
+	var ids []int
 	for _, conn := range slf.OutputPort {
 		if conn.Type == PortTypeOutput {
-			outputNodes = append(outputNodes, conn.Node)
+			ids = append(ids, int(conn.ConnectedNodeID))
 		}
 	}
-	return outputNodes
+	return ids
 }

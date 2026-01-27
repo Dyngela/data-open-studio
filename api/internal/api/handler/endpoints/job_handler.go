@@ -211,11 +211,12 @@ func (h *jobHandler) update(c *gin.Context) {
 	}
 
 	patch := h.jobMapper.PatchJob(req)
+	nodes := mapper.JobWithNodeToModel(req)
 
 	var updated *models.Job
-	if len(req.Nodes) > 0 {
+	if len(nodes) > 0 {
 		// Update with nodes replacement
-		updated, err = h.jobService.UpdateWithNodes(uint(id), patch, req.Nodes)
+		updated, err = h.jobService.UpdateWithNodes(uint(id), patch, nodes)
 	} else {
 		// Update only job fields
 		updated, err = h.jobService.Update(uint(id), patch)

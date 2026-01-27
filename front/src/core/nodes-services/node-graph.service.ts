@@ -34,7 +34,7 @@ export class NodeGraphService {
 
   createNode(type: NodeType, position: { x: number; y: number }): NodeInstance {
     const node: NodeInstance = {
-      id: `node-${this.nodeIdCounter++}`,
+      id: this.nodeIdCounter++,
       type,
       position,
       config: {},
@@ -44,7 +44,7 @@ export class NodeGraphService {
     return node;
   }
 
-  updateNodeConfig(nodeId: string, config: Record<string, any>): void {
+  updateNodeConfig(nodeId: number, config: Record<string, any>): void {
     this.nodes.update(nodes =>
       nodes.map(node =>
         node.id === nodeId ? { ...node, config: { ...node.config, ...config } } : node,
@@ -52,22 +52,21 @@ export class NodeGraphService {
     );
   }
 
-  updateNodePosition(nodeId: string, position: { x: number; y: number }): void {
+  updateNodePosition(nodeId: number, position: { x: number; y: number }): void {
     this.nodes.update(nodes =>
       nodes.map(node => (node.id === nodeId ? { ...node, position } : node)),
     );
   }
 
-  getNodeById(nodeId: string): NodeInstance | undefined {
+  getNodeById(nodeId: number): NodeInstance | undefined {
     return this.nodes().find(n => n.id === nodeId);
   }
 
   createConnection(
-    source: { nodeId: string; portIndex: number; portType: PortType },
-    target: { nodeId: string; portIndex: number; portType: PortType },
+    source: { nodeId: number; portIndex: number; portType: PortType },
+    target: { nodeId: number; portIndex: number; portType: PortType },
   ): Connection {
     const connection: Connection = {
-      id: `connection-${this.connectionIdCounter++}`,
       sourceNodeId: source.nodeId,
       sourcePort: source.portIndex,
       sourcePortType: source.portType,
@@ -82,12 +81,13 @@ export class NodeGraphService {
   loadFromJob(job: JobWithNodes): void {
     if (job.nodes && job.nodes.length > 0) {
       const nodeInstances: NodeInstance[] = job.nodes.map(apiNode => ({
-        id: `node-${apiNode.id}`,
+        id: apiNode.id,
         type: this.getNodeTypeFromApiType(apiNode.type),
         position: { x: apiNode.xpos, y: apiNode.ypos },
         config: (apiNode.data as Record<string, any>) || {},
         status: 'idle' as const,
       }));
+      this.connections.set(job.connexions || [])
       this.nodes.set(nodeInstances);
       this.nodeIdCounter = Math.max(...job.nodes.map(n => n.id)) + 1;
     }
@@ -95,7 +95,7 @@ export class NodeGraphService {
 
   toApiNodes(jobId: number): ApiNode[] {
     return this.nodes().map(node => ({
-      id: parseInt(node.id.replace('node-', ''), 10) || 0,
+      id: node.id,
       type: this.getApiTypeFromNodeType(node.type.id),
       name: node.type.label,
       xpos: node.position.x,
@@ -220,7 +220,7 @@ export class NodeGraphService {
   }
 
   resolveCollision(
-    nodeId: string,
+    nodeId: number,
     desiredX: number,
     desiredY: number,
     nodeSizeFn: NodeSizeFn,

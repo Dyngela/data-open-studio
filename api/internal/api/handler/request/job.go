@@ -1,6 +1,9 @@
 package request
 
-import "api/internal/api/models"
+import (
+	"api/internal/api/handler/response"
+	"api/internal/api/models"
+)
 
 type CreateJob struct {
 	Name        string               `json:"name" validate:"required"`
@@ -20,6 +23,7 @@ type UpdateJob struct {
 	Visibility  *models.JobVisibility `json:"visibility,omitempty"`
 	SharedWith  []uint                `json:"sharedWith,omitempty"` // User IDs to share with (replaces existing)
 	Nodes       []models.Node         `json:"nodes,omitempty"`
+	Connexions  []response.Connexion  `json:"connexions"`
 }
 
 // ShareJob is for sharing/unsharing a job with users
