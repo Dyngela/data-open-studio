@@ -4,6 +4,7 @@ import {BaseApiService} from '../services/base-api.service';
 import {AuthResponse, LoginDto, RegisterDto, User} from './auth.type';
 import {CookieService} from 'ngx-cookie-service';
 import {ApiMutation, ApiResult} from '../services/base-api.type';
+import {jwtDecode} from 'jwt-decode';
 
 /**
  * Authentication service
@@ -17,10 +18,8 @@ export class AuthService {
   private cookieService = inject(CookieService);
   private currentUserSignal = signal<User | null>(null);
   public currentUser = this.currentUserSignal.asReadonly();
-
-  constructor() {
-    this.initializeAuth()
-  }
+  private authenticatedSignal = signal(false);
+  public isAuthenticated = this.authenticatedSignal.asReadonly();
 
   /**
    * Register new user
@@ -52,13 +51,6 @@ export class AuthService {
   }
 
   /**
-   * Get current user profile
-   */
-  getCurrentUser(): ApiResult<User> {
-    return this.api.get<User>('me')
-  }
-
-  /**
    * Refresh access token using refresh token
    */
   refreshToken(): Observable<AuthResponse> {
@@ -81,6 +73,7 @@ export class AuthService {
     this.cookieService.set('access_token', authResponse.token);
     this.cookieService.set('refresh_token', authResponse.refreshToken);
     this.currentUserSignal.set(authResponse.user);
+    this.authenticatedSignal.set(true);
   }
 
   /**
@@ -90,6 +83,7 @@ export class AuthService {
     this.cookieService.delete('access_token');
     this.cookieService.delete('refresh_token');
     this.currentUserSignal.set(null);
+    this.authenticatedSignal.set(false);
   }
 
   /**
@@ -108,18 +102,27 @@ export class AuthService {
   }
 
   /**
-   * Check if user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return !!this.getAccessToken();
-  }
-
-  /**
    * Initialize auth state from storage
    */
   initializeAuth(): void {
-    if (this.isAuthenticated()) {
-      this.getCurrentUser().refresh();
+    const token = this.getAccessToken();
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode<User>(token);
+
+      this.currentUserSignal.set({
+        id: decoded.id,
+        email: decoded.email,
+        prenom: decoded.prenom,
+        nom: decoded.nom,
+        role: decoded.role,
+      });
+      this.authenticatedSignal.set(true);
+
+    } catch (err) {
+      console.error('Invalid token', err);
+      this.logout();
     }
   }
 }

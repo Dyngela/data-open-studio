@@ -11,9 +11,9 @@
           class="port input-port flow-port"
           [attr.data-node-id]="node().id"
           [attr.data-port-index]="portIndex"
-          [attr.data-port-type]="'flow'"
+          [attr.data-port-type]="PortType.FLOW"
           title="Flow Input {{ portIndex }}"
-          (click)="onInputPortClick(portIndex, 'flow', $event)"
+          (click)="onInputPortClick(portIndex, PortType.FLOW, $event)"
         ></div>
       }
     </div>
@@ -32,9 +32,9 @@
           class="port output-port flow-port"
           [attr.data-node-id]="node().id"
           [attr.data-port-index]="portIndex"
-          [attr.data-port-type]="'flow'"
+          [attr.data-port-type]="PortType.FLOW"
           title="Flow Output {{ portIndex }}"
-          (click)="onOutputPortClick(portIndex, 'flow', $event)"
+          (click)="onOutputPortClick(portIndex, PortType.FLOW, $event)"
         ></div>
       }
     </div>
@@ -49,9 +49,9 @@
             class="port input-port data-port"
             [attr.data-node-id]="node().id"
             [attr.data-port-index]="portIndex"
-            [attr.data-port-type]="'data'"
+            [attr.data-port-type]="PortType.DATA"
             title="Data Input {{ portIndex }}"
-            (click)="onInputPortClick(portIndex, 'data', $event)"
+            (click)="onInputPortClick(portIndex, PortType.DATA, $event)"
           ></div>
         }
       </div>
@@ -63,9 +63,9 @@
             class="port output-port data-port"
             [attr.data-node-id]="node().id"
             [attr.data-port-index]="portIndex"
-            [attr.data-port-type]="'data'"
+            [attr.data-port-type]="PortType.DATA"
             title="Data Output {{ portIndex }}"
-            (click)="onOutputPortClick(portIndex, 'data', $event)"
+            (click)="onOutputPortClick(portIndex, PortType.DATA, $event)"
           ></div>
         }
       </div>

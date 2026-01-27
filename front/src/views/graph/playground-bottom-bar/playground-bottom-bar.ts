@@ -15,6 +15,7 @@ export class PlaygroundBottomBar {
   @ViewChild('consoleComponent') consoleComponent?: Console;
 
   // Output events (forwarded from console)
+  onSave = output<void>();
   onExecute = output<void>();
   onStop = output<void>();
 
@@ -56,6 +57,10 @@ export class PlaygroundBottomBar {
   }
 
   // Forward console events
+  onConsoleSave() {
+    this.onSave.emit();
+  }
+
   onConsoleExecute() {
     this.onExecute.emit();
   }

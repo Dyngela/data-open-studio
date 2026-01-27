@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import { BaseApiService } from '../services/base-api.service';
 import { ApiMutation, ApiResult, SearchCriteria } from '../services/base-api.type';
 import {
@@ -11,8 +11,8 @@ import {
 } from './job.type';
 
 @Injectable({ providedIn: 'root' })
-export class JobService extends BaseApiService {
-
+export class JobService {
+  private api = inject(BaseApiService)
   private readonly basePath = '/jobs';
 
   /**
@@ -23,14 +23,14 @@ export class JobService extends BaseApiService {
     const criteria: SearchCriteria[] = filePath
       ? [{ name: 'filePath', value: filePath }]
       : [];
-    return this.get<Job[]>(this.basePath, criteria);
+    return this.api.get<Job[]>(this.basePath, criteria);
   }
 
   /**
    * Get a single job by ID with its nodes and sharing info
    */
   getById(id: number): ApiResult<JobWithNodes> {
-    return this.get<JobWithNodes>(`${this.basePath}/${id}`);
+    return this.api.get<JobWithNodes>(`${this.basePath}/${id}`);
   }
 
   /**
@@ -40,7 +40,7 @@ export class JobService extends BaseApiService {
     onSuccess?: (data: JobWithNodes) => void,
     onError?: (error: any) => void
   ): ApiMutation<JobWithNodes, CreateJobRequest> {
-    return this.post<JobWithNodes, CreateJobRequest>(
+    return this.api.post<JobWithNodes, CreateJobRequest>(
       this.basePath,
       onSuccess,
       onError
@@ -55,7 +55,7 @@ export class JobService extends BaseApiService {
     onSuccess?: (data: JobWithNodes) => void,
     onError?: (error: any) => void
   ): ApiMutation<JobWithNodes, UpdateJobRequest> {
-    return this.put<JobWithNodes, UpdateJobRequest>(
+    return this.api.put<JobWithNodes, UpdateJobRequest>(
       `${this.basePath}/${id}`,
       onSuccess,
       onError
@@ -70,7 +70,7 @@ export class JobService extends BaseApiService {
     onSuccess?: (data: DeleteResponse) => void,
     onError?: (error: any) => void
   ): ApiMutation<DeleteResponse, void> {
-    return this.delete<DeleteResponse, void>(
+    return this.api.delete<DeleteResponse, void>(
       `${this.basePath}/${id}`,
       onSuccess,
       onError
@@ -85,7 +85,7 @@ export class JobService extends BaseApiService {
     onSuccess?: (data: JobWithNodes) => void,
     onError?: (error: any) => void
   ): ApiMutation<JobWithNodes, ShareJobRequest> {
-    return this.post<JobWithNodes, ShareJobRequest>(
+    return this.api.post<JobWithNodes, ShareJobRequest>(
       `${this.basePath}/${id}/share`,
       onSuccess,
       onError
@@ -100,7 +100,7 @@ export class JobService extends BaseApiService {
     onSuccess?: (data: JobWithNodes) => void,
     onError?: (error: any) => void
   ): ApiMutation<JobWithNodes, ShareJobRequest> {
-    return this.delete<JobWithNodes, ShareJobRequest>(
+    return this.api.delete<JobWithNodes, ShareJobRequest>(
       `${this.basePath}/${id}/share`,
       onSuccess,
       onError

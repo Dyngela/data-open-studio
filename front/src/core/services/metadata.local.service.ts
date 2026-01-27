@@ -1,5 +1,8 @@
-import {Injectable, signal, WritableSignal} from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import {DbMetadata, SftpMetadata} from '../api/metadata.type';
+import {MetadataService} from '../api/metadata.service';
+import {ApiResult} from './base-api.type';
+import {MessageService} from 'primeng/api';
 
 /**
  * Service to manage local metadata for databases and SFTP connections
@@ -8,15 +11,28 @@ import {DbMetadata, SftpMetadata} from '../api/metadata.type';
   providedIn: 'root',
 })
 export class MetadataLocalService {
-  public databaseMetadata: WritableSignal<DbMetadata[]> = signal([]);
-  public sftpMetadata: WritableSignal<SftpMetadata[]> = signal([]);
+  private metadataAPI = inject(MetadataService)
+  private messageService = inject(MessageService)
 
-  public initialize(db?: DbMetadata[], sftp?: SftpMetadata[]): void {
-    if (db) {
-      this.databaseMetadata.set(db);
+  db!: ApiResult<DbMetadata[]>;
+  sftp!: ApiResult<SftpMetadata[]>;
+
+  public initialize(): void {
+    this.db = this.metadataAPI.getAllDb()
+    if (this.db.error()) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Erreur',
+        detail: `Impossible de charger les métadonnées des bases de données : ${this.db.error()?.message}`,
+      })
     }
-    if (sftp) {
-      this.sftpMetadata.set(sftp);
+    this.sftp = this.metadataAPI.getAllSftp()
+    if (this.sftp.error()) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Erreur',
+        detail: `Impossible de charger les métadonnées des s : ${this.sftp.error()?.message}`,
+      })
     }
   }
 }

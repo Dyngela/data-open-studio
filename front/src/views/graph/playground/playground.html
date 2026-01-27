@@ -17,32 +17,6 @@
     (click)="onPlaygroundClick($event)"
     [class.panning]="isPanning()"
   >
-    <div class="toolbar">
-      @if (currentJob(); as job) {
-        <div class="job-indicator">
-          <i class="pi pi-briefcase"></i>
-          <span class="job-name">{{ job.name }}</span>
-          @if (job.visibility === 'public') {
-            <span class="job-visibility public" title="Public"><i class="pi pi-globe"></i></span>
-          } @else {
-            <span class="job-visibility private" title="Privé"><i class="pi pi-lock"></i></span>
-          }
-        </div>
-        <div class="toolbar-separator"></div>
-      }
-      <button class="toolbar-btn" (click)="saveSchema()" title="Sauvegarder le schéma">
-        <i class="fas fa-save"></i>
-        <span>Sauvegarder</span>
-      </button>
-      <button class="toolbar-btn" (click)="loadSchema()" title="Charger un schéma">
-        <i class="fas fa-folder-open"></i>
-        <span>Charger</span>
-      </button>
-      <button class="toolbar-btn toolbar-btn-danger" (click)="clearSchema()" title="Effacer tout">
-        <i class="fas fa-trash"></i>
-        <span>Effacer</span>
-      </button>
-    </div>
 
     @if (isLoadingJob()) {
       <div class="loading-overlay">
@@ -51,27 +25,20 @@
       </div>
     }
 
-    <input
-      #fileInput
-      type="file"
-      accept=".json"
-      style="display: none;"
-      (change)="onFileSelected($event)"
-    />
     <svg class="connections-layer">
       @for (connection of connections(); track connection.id) {
       <path
         [attr.d]="getConnectionPath(connection)"
-        [class]="'connection connection-' + getConnectionKind(connection)"
+        [class]="'connection connection-' + nodeGraph.getConnectionKind(connection)"
         fill="none"
-        [attr.stroke]="getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50'"
+        [attr.stroke]="nodeGraph.getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50'"
         stroke-width="3"
       />
       }
 
       @if (tempConnection(); as temp) {
       <path
-        [attr.d]="getTempConnectionPath()"
+        [attr.d]="nodeGraph.getTempConnectionPath(temp)"
         class="temp-connection"
         fill="none"
         stroke="#FF9800"
@@ -107,19 +74,19 @@
     @if (activeModal(); as modal) {
     <div class="modal-overlay">
       <div class="modal-container">
-        @if (modal.nodeTypeId === 'db-input' && getNodeById(modal.nodeId); as node) {
+        @if (modal.nodeTypeId === 'db-input' && nodeGraph.getNodeById(modal.nodeId); as node) {
         <app-db-input-modal
           [node]="node"
           (close)="closeModal()"
           (save)="onDbInputSave(modal.nodeId, $event)"
         ></app-db-input-modal>
         }
-        @if (modal.nodeTypeId === 'start' && getNodeById(modal.nodeId); as node) {
+        @if (modal.nodeTypeId === 'start' && nodeGraph.getNodeById(modal.nodeId); as node) {
         <app-start-modal
           (close)="closeModal()"
         ></app-start-modal>
         }
-        @if (modal.nodeTypeId === 'transform' && getNodeById(modal.nodeId); as node) {
+        @if (modal.nodeTypeId === 'transform' && nodeGraph.getNodeById(modal.nodeId); as node) {
         <app-transform-modal
           (close)="closeModal()"
         ></app-transform-modal>
@@ -139,6 +106,7 @@
   <!-- Bottom bar avec onglets Console/Config -->
   <app-playground-bottom-bar
     #bottomBar
+    (onSave)="onJobSave()"
     (onExecute)="onJobExecute()"
     (onStop)="onJobStop()"
   ></app-playground-bottom-bar>

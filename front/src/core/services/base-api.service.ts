@@ -45,7 +45,6 @@ export class BaseApiService {
 
     const run = () => {
       isLoading.set(true);
-
       request$()
         .pipe(
           catchError(err => {

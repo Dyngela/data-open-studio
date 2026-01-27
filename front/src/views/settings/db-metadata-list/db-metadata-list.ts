@@ -32,7 +32,7 @@ export class DbMetadataList {
       Validators.maxLength(255),
       Validators.pattern(/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/)
     ]],
-    port: ['5432', [
+    port: ['', [
       Validators.required,
       Validators.pattern(/^\d+$/),
       Validators.min(1),
@@ -49,7 +49,7 @@ export class DbMetadataList {
     databaseName: ['', [
       Validators.required,
       Validators.maxLength(128),
-      Validators.pattern(/^[a-zA-Z_][a-zA-Z0-9_]*$/)
+      Validators.pattern(/^[a-zA-Z_][a-zA-Z0-9_-]*$/)
     ]],
     sslMode: ['disable', Validators.required],
   });
@@ -150,7 +150,7 @@ export class DbMetadataList {
     if (field.errors['pattern']) {
       if (fieldName === 'host') return 'Format de host invalide';
       if (fieldName === 'port') return 'Le port doit être un nombre';
-      if (fieldName === 'databaseName') return 'Nom de base invalide (lettres, chiffres, _)';
+      if (fieldName === 'databaseName') return 'Nom de base invalide (lettres, chiffres, _, -)';
     }
     if (field.errors['min']) return 'Le port minimum est 1';
     if (field.errors['max']) return 'Le port maximum est 65535';

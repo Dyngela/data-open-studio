@@ -61,7 +61,7 @@ func (slf *UserService) Register(registerDTO request.RegisterDTO) (*response.Aut
 		return nil, err
 	}
 
-	token, err := pkg.GenerateToken(user.ID, user.Email, string(user.Role), slf.config.JWTConfig.Secret, slf.config.JWTConfig.Expiration)
+	token, err := pkg.GenerateToken(user.ID, user.Email, user.Nom, user.Prenom, string(user.Role), slf.config.JWTConfig.Secret, slf.config.JWTConfig.Expiration)
 	if err != nil {
 		slf.logger.Error().Err(err).Msg("Error generating token")
 		return nil, err
@@ -105,7 +105,7 @@ func (slf *UserService) Login(loginDTO request.LoginDTO) (*response.AuthResponse
 		return nil, errors.New("invalid email or password")
 	}
 
-	token, err := pkg.GenerateToken(user.ID, user.Email, string(user.Role), slf.config.JWTConfig.Secret, slf.config.JWTConfig.Expiration)
+	token, err := pkg.GenerateToken(user.ID, user.Email, user.Nom, user.Prenom, string(user.Role), slf.config.JWTConfig.Secret, slf.config.JWTConfig.Expiration)
 	if err != nil {
 		slf.logger.Error().Err(err).Msg("Error generating token")
 		return nil, err
@@ -170,7 +170,7 @@ func (slf *UserService) RefreshToken(refreshToken string) (response.AuthResponse
 		return response.AuthResponseDTO{}, errors.New("invalid refresh token")
 	}
 
-	token, err := pkg.GenerateToken(user.ID, user.Email, string(user.Role), slf.config.JWTConfig.Secret, slf.config.JWTConfig.Expiration)
+	token, err := pkg.GenerateToken(user.ID, user.Email, user.Nom, user.Prenom, string(user.Role), slf.config.JWTConfig.Secret, slf.config.JWTConfig.Expiration)
 	if err != nil {
 		slf.logger.Error().Err(err).Msg("Error generating token")
 		return response.AuthResponseDTO{}, err

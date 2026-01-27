@@ -21,6 +21,7 @@
       <p-tabpanel value="console">
         <app-console
           #consoleComponent
+          (onSave)="onConsoleSave()"
           (onExecute)="onConsoleExecute()"
           (onStop)="onConsoleStop()"
         ></app-console>

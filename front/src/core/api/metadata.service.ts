@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import {inject, Injectable} from '@angular/core';
 import { BaseApiService } from '../services/base-api.service';
 import { ApiMutation, ApiResult } from '../services/base-api.type';
 import {
@@ -12,8 +12,9 @@ import {
 } from './metadata.type';
 
 @Injectable({ providedIn: 'root' })
-export class MetadataService extends BaseApiService {
+export class MetadataService {
 
+  private api = inject(BaseApiService)
   private readonly dbPath = '/metadata/db';
   private readonly sftpPath = '/metadata/sftp';
 
@@ -22,14 +23,14 @@ export class MetadataService extends BaseApiService {
    * Get all database metadata entries
    */
   getAllDb(): ApiResult<DbMetadata[]> {
-    return this.get<DbMetadata[]>(this.dbPath);
+    return this.api.get<DbMetadata[]>(this.dbPath);
   }
 
   /**
    * Get a single database metadata by ID
    */
   getDbById(id: number): ApiResult<DbMetadata> {
-    return this.get<DbMetadata>(`${this.dbPath}/${id}`);
+    return this.api.get<DbMetadata>(`${this.dbPath}/${id}`);
   }
 
   /**
@@ -39,7 +40,7 @@ export class MetadataService extends BaseApiService {
     onSuccess?: (data: DbMetadata) => void,
     onError?: (error: any) => void
   ): ApiMutation<DbMetadata, CreateDbMetadataRequest> {
-    return this.post<DbMetadata, CreateDbMetadataRequest>(
+    return this.api.post<DbMetadata, CreateDbMetadataRequest>(
       this.dbPath,
       onSuccess,
       onError
@@ -54,7 +55,7 @@ export class MetadataService extends BaseApiService {
     onSuccess?: (data: DbMetadata) => void,
     onError?: (error: any) => void
   ): ApiMutation<DbMetadata, UpdateDbMetadataRequest> {
-    return this.put<DbMetadata, UpdateDbMetadataRequest>(
+    return this.api.put<DbMetadata, UpdateDbMetadataRequest>(
       `${this.dbPath}/${id}`,
       onSuccess,
       onError
@@ -69,7 +70,7 @@ export class MetadataService extends BaseApiService {
     onSuccess?: (data: DeleteResponse) => void,
     onError?: (error: any) => void
   ): ApiMutation<DeleteResponse, void> {
-    return this.delete<DeleteResponse, void>(
+    return this.api.delete<DeleteResponse, void>(
       `${this.dbPath}/${id}`,
       onSuccess,
       onError
@@ -81,14 +82,14 @@ export class MetadataService extends BaseApiService {
    * Get all SFTP metadata entries
    */
   getAllSftp(): ApiResult<SftpMetadata[]> {
-    return this.get<SftpMetadata[]>(this.sftpPath);
+    return this.api.get<SftpMetadata[]>(this.sftpPath);
   }
 
   /**
    * Get a single SFTP metadata by ID
    */
   getSftpById(id: number): ApiResult<SftpMetadata> {
-    return this.get<SftpMetadata>(`${this.sftpPath}/${id}`);
+    return this.api.get<SftpMetadata>(`${this.sftpPath}/${id}`);
   }
 
   /**
@@ -98,7 +99,7 @@ export class MetadataService extends BaseApiService {
     onSuccess?: (data: SftpMetadata) => void,
     onError?: (error: any) => void
   ): ApiMutation<SftpMetadata, CreateSftpMetadataRequest> {
-    return this.post<SftpMetadata, CreateSftpMetadataRequest>(
+    return this.api.post<SftpMetadata, CreateSftpMetadataRequest>(
       this.sftpPath,
       onSuccess,
       onError
@@ -113,7 +114,7 @@ export class MetadataService extends BaseApiService {
     onSuccess?: (data: SftpMetadata) => void,
     onError?: (error: any) => void
   ): ApiMutation<SftpMetadata, UpdateSftpMetadataRequest> {
-    return this.put<SftpMetadata, UpdateSftpMetadataRequest>(
+    return this.api.put<SftpMetadata, UpdateSftpMetadataRequest>(
       `${this.sftpPath}/${id}`,
       onSuccess,
       onError
@@ -128,7 +129,7 @@ export class MetadataService extends BaseApiService {
     onSuccess?: (data: DeleteResponse) => void,
     onError?: (error: any) => void
   ): ApiMutation<DeleteResponse, void> {
-    return this.delete<DeleteResponse, void>(
+    return this.api.delete<DeleteResponse, void>(
       `${this.sftpPath}/${id}`,
       onSuccess,
       onError

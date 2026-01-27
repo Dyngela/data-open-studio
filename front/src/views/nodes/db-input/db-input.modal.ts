@@ -1,10 +1,11 @@
 import { Component, input, output, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NodeInstance } from '../../../core/services/node.type';
-import { ConnectionService, DbConnection } from '../../../core/services/connection.service';
+import { NodeInstance } from '../../../core/nodes-services/node.type';
+import { ConnectionService, DbConnection } from '../../../core/nodes-services/connection.service';
 import { BaseWebSocketService } from '../../../core/services/base-ws.service';
 import {DataModel, DbType} from '../../../core/api/metadata.type';
+import {MetadataLocalService} from '../../../core/services/metadata.local.service';
 
 @Component({
   selector: 'app-db-input-modal',
@@ -14,6 +15,7 @@ import {DataModel, DbType} from '../../../core/api/metadata.type';
   styleUrl: './db-input.modal.css',
 })
 export class DbInputModal {
+  metadata = inject(MetadataLocalService)
   node = input.required<NodeInstance>();
   close = output<void>();
   save = output<{ connectionString: string; table: string; query: string; database?: string; connectionId?: string; dbType?: DbType; host?: string; port?: string; username?: string; password?: string; sslMode?: string }>();
@@ -43,14 +45,16 @@ export class DbInputModal {
     dbType: DbType.Postgres,
   };
 
-  connections = signal<DbConnection[]>([]);
+  connections = this.metadata.db.data();
 
   constructor() {
     // Listen for guess schema responses
+    effect(() => {
+      console.log(this.connections)
+    });
   }
 
   ngOnInit() {
-    this.connections.set(this.connectionService.getConnections());
 
     const cfg = this.node().config || {};
     this.formState = {

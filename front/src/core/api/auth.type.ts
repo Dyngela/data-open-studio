@@ -4,7 +4,6 @@ export interface User {
   prenom: string;
   nom: string;
   role: UserRole;
-  actif: boolean;
 }
 
 export enum UserRole {

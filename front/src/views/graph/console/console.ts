@@ -19,6 +19,7 @@ export class Console implements AfterViewChecked {
   @ViewChild('logContainer') logContainer?: ElementRef<HTMLDivElement>;
 
   // Output events
+  onSave = output<void>();
   onExecute = output<void>();
   onStop = output<void>();
 
@@ -28,6 +29,8 @@ export class Console implements AfterViewChecked {
   isRunning = signal(false);
   autoScroll = signal(true);
   logs = signal<LogEntry[]>([]);
+  isSaving = signal(false);
+
 
   // Resize state
   private isResizing = false;
@@ -75,7 +78,12 @@ export class Console implements AfterViewChecked {
     this.isResizing = false;
   }
 
+
   // Actions
+  saveJob() {
+    this.onSave.emit();
+  }
+
   executeJob() {
     if (this.isRunning()) return;
 

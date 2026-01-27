@@ -1,8 +1,4 @@
-import {inject, Injectable, Signal} from '@angular/core';
-import {HttpClient, HttpHeaders} from '@angular/common/http';
-import {MessageService} from 'primeng/api';
-import {Observable} from 'rxjs';
-import {environment} from '../../environments/environment';
+import {Signal} from '@angular/core';
 
 export interface ApiResult<T> {
   data: Signal<T | null>;

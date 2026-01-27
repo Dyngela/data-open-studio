@@ -36,8 +36,8 @@
         </span>
         <select [ngModel]="selectedConnectionId()" (ngModelChange)="onConnectionSelected($event)">
           <option value="" disabled>Sélectionner une connexion</option>
-          @for (conn of connections(); track conn.id) {
-            <option [value]="conn.id">{{ conn.name }}</option>
+          @for (conn of connections; track conn.id) {
+            <option [value]="conn.id">{{ conn.databaseName }}</option>
           }
         </select>
       </label>

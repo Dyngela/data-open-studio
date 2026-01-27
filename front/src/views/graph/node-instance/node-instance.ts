@@ -1,6 +1,6 @@
 import { Component, input, output, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NodeInstance } from '../../../core/services/node.type';
+import {NodeInstance, PortType} from '../../../core/nodes-services/node.type';
 
 @Component({
   selector: 'app-node-instance',
@@ -13,17 +13,17 @@ export class NodeInstanceComponent {
   node = input.required<NodeInstance>();
   panOffset = input({ x: 0, y: 0 });
   isPanning = input(false);
-  outputPortClick = output<{ nodeId: string; portIndex: number; portType: 'data' | 'flow' }>();
-  inputPortClick = output<{ nodeId: string; portIndex: number; portType: 'data' | 'flow' }>();
+  outputPortClick = output<{ nodeId: string; portIndex: number; portType: PortType }>();
+  inputPortClick = output<{ nodeId: string; portIndex: number; portType: PortType }>();
 
   constructor(private elementRef: ElementRef) {}
 
-  onOutputPortClick(portIndex: number, portType: 'data' | 'flow', event: MouseEvent) {
+  onOutputPortClick(portIndex: number, portType: PortType, event: MouseEvent) {
     event.stopPropagation();
     this.outputPortClick.emit({ nodeId: this.node().id, portIndex, portType });
   }
 
-  onInputPortClick(portIndex: number, portType: 'data' | 'flow', event: MouseEvent) {
+  onInputPortClick(portIndex: number, portType: PortType, event: MouseEvent) {
     event.stopPropagation();
     this.inputPortClick.emit({ nodeId: this.node().id, portIndex, portType });
   }
@@ -87,4 +87,6 @@ export class NodeInstanceComponent {
     if (Array.isArray(query)) return query.join('\n');
     return query || '';
   }
+
+  protected readonly PortType = PortType;
 }
