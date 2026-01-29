@@ -1,115 +1,162 @@
-<div class="playground-container">
-  <!-- Panel latéral avec les nodes disponibles -->
-  <app-node-panel></app-node-panel>
+<div class="flex flex-col h-screen w-full bg-jb-dark text-jb-text select-none playground-container">
 
-  <!-- Zone principale (playground + console) -->
-  <div class="main-area">
-  <div
-    #playgroundArea
-    class="playground-area"
-    cdkDropList
-    id="playground-area"
-    [cdkDropListConnectedTo]="['node-panel-list']"
-    (cdkDropListDropped)="onDrop($event)"
-    (mousedown)="onPlaygroundMouseDown($event)"
-    (mousemove)="onPlaygroundMouseMove($event)"
-    (mouseup)="onPlaygroundMouseUp($event)"
-    (click)="onPlaygroundClick($event)"
-    [class.panning]="isPanning()"
-  >
+  <div class="flex flex-grow overflow-hidden">
 
-    @if (isLoadingJob()) {
-      <div class="loading-overlay">
-        <i class="pi pi-spin pi-spinner"></i>
-        <span>Chargement du job...</span>
+    <aside class="w-[30px] flex flex-col bg-jb-header border-r border-jb-border">
+      @for (tab of leftTabs(); track tab.label) {
+        <div (click)="toggleSidebar(tab.label)"
+             class="group relative py-4 flex flex-col items-center cursor-pointer transition-colors"
+             [class.bg-jb-dark]="tab.active"
+             [class.hover:bg-jb-hover]="!tab.active">
+
+          @if (tab.active) {
+            <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-jb-accent"></div>
+          }
+
+          <span class="text-sm mb-2" [class.text-white]="tab.active">{{ tab.icon }}</span>
+          <span class="text-[10px] uppercase font-bold tracking-tighter"
+                style="writing-mode: vertical-rl; transform: rotate(180deg);"
+                [class.text-white]="tab.active">
+            {{ tab.label }}
+          </span>
+        </div>
+      }
+    </aside>
+
+    @if (isAnySidePanelOpen()) {
+      <div [style.width.px]="sidebarWidth()" class="bg-jb-header flex flex-col overflow-hidden">
+        <div class="p-2 text-[11px] font-bold uppercase opacity-80 flex justify-between">
+          <span>{{selectedTab()?.label}}</span>
+          <span class="hover:text-white cursor-pointer" (click)="toggleSidebar('reset')">✕</span>
+        </div>
+        @switch (selectedTab()?.label) {
+          @case ('Nodes') {
+            <app-node-panel />
+          }
+
+          @default {
+            <div class="p-4 text-center text-jb-text/50">
+              No panel available
+            </div>
+          }
+        }
+      </div>
+
+      <div (mousedown)="startResizing($event)"
+           class="w-[3px] h-full cursor-col-resize hover:bg-jb-accent/50 active:bg-jb-accent transition-colors z-50">
       </div>
     }
 
-    <svg class="connections-layer">
-      @for (connection of connections(); track $index) {
-      <path
-        [attr.d]="getConnectionPath(connection)"
-        [class]="'connection connection-' + nodeGraph.getConnectionKind(connection)"
-        fill="none"
-        [attr.stroke]="nodeGraph.getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50'"
-        stroke-width="3"
-      />
-      }
+    <main class="flex-grow flex flex-col min-w-0">
+      <div class="main-area">
+        <div
+          #playgroundArea
+          class="playground-area"
+          cdkDropList
+          id="playground-area"
+          [cdkDropListConnectedTo]="['node-panel-list']"
+          (cdkDropListDropped)="onDrop($event)"
+          (mousedown)="onPlaygroundMouseDown($event)"
+          (mousemove)="onPlaygroundMouseMove($event)"
+          (mouseup)="onPlaygroundMouseUp($event)"
+          (click)="onPlaygroundClick($event)"
+          [class.panning]="isPanning()"
+        >
 
-      @if (tempConnection(); as temp) {
-      <path
-        [attr.d]="nodeGraph.getTempConnectionPath(temp)"
-        class="temp-connection"
-        fill="none"
-        stroke="#FF9800"
-        stroke-width="3"
-        stroke-dasharray="5,5"
-      />
-      }
-    </svg>
+          @if (isLoadingJob()) {
+            <div class="loading-overlay">
+              <i class="pi pi-spin pi-spinner"></i>
+              <span>Chargement du job...</span>
+            </div>
+          }
 
-    @for (node of nodes(); track node.id) {
-    <div
-      class="node-wrapper"
-      [style.transform]="
+          <svg class="connections-layer">
+            @for (connection of connections(); track $index) {
+              <path
+                [attr.d]="getConnectionPath(connection)"
+                [class]="'connection connection-' + nodeGraph.getConnectionKind(connection)"
+                fill="none"
+                [attr.stroke]="nodeGraph.getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50'"
+                stroke-width="3"
+              />
+            }
+
+            @if (tempConnection(); as temp) {
+              <path
+                [attr.d]="nodeGraph.getTempConnectionPath(temp)"
+                class="temp-connection"
+                fill="none"
+                stroke="#FF9800"
+                stroke-width="3"
+                stroke-dasharray="5,5"
+              />
+            }
+          </svg>
+
+          @for (node of nodes(); track node.id) {
+            <div
+              class="node-wrapper"
+              [style.transform]="
         'translate(' +
         (node.position.x + panOffset().x) +
         'px, ' +
         (node.position.y + panOffset().y) +
         'px)'
       "
-      (mousedown)="onNodeMouseDown($event, node.id)"
-      (dblclick)="openNodeModal(node.id)"
-    >
-      <app-node-instance
-        [node]="node"
-        [panOffset]="panOffset()"
-        [isPanning]="isPanning()"
-        (outputPortClick)="onOutputPortClick($event)"
-        (inputPortClick)="onInputPortClick($event)"
-      ></app-node-instance>
-    </div>
-    }
+              (mousedown)="onNodeMouseDown($event, node.id)"
+              (dblclick)="openNodeModal(node.id)"
+            >
+              <app-node-instance
+                [node]="node"
+                [panOffset]="panOffset()"
+                [isPanning]="isPanning()"
+                (outputPortClick)="onOutputPortClick($event)"
+                (inputPortClick)="onInputPortClick($event)"
+              ></app-node-instance>
+            </div>
+          }
 
-    @if (activeModal(); as modal) {
-    <div class="modal-overlay">
-      <div class="modal-container">
-        @if (modal.nodeTypeId === 'db-input' && nodeGraph.getNodeById(modal.nodeId); as node) {
-        <app-db-input-modal
-          [node]="node"
-          (close)="closeModal()"
-          (save)="onDbInputSave(modal.nodeId, $event)"
-        ></app-db-input-modal>
-        }
-        @if (modal.nodeTypeId === 'start' && nodeGraph.getNodeById(modal.nodeId); as node) {
-        <app-start-modal
-          (close)="closeModal()"
-        ></app-start-modal>
-        }
-        @if (modal.nodeTypeId === 'transform' && nodeGraph.getNodeById(modal.nodeId); as node) {
-        <app-transform-modal
-          (close)="closeModal()"
-        ></app-transform-modal>
-        }
+          @if (activeModal(); as modal) {
+            <div class="modal-overlay">
+              <div class="modal-container">
+                @if (modal.nodeTypeId === 'db-input' && nodeGraph.getNodeById(modal.nodeId); as node) {
+                  <app-db-input-modal
+                    [node]="node"
+                    (close)="closeModal()"
+                    (save)="onDbInputSave(modal.nodeId, $event)"
+                  ></app-db-input-modal>
+                }
+                @if (modal.nodeTypeId === 'start' && nodeGraph.getNodeById(modal.nodeId); as node) {
+                  <app-start-modal
+                    (close)="closeModal()"
+                  ></app-start-modal>
+                }
+                @if (modal.nodeTypeId === 'transform' && nodeGraph.getNodeById(modal.nodeId); as node) {
+                  <app-transform-modal
+                    (close)="closeModal()"
+                  ></app-transform-modal>
+                }
+              </div>
+            </div>
+          }
+
+          <app-minimap
+            [nodes]="nodes()"
+            [viewportWidth]="viewportWidth()"
+            [viewportHeight]="viewportHeight()"
+            [panOffset]="panOffset()"
+          ></app-minimap>
+        </div>
+
+        <!-- Bottom bar avec onglets Console/Config -->
+        <app-playground-bottom-bar
+          #bottomBar
+          (onSave)="onJobSave()"
+          (onExecute)="onJobExecute()"
+          (onStop)="onJobStop()"
+        ></app-playground-bottom-bar>
       </div>
-    </div>
-    }
 
-    <app-minimap
-      [nodes]="nodes()"
-      [viewportWidth]="viewportWidth()"
-      [viewportHeight]="viewportHeight()"
-      [panOffset]="panOffset()"
-    ></app-minimap>
-  </div>
-
-  <!-- Bottom bar avec onglets Console/Config -->
-  <app-playground-bottom-bar
-    #bottomBar
-    (onSave)="onJobSave()"
-    (onExecute)="onJobExecute()"
-    (onStop)="onJobStop()"
-  ></app-playground-bottom-bar>
+    </main>
   </div>
 </div>
-

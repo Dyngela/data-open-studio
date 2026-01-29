@@ -1,6 +1,16 @@
-import {AfterViewInit, Component, ElementRef, inject, OnInit, signal, viewChild,} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  computed,
+  ElementRef,
+  HostListener,
+  inject,
+  OnInit,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {ActivatedRoute} from '@angular/router';
+import {ActivatedRoute, RouterOutlet} from '@angular/router';
 import {CdkDragDrop, CdkDropList} from '@angular/cdk/drag-drop';
 import {NodePanel} from '../node-panel/node-panel';
 import {NodeInstanceComponent} from '../node-instance/node-instance';
@@ -22,6 +32,48 @@ import {NodeGraphService} from '../../../core/nodes-services/node-graph.service'
   styleUrl: './playground.css',
 })
 export class Playground implements OnInit, AfterViewInit {
+
+  // États de l'interface
+  sidebarWidth = signal(250);
+  isResizing = signal(false);
+
+  // Données des onglets (Signals)
+  leftTabs = signal([
+    { label: 'Nodes', icon: '📁', active: true },
+    { label: 'Database', icon: '🗄️', active: false }
+  ]);
+  selectedTab = computed(() => this.leftTabs().find(t => t.active));
+
+  // Actions
+  toggleSidebar(label: string) {
+    this.leftTabs.update(tabs => tabs.map(t => ({
+      ...t, active: t.label === label ? !t.active : false
+    })));
+  }
+
+  // Logique du Splitter
+  startResizing(e: MouseEvent) {
+    this.isResizing.set(true);
+    e.preventDefault();
+  }
+
+  @HostListener('window:mousemove', ['$event'])
+  onMouseMove(e: MouseEvent) {
+    if (this.isResizing()) {
+      const newWidth = e.clientX - 30; // 30px est la largeur de la barre d'icones
+      if (newWidth > 100 && newWidth < 500) this.sidebarWidth.set(newWidth);
+    }
+  }
+
+  @HostListener('window:mouseup')
+  onMouseUp() {
+    this.isResizing.set(false);
+  }
+
+  // Calculer si un panneau latéral est ouvert
+  isAnySidePanelOpen = computed(() => this.leftTabs().some(t => t.active));
+
+
   private route = inject(ActivatedRoute);
   private jobService = inject(JobService);
   protected nodeGraph = inject(NodeGraphService);

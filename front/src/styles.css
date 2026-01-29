@@ -3,3 +3,23 @@
 @import "tailwindcss";
 @import "primeicons/primeicons.css";
 
+@theme {
+  --color-jb-dark: #2b2b2b;
+  --color-jb-header: #3c3f41;
+  --color-jb-border: #323232;
+  --color-jb-text: #afb1b3;
+  --color-jb-accent: #4a88c7;
+}
+
+/* On ajoute un petit style pour la sélection de texte dans l'IDE */
+::selection {
+  background-color: #214283;
+  color: white;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
