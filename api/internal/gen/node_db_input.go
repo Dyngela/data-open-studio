@@ -117,7 +117,7 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 				// err := rows.Scan(&row.Field1, &row.Field2, ...)
 				ir.Define(ir.Id("err"), ir.Call("rows.Scan", scanArgs...)),
 
-				// if err != nil { return fmt.Errorf(...) }
+				// if err != nil { return fmt.Errorf(...) }f
 				ir.If(ir.Neq(ir.Id("err"), ir.Nil()),
 					ir.Return(ir.Call("fmt.Errorf",
 						ir.Lit(fmt.Sprintf("node %d scan failed: %%w", node.ID)),
@@ -175,28 +175,4 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 	_ = connID
 
 	return fn, nil
-}
-
-// GenerateConnInit generates the connection initialization code
-func (g *DBInputGenerator) GenerateConnInit(config *models.DBInputConfig) []ir.Stmt {
-	connID := config.Connection.GetConnectionID()
-	driverName := config.Connection.GetDriverName()
-	connString := config.Connection.BuildConnectionString()
-
-	return []ir.Stmt{
-		// db_<connID>, err := sql.Open("<driver>", "<connString>")
-		ir.DefineMulti(
-			[]ir.Expr{ir.Id(fmt.Sprintf("db_%s", connID)), ir.Id("err")},
-			[]ir.Expr{ir.Call("sql.Open", ir.Lit(driverName), ir.Lit(connString))},
-		),
-		// if err != nil { return fmt.Errorf("...") }
-		ir.If(ir.Neq(ir.Id("err"), ir.Nil()),
-			ir.Return(ir.Call("fmt.Errorf",
-				ir.Lit(fmt.Sprintf("failed to connect to %s: %%w", connID)),
-				ir.Id("err"),
-			)),
-		),
-		// defer db_<connID>.Close()
-		ir.Defer(ir.Call(fmt.Sprintf("db_%s.Close", connID))),
-	}
 }

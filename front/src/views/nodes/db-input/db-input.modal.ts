@@ -68,7 +68,7 @@ export class DbInputModal {
       username: cfg['username'] ?? '',
       password: cfg['password'] ?? '',
       sslMode: cfg['sslMode'] ?? 'disable',
-      dbType: cfg['dbType'] ?? 'postgresql',
+      dbType: cfg['dbType'] ?? 'postgres',
     };
 
     const savedConnId = cfg['connectionId'];
@@ -93,7 +93,7 @@ export class DbInputModal {
       this.formState.password = '';
       this.formState.database = '';
       this.formState.sslMode = 'disable';
-      this.formState.dbType = <DbType>'postgresql';
+      this.formState.dbType = DbType.Postgres;
       this.formState.connectionName = '';
       this.selectedConnectionId.set('');
     } else if (newMode === 'select' && this.selectedConnectionId()) {

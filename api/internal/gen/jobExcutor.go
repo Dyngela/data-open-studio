@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -41,44 +39,63 @@ func NewPipelineExecutor(job *models.Job) *JobExecution {
 	return NewJobExecution(job)
 }
 
-// Run builds and executes the pipeline
+// Run builds the pipeline and either outputs the generated files locally (dev)
+// or executes them inside a Docker container (prod).
 func (j *JobExecution) Run() error {
 	if _, err := j.build(); err != nil {
 		return err
 	}
-	// TODO assainir le nom du job
-	binRepo := os.Getenv("BIN_REPO")
-	jobFile := j.Job.Name + ".go"
-	jobPath := filepath.Join(binRepo, jobFile)
-	j.logger.Info().Msgf("Writing job to %s", jobPath)
-	if err := j.writeToFile(jobPath); err != nil {
-		return err
+
+	if j.isDebug() {
+		return j.outputToLocal()
+	}
+	return j.runInDocker()
+}
+
+// outputToLocal writes the generated source, runtime lib and go.mod to ../../bin for inspection.
+func (j *JobExecution) outputToLocal() error {
+	binDir := "../../bin"
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output dir: %w", err)
 	}
 
-	modName := fmt.Sprintf("job_%s", uuid.NewString())
-	if err := runCmd(binRepo, "go", "mod", "init", modName); err != nil {
+	if err := j.writeToFile(filepath.Join(binDir, "main.go")); err != nil {
 		return err
 	}
-
-	if err := runCmd(binRepo, "go", "mod", "tidy"); err != nil {
-		return err
+	if err := extractLib(binDir); err != nil {
+		return fmt.Errorf("failed to write lib: %w", err)
+	}
+	goMod := j.generateGoMod()
+	if err := os.WriteFile(filepath.Join(binDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		return fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
-	if err := runCmd(binRepo, "go", "run", jobFile); err != nil {
-		return err
-	}
-
+	abs, _ := filepath.Abs(binDir)
+	j.logger.Info().Str("path", abs).Msg("Generated files written (dev mode)")
 	return nil
 }
 
-func runCmd(dir string, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+// runInDocker builds a Docker image from the generated code and runs it.
+func (j *JobExecution) runInDocker() error {
+	workDir, err := j.prepareWorkspace()
+	if err != nil {
+		if workDir != "" {
+			os.RemoveAll(workDir)
+		}
+		return err
+	}
+	defer os.RemoveAll(workDir)
 
-	return cmd.Run()
+	imageTag := j.newImageTag()
+	defer j.dockerRmi(imageTag)
+
+	if err := j.dockerBuild(workDir, imageTag); err != nil {
+		return fmt.Errorf("docker build failed: %w", err)
+	}
+	if err := j.dockerRun(imageTag, imageTag); err != nil {
+		return fmt.Errorf("job execution failed: %w", err)
+	}
+	return nil
 }
 
 // withDbConnection adds a database connection to the execution context if not already present
@@ -238,7 +255,11 @@ func (j *JobExecution) build() (*JobExecution, error) {
 		return nil, err
 	}
 
-	j.FileBuilder.SetProgressConfig(api.GetEnv("API_HOST", "localhost:8080"), j.Job.ID)
+	j.FileBuilder.SetProgressConfig(
+		api.GetEnv("NATS_URL", "nats://localhost:4222"),
+		api.GetEnv("TENANT_ID", "default"),
+		j.Job.ID,
+	)
 
 	// Collect global variables and node IDs
 	nodeIDs := make([]int, 0)

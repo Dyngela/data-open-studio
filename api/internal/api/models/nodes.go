@@ -60,6 +60,7 @@ const (
 	NodeTypeDBInput  NodeType = "db_input"
 	NodeTypeDBOutput NodeType = "db_output"
 	NodeTypeMap      NodeType = "map"
+	NodeTypeLog      NodeType = "log"
 )
 
 type Node struct {
@@ -94,6 +95,8 @@ func (slf *Node) SetData(data any) error {
 		if _, ok := data.(MapConfig); !ok {
 			return errors.New("invalid data type for map node")
 		}
+	case NodeTypeLog:
+		return errors.New("Log has no data, it just logs messages")
 	default:
 		return errors.New("unknown node type: " + string(slf.Type))
 	}
@@ -137,6 +140,13 @@ func (slf Node) GetMapConfig() (MapConfig, error) {
 		return MapConfig{}, errors.New("node is not a map type")
 	}
 	return GetTypedData[MapConfig](slf)
+}
+
+func (slf Node) GetLogConfig() (NodeLogConfig, error) {
+	if slf.Type != NodeTypeLog {
+		return NodeLogConfig{}, errors.New("node is not a log type")
+	}
+	return GetTypedData[NodeLogConfig](slf)
 }
 
 func (slf Node) GetNextFlowNodeIDs() []int {

@@ -66,7 +66,7 @@ func TestDBInputAlone(t *testing.T) {
 		t.Fatalf("build failed: %v", err)
 	}
 
-	source, err := exec.generateSource("main")
+	source, err := exec.generateSource()
 	if err != nil {
 		t.Fatalf("generateSource failed: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestDBOutputAlone(t *testing.T) {
 		t.Fatalf("build failed: %v", err)
 	}
 
-	source, err := exec.generateSource("main")
+	source, err := exec.generateSource()
 	if err != nil {
 		t.Fatalf("generateSource failed: %v", err)
 	}

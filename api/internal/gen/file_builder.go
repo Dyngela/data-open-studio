@@ -20,8 +20,9 @@ type FileBuilder struct {
 	nodeByID      map[int]*models.Node
 
 	// Progress reporting config
-	apiURL string
-	jobID  uint
+	natsURL  string
+	tenantID string
+	jobID    uint
 }
 
 // NewFileBuilder creates a new file builder
@@ -59,9 +60,10 @@ func (b *FileBuilder) SetSteps(steps []Step) {
 	b.steps = steps
 }
 
-// SetProgressConfig sets the API URL and job ID for progress reporting
-func (b *FileBuilder) SetProgressConfig(apiURL string, jobID uint) {
-	b.apiURL = apiURL
+// SetProgressConfig sets the NATS URL, tenant ID and job ID for progress reporting
+func (b *FileBuilder) SetProgressConfig(natsURL, tenantID string, jobID uint) {
+	b.natsURL = natsURL
+	b.tenantID = tenantID
 	b.jobID = jobID
 }
 
@@ -154,13 +156,15 @@ func (b *FileBuilder) EmitFile() ([]byte, error) {
 func (b *FileBuilder) generateMainFunc() *ir.FuncDecl {
 	b.ctx.AddImport("context")
 	b.ctx.AddImport("sync")
-	b.ctx.AddImport("database/sql")
-	b.ctx.AddImport("fmt")
 	b.ctx.AddImport("test/lib")
 
 	body := make([]ir.Stmt, 0)
 
 	// 1. Open database connections
+	if len(b.dbConnections) > 0 {
+		b.ctx.AddImport("database/sql")
+		b.ctx.AddImport("fmt")
+	}
 	for _, conn := range b.dbConnections {
 		connID := conn.GetConnectionID()
 		driverName := conn.GetDriverName()
@@ -262,8 +266,7 @@ func (b *FileBuilder) collectChannels() []channelInfo {
 		for _, port := range node.OutputPort {
 			if port.Type == models.PortTypeOutput && !seen[port.ID] {
 				seen[port.ID] = true
-				// port.Node is the destination node, port.NodeID is the owner (source) node
-				toNodeID := port.NodeID
+				toNodeID := port.ConnectedNodeID
 				channels = append(channels, channelInfo{
 					portID:     port.ID,
 					fromNodeID: node.ID,
@@ -551,26 +554,29 @@ func (b *FileBuilder) generateEntrypoint() *ir.FuncDecl {
 		ir.Define(ir.Id("ctx"), ir.Call("context.Background")),
 	}
 
-	// If apiURL and jobID are configured, use them directly (baked into the exe)
+	// If natsURL, tenantID, and jobID are configured, bake them into the exe
 	// Otherwise, use command-line flags for flexibility
-	if b.apiURL != "" && b.jobID > 0 {
+	if b.natsURL != "" && b.tenantID != "" && b.jobID > 0 {
 		body = append(body,
-			ir.Define(ir.Id("reporter"), ir.Call("lib.NewProgressReporter", ir.Lit(b.apiURL), ir.Lit(b.jobID))),
+			ir.Define(ir.Id("reporter"), ir.Call("lib.NewProgressReporter", ir.Lit(b.natsURL), ir.Lit(b.tenantID), ir.Lit(b.jobID))),
+			ir.Defer(ir.Call("reporter.Close")),
 			ir.Define(ir.Id("progress"), ir.Call("reporter.ReportFunc")),
-			ir.ExprStatement(ir.Call("log.Printf", ir.Lit(fmt.Sprintf("Progress reporting: %s/api/internal/jobs/%d/progress", b.apiURL, b.jobID)))),
+			ir.ExprStatement(ir.Call("log.Printf", ir.Lit(fmt.Sprintf("Progress reporting via NATS: tenant.%s.job.%d.progress", b.tenantID, b.jobID)))),
 		)
 	} else {
 		// Fallback to command-line flags
 		b.ctx.AddImport("flag")
 		body = append(body,
-			ir.RawStatement(`apiURL := flag.String("api", "http://localhost:8080", "API server URL")`),
+			ir.RawStatement(`natsURL := flag.String("nats", "nats://localhost:4222", "NATS server URL")`),
+			ir.RawStatement(`tenantID := flag.String("tenant", "default", "Tenant ID")`),
 			ir.RawStatement(`jobID := flag.Uint("job", 0, "Job ID for progress reporting")`),
 			ir.ExprStatement(ir.Call("flag.Parse")),
 			ir.Var("progress", "lib.ProgressFunc"),
 			ir.If(ir.Gt(ir.Deref(ir.Id("jobID")), ir.Lit(0)),
-				ir.Define(ir.Id("reporter"), ir.Call("lib.NewProgressReporter", ir.Deref(ir.Id("apiURL")), ir.Deref(ir.Id("jobID")))),
+				ir.Define(ir.Id("reporter"), ir.Call("lib.NewProgressReporter", ir.Deref(ir.Id("natsURL")), ir.Deref(ir.Id("tenantID")), ir.Deref(ir.Id("jobID")))),
+				ir.Defer(ir.Call("reporter.Close")),
 				ir.Assign(ir.Id("progress"), ir.Call("reporter.ReportFunc")),
-				ir.ExprStatement(ir.Call("log.Printf", ir.Lit("Progress reporting enabled: %s/api/internal/jobs/%d/progress"), ir.Deref(ir.Id("apiURL")), ir.Deref(ir.Id("jobID")))),
+				ir.ExprStatement(ir.Call("log.Printf", ir.Lit("Progress reporting via NATS enabled for tenant %s, job %d"), ir.Deref(ir.Id("tenantID")), ir.Deref(ir.Id("jobID")))),
 			),
 		)
 	}
