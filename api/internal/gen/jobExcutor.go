@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/rs/zerolog"
 )
 
 type Step struct {
@@ -18,6 +21,7 @@ type JobExecution struct {
 	Context     *ExecutionContext
 	Steps       []Step
 	FileBuilder *FileBuilder
+	logger      zerolog.Logger
 }
 
 // NewJobExecution creates a new pipeline from a job
@@ -26,6 +30,7 @@ func NewJobExecution(job *models.Job) *JobExecution {
 		Job:         job,
 		Context:     NewExecutionContext(),
 		FileBuilder: NewFileBuilder(job),
+		logger:      api.Logger,
 	}
 }
 
@@ -34,12 +39,63 @@ func NewPipelineExecutor(job *models.Job) *JobExecution {
 	return NewJobExecution(job)
 }
 
-// Run builds and executes the pipeline
+// Run builds the pipeline and either outputs the generated files locally (dev)
+// or executes them inside a Docker container (prod).
 func (j *JobExecution) Run() error {
-	if _, err := j.Build(); err != nil {
+	if _, err := j.build(); err != nil {
 		return err
 	}
-	return j.Execute()
+
+	if j.isDebug() {
+		return j.outputToLocal()
+	}
+	return j.runInDocker()
+}
+
+// outputToLocal writes the generated source, runtime lib and go.mod to ../../bin for inspection.
+func (j *JobExecution) outputToLocal() error {
+	binDir := "../../bin"
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output dir: %w", err)
+	}
+
+	if err := j.writeToFile(filepath.Join(binDir, "main.go")); err != nil {
+		return err
+	}
+	if err := extractLib(binDir); err != nil {
+		return fmt.Errorf("failed to write lib: %w", err)
+	}
+	goMod := j.generateGoMod()
+	if err := os.WriteFile(filepath.Join(binDir, "go.mod"), []byte(goMod), 0644); err != nil {
+		return fmt.Errorf("failed to write go.mod: %w", err)
+	}
+
+	abs, _ := filepath.Abs(binDir)
+	j.logger.Info().Str("path", abs).Msg("Generated files written (dev mode)")
+	return nil
+}
+
+// runInDocker builds a Docker image from the generated code and runs it.
+func (j *JobExecution) runInDocker() error {
+	workDir, err := j.prepareWorkspace()
+	if err != nil {
+		if workDir != "" {
+			os.RemoveAll(workDir)
+		}
+		return err
+	}
+	defer os.RemoveAll(workDir)
+
+	imageTag := j.newImageTag()
+	defer j.dockerRmi(imageTag)
+
+	if err := j.dockerBuild(workDir, imageTag); err != nil {
+		return fmt.Errorf("docker build failed: %w", err)
+	}
+	if err := j.dockerRun(imageTag, imageTag); err != nil {
+		return fmt.Errorf("job execution failed: %w", err)
+	}
+	return nil
 }
 
 // withDbConnection adds a database connection to the execution context if not already present
@@ -150,7 +206,7 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 		}
 	}
 
-	// Build execution steps
+	// build execution steps
 	j.Steps = make([]Step, 0, maxLevel+1)
 	for level := 0; level <= maxLevel; level++ {
 		if nodes := levelNodes[level]; len(nodes) > 0 {
@@ -191,15 +247,19 @@ func (j *JobExecution) withGlobalVariables(node models.Node) (*JobExecution, err
 	return j, nil
 }
 
-// Build builds the job file for compilation
-func (j *JobExecution) Build() (*JobExecution, error) {
+// build builds the job file for compilation
+func (j *JobExecution) build() (*JobExecution, error) {
 	// Setup execution steps
 	j, err := j.withStepsSetup()
 	if err != nil {
 		return nil, err
 	}
 
-	j.FileBuilder.SetProgressConfig(api.GetEnv("API_HOST", "localhost:8080"), j.Job.ID)
+	j.FileBuilder.SetProgressConfig(
+		api.GetEnv("NATS_URL", "nats://localhost:4222"),
+		api.GetEnv("TENANT_ID", "default"),
+		j.Job.ID,
+	)
 
 	// Collect global variables and node IDs
 	nodeIDs := make([]int, 0)
@@ -224,21 +284,17 @@ func (j *JobExecution) Build() (*JobExecution, error) {
 		return nil, fmt.Errorf("failed to generate code: %w", err)
 	}
 
-	log.Printf("Successfully generated code with %d structs and %d functions",
-		len(j.FileBuilder.GetStructs()),
-		len(j.FileBuilder.GetFuncs()))
-
 	return j, nil
 }
 
-// GenerateSource generates the Go source code for this job
-func (j *JobExecution) GenerateSource(pkgName string) ([]byte, error) {
-	return j.FileBuilder.EmitFile(pkgName)
+// generateSource generates the Go source code for this job
+func (j *JobExecution) generateSource() ([]byte, error) {
+	return j.FileBuilder.EmitFile()
 }
 
-// WriteToFile writes the generated code to a file
-func (j *JobExecution) WriteToFile(outputPath string, pkgName string) error {
-	source, err := j.GenerateSource(pkgName)
+// writeToFile writes the generated code to a file
+func (j *JobExecution) writeToFile(outputPath string) error {
+	source, err := j.generateSource()
 	if err != nil {
 		return fmt.Errorf("failed to generate source: %w", err)
 	}
@@ -248,11 +304,5 @@ func (j *JobExecution) WriteToFile(outputPath string, pkgName string) error {
 	}
 
 	log.Printf("Generated code written to %s", outputPath)
-	return nil
-}
-
-func (j *JobExecution) Execute() error {
-	// TODO: Compile and run the generated code
-	// For now, just return nil
 	return nil
 }

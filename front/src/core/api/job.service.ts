@@ -9,6 +9,7 @@ import {
   ShareJobRequest,
   DeleteResponse
 } from './job.type';
+import {ApiError} from './api-response.type';
 
 @Injectable({ providedIn: 'root' })
 export class JobService {
@@ -105,5 +106,12 @@ export class JobService {
       onSuccess,
       onError
     );
+  }
+
+  execute(id: number,
+          onSuccess?: (data: void) => void,
+          onError?: (error: any) => void
+  ): ApiMutation<ApiError<any>, null> {
+    return this.api.post(`${this.basePath}/${id}/execute`)
   }
 }

@@ -48,16 +48,18 @@ func JobHandler(router *graceful.Graceful) {
 		// Sharing endpoints
 		routes.POST("/:id/share", h.share)
 		routes.DELETE("/:id/share", h.unshare)
+
+		routes.POST("/:id/execute", h.execute)
 	}
 }
 
 // getUserID extracts the user ID from the JWT context
 
 // checkAccess verifies if the user can access the job and returns the role
-func (h *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRole models.OwningJob) bool {
-	canAccess, role, err := h.jobService.CanUserAccess(jobID, userID)
+func (slf *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRole models.OwningJob) bool {
+	canAccess, role, err := slf.jobService.CanUserAccess(jobID, userID)
 	if err != nil {
-		h.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to check job access")
+		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to check job access")
 		c.JSON(http.StatusNotFound, response.APIError{Message: "Job not found"})
 		return false
 	}
@@ -81,7 +83,7 @@ func (h *jobHandler) checkAccess(c *gin.Context, jobID, userID uint, requiredRol
 }
 
 // getAll returns all jobs visible to the current user (optionally filtered by filePath)
-func (h *jobHandler) getAll(c *gin.Context) {
+func (slf *jobHandler) getAll(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -94,27 +96,27 @@ func (h *jobHandler) getAll(c *gin.Context) {
 	var err error
 
 	if filePath != "" {
-		entities, err = h.jobService.FindByFilePathForUser(filePath, userID)
+		entities, err = slf.jobService.FindByFilePathForUser(filePath, userID)
 		if err != nil {
-			h.logger.Error().Err(err).Str("filePath", filePath).Msg("Failed to get jobs by file path")
+			slf.logger.Error().Err(err).Str("filePath", filePath).Msg("Failed to get jobs by file path")
 			c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to retrieve jobs"})
 			return
 		}
 	} else {
-		entities, err = h.jobService.FindAllForUser(userID)
+		entities, err = slf.jobService.FindAllForUser(userID)
 		if err != nil {
-			h.logger.Error().Err(err).Msg("Failed to get all jobs")
+			slf.logger.Error().Err(err).Msg("Failed to get all jobs")
 			c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to retrieve jobs"})
 			return
 		}
 	}
 
-	jobs = h.jobMapper.ToJobResponses(entities)
+	jobs = slf.jobMapper.ToJobResponses(entities)
 	c.JSON(http.StatusOK, jobs)
 }
 
 // getByID returns a single job with its nodes
-func (h *jobHandler) getByID(c *gin.Context) {
+func (slf *jobHandler) getByID(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -127,13 +129,13 @@ func (h *jobHandler) getByID(c *gin.Context) {
 	}
 
 	// Check access before returning job
-	if !h.checkAccess(c, uint(id), userID, models.Viewer) {
+	if !slf.checkAccess(c, uint(id), userID, models.Viewer) {
 		return
 	}
 
-	job, accessList, err := h.jobService.FindByIDWithAccess(uint(id))
+	job, accessList, err := slf.jobService.FindByIDWithAccess(uint(id))
 	if err != nil {
-		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to get job")
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to get job")
 		c.JSON(http.StatusNotFound, response.APIError{Message: "Job not found"})
 		return
 	}
@@ -142,7 +144,7 @@ func (h *jobHandler) getByID(c *gin.Context) {
 }
 
 // create creates a new job with optional nodes
-func (h *jobHandler) create(c *gin.Context) {
+func (slf *jobHandler) create(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -150,32 +152,32 @@ func (h *jobHandler) create(c *gin.Context) {
 
 	var req request.CreateJob
 	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		h.logger.Error().Err(err).Msg("Failed to parse create job request")
+		slf.logger.Error().Err(err).Msg("Failed to parse create job request")
 		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
 		return
 	}
 
-	job := h.jobMapper.CreateJob(req)
+	job := slf.jobMapper.CreateJob(req)
 	job.CreatorID = userID
 	//job.Nodes = req.Nodes // Nodes directly from request
 
-	created, err := h.jobService.Create(job)
+	created, err := slf.jobService.Create(job)
 	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to create job")
+		slf.logger.Error().Err(err).Msg("Failed to create job")
 		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to create job"})
 		return
 	}
 
 	// Share with specified users if any
 	if len(req.SharedWith) > 0 {
-		if err := h.jobService.ShareJob(created.ID, req.SharedWith, models.Viewer); err != nil {
-			h.logger.Error().Err(err).Msg("Failed to share job with users")
+		if err := slf.jobService.ShareJob(created.ID, req.SharedWith, models.Viewer); err != nil {
+			slf.logger.Error().Err(err).Msg("Failed to share job with users")
 			// Don't fail the create, just log the error
 		}
 	}
 
 	// Fetch the job with access list for response
-	job2, accessList, err := h.jobService.FindByIDWithAccess(created.ID)
+	job2, accessList, err := slf.jobService.FindByIDWithAccess(created.ID)
 	if err != nil {
 		// Fallback to created job without access list
 		c.JSON(http.StatusCreated, mapper.ToJobResponseWithNodes(*created, nil))
@@ -186,7 +188,7 @@ func (h *jobHandler) create(c *gin.Context) {
 }
 
 // update updates an existing job and optionally its nodes
-func (h *jobHandler) update(c *gin.Context) {
+func (slf *jobHandler) update(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -199,47 +201,47 @@ func (h *jobHandler) update(c *gin.Context) {
 	}
 
 	// Check edit access
-	if !h.checkAccess(c, uint(id), userID, models.Editor) {
+	if !slf.checkAccess(c, uint(id), userID, models.Editor) {
 		return
 	}
 
 	var req request.UpdateJob
 	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		h.logger.Error().Err(err).Msg("Failed to parse update job request")
+		slf.logger.Error().Err(err).Msg("Failed to parse update job request")
 		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
 		return
 	}
 
-	patch := h.jobMapper.PatchJob(req)
+	patch := slf.jobMapper.PatchJob(req)
 	nodes := mapper.JobWithNodeToModel(req)
 
 	var updated *models.Job
 	if len(nodes) > 0 {
 		// Update with nodes replacement
-		updated, err = h.jobService.UpdateWithNodes(uint(id), patch, nodes)
+		updated, err = slf.jobService.UpdateWithNodes(uint(id), patch, nodes)
 	} else {
 		// Update only job fields
-		updated, err = h.jobService.Update(uint(id), patch)
+		updated, err = slf.jobService.Update(uint(id), patch)
 	}
 
 	if err != nil {
-		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to update job")
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to update job")
 		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to update job"})
 		return
 	}
 
 	// Update sharing if specified (only owner can change sharing)
 	if req.SharedWith != nil {
-		canAccess, role, _ := h.jobService.CanUserAccess(uint(id), userID)
+		canAccess, role, _ := slf.jobService.CanUserAccess(uint(id), userID)
 		if canAccess && role == models.Owner {
-			if err := h.jobService.UpdateJobSharing(uint(id), req.SharedWith, models.Viewer); err != nil {
-				h.logger.Error().Err(err).Msg("Failed to update job sharing")
+			if err := slf.jobService.UpdateJobSharing(uint(id), req.SharedWith, models.Viewer); err != nil {
+				slf.logger.Error().Err(err).Msg("Failed to update job sharing")
 			}
 		}
 	}
 
 	// Fetch with access list for response
-	job, accessList, err := h.jobService.FindByIDWithAccess(updated.ID)
+	job, accessList, err := slf.jobService.FindByIDWithAccess(updated.ID)
 	if err != nil {
 		c.JSON(http.StatusOK, mapper.ToJobResponseWithNodes(*updated, nil))
 		return
@@ -249,7 +251,7 @@ func (h *jobHandler) update(c *gin.Context) {
 }
 
 // delete removes a job (only owner can delete)
-func (h *jobHandler) delete(c *gin.Context) {
+func (slf *jobHandler) delete(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -262,12 +264,12 @@ func (h *jobHandler) delete(c *gin.Context) {
 	}
 
 	// Only owner can delete
-	if !h.checkAccess(c, uint(id), userID, models.Owner) {
+	if !slf.checkAccess(c, uint(id), userID, models.Owner) {
 		return
 	}
 
-	if err := h.jobService.Delete(uint(id)); err != nil {
-		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to delete job")
+	if err := slf.jobService.Delete(uint(id)); err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to delete job")
 		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to delete job"})
 		return
 	}
@@ -276,7 +278,7 @@ func (h *jobHandler) delete(c *gin.Context) {
 }
 
 // share adds users to a job's shared access list (only owner can share)
-func (h *jobHandler) share(c *gin.Context) {
+func (slf *jobHandler) share(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -289,25 +291,25 @@ func (h *jobHandler) share(c *gin.Context) {
 	}
 
 	// Only owner can share
-	if !h.checkAccess(c, uint(id), userID, models.Owner) {
+	if !slf.checkAccess(c, uint(id), userID, models.Owner) {
 		return
 	}
 
 	var req request.ShareJob
 	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		h.logger.Error().Err(err).Msg("Failed to parse share job request")
+		slf.logger.Error().Err(err).Msg("Failed to parse share job request")
 		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
 		return
 	}
 
-	if err := h.jobService.ShareJob(uint(id), req.UserIDs, req.Role); err != nil {
-		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to share job")
+	if err := slf.jobService.ShareJob(uint(id), req.UserIDs, req.Role); err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to share job")
 		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to share job"})
 		return
 	}
 
 	// Return updated job with access list
-	job, accessList, err := h.jobService.FindByIDWithAccess(uint(id))
+	job, accessList, err := slf.jobService.FindByIDWithAccess(uint(id))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "Job shared successfully"})
 		return
@@ -317,7 +319,7 @@ func (h *jobHandler) share(c *gin.Context) {
 }
 
 // unshare removes users from a job's shared access list (only owner can unshare)
-func (h *jobHandler) unshare(c *gin.Context) {
+func (slf *jobHandler) unshare(c *gin.Context) {
 	userID, ok := pkg.GetUserID(c)
 	if !ok {
 		return
@@ -330,29 +332,39 @@ func (h *jobHandler) unshare(c *gin.Context) {
 	}
 
 	// Only owner can unshare
-	if !h.checkAccess(c, uint(id), userID, models.Owner) {
+	if !slf.checkAccess(c, uint(id), userID, models.Owner) {
 		return
 	}
 
 	var req request.ShareJob
 	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		h.logger.Error().Err(err).Msg("Failed to parse unshare job request")
+		slf.logger.Error().Err(err).Msg("Failed to parse unshare job request")
 		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
 		return
 	}
 
-	if err := h.jobService.UnshareJob(uint(id), req.UserIDs); err != nil {
-		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to unshare job")
+	if err := slf.jobService.UnshareJob(uint(id), req.UserIDs); err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to unshare job")
 		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to unshare job"})
 		return
 	}
 
 	// Return updated job with access list
-	job, accessList, err := h.jobService.FindByIDWithAccess(uint(id))
+	job, accessList, err := slf.jobService.FindByIDWithAccess(uint(id))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "Job unshared successfully"})
 		return
 	}
 
 	c.JSON(http.StatusOK, mapper.ToJobResponseWithNodes(*job, accessList))
+}
+
+func (slf *jobHandler) execute(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	slf.jobService.Execute(uint(id))
 }

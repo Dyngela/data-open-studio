@@ -1,0 +1,49 @@
+func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightIn <-chan *{{ .RightType }}, outChan chan<- *{{ .OutputType }}, progress lib.ProgressFunc) error {
+	var rowCount int64
+
+	// Report start
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting union"))
+	}
+
+	// Process left stream
+	for left := range leftIn {
+		out := &{{ .OutputType }}{}
+{{ .LeftTransforms }}
+		rowCount++
+
+		if progress != nil && rowCount % 1000 == 0 {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, rowCount, fmt.Sprintf("unioned %d rows", rowCount)))
+		}
+
+		select {
+		case outChan <- out:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	// Process right stream
+	for right := range rightIn {
+		out := &{{ .OutputType }}{}
+{{ .RightTransforms }}
+		rowCount++
+
+		if progress != nil && rowCount % 1000 == 0 {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, rowCount, fmt.Sprintf("unioned %d rows", rowCount)))
+		}
+
+		select {
+		case outChan <- out:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	// Report completion
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, rowCount, "completed"))
+	}
+
+	return nil
+}

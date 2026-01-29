@@ -34,7 +34,8 @@ export class Login {
     // Navigate on successful login
     effect(() => {
       if (this.loginMutation.success()) {
-        this.router.navigateByUrl(this.returnUrl);
+        console.log("Login successful, navigating to:", this.returnUrl);
+        this.router.navigateByUrl(this.returnUrl).then(r => console.log("ok login navigation")).catch(err => console.log("cant nav from login: ", err));
       }
     });
   }

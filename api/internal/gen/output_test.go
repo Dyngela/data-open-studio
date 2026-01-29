@@ -52,10 +52,10 @@ func TestDBOutputGeneration(t *testing.T) {
 		JobID: 1,
 	}
 	outputNode.SetData(models.DBOutputConfig{
-		Table:     "users_copy",
-		Mode:      "INSERT",
-		BatchSize: 100,
-		DbSchema:  "public",
+		Table:      "users_copy",
+		Mode:       "INSERT",
+		BatchSize:  100,
+		DbSchema:   "public",
 		Connection: conn,
 		DataModels: []models.DataModel{
 			{Name: "id", Type: "integer", GoType: "int"},
@@ -87,14 +87,14 @@ func TestDBOutputGeneration(t *testing.T) {
 	}
 
 	exec := NewJobExecution(&job)
-	_, err := exec.Build()
+	_, err := exec.build()
 	if err != nil {
-		t.Fatalf("Build failed: %v", err)
+		t.Fatalf("build failed: %v", err)
 	}
 
-	source, err := exec.GenerateSource("main")
+	source, err := exec.generateSource()
 	if err != nil {
-		t.Fatalf("GenerateSource failed: %v", err)
+		t.Fatalf("generateSource failed: %v", err)
 	}
 
 	fmt.Println("=== Generated Code ===")

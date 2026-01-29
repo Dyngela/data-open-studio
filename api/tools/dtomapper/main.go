@@ -423,7 +423,7 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("\tvar result %s\n", targetType))
 
-	// Build field mapping
+	// build field mapping
 	targetFieldMap := make(map[string]*FieldInfo)
 	for i := range targetStruct.Fields {
 		targetFieldMap[targetStruct.Fields[i].Name] = &targetStruct.Fields[i]
@@ -582,7 +582,7 @@ func generateUpdateMethodBody(method MethodInfo, structMap map[string]*StructInf
 	reqParam := method.Params[0].Name
 	targetParam := method.Params[1].Name
 
-	// Build target field map for matching
+	// build target field map for matching
 	targetFieldMap := make(map[string]*FieldInfo)
 	for i := range targetStruct.Fields {
 		targetFieldMap[targetStruct.Fields[i].Name] = &targetStruct.Fields[i]
@@ -678,7 +678,7 @@ func generateSliceFieldMapping(sourceField, targetField *FieldInfo, srcParam, tg
 		return buf.String()
 	}
 
-	// Build target element field map
+	// build target element field map
 	targetElemFieldMap := make(map[string]*FieldInfo)
 	for i := range targetElemStruct.Fields {
 		targetElemFieldMap[targetElemStruct.Fields[i].Name] = &targetElemStruct.Fields[i]

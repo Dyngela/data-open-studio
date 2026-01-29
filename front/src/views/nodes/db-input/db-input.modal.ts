@@ -21,7 +21,6 @@ export class DbInputModal {
   save = output<{ connectionString: string; table: string; query: string; database?: string; connectionId?: string; dbType?: DbType; host?: string; port?: string; username?: string; password?: string; sslMode?: string }>();
 
   private connectionService = inject(ConnectionService);
-  private wsService = inject(BaseWebSocketService);
 
   mode = signal<'select' | 'new' | 'edit'>('select');
   selectedConnectionId = signal<string>('');
@@ -68,7 +67,7 @@ export class DbInputModal {
       username: cfg['username'] ?? '',
       password: cfg['password'] ?? '',
       sslMode: cfg['sslMode'] ?? 'disable',
-      dbType: cfg['dbType'] ?? 'postgresql',
+      dbType: cfg['dbType'] ?? 'postgres',
     };
 
     const savedConnId = cfg['connectionId'];
@@ -93,7 +92,7 @@ export class DbInputModal {
       this.formState.password = '';
       this.formState.database = '';
       this.formState.sslMode = 'disable';
-      this.formState.dbType = <DbType>'postgresql';
+      this.formState.dbType = DbType.Postgres;
       this.formState.connectionName = '';
       this.selectedConnectionId.set('');
     } else if (newMode === 'select' && this.selectedConnectionId()) {
