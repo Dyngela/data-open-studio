@@ -21,7 +21,6 @@ export class DbInputModal {
   save = output<{ connectionString: string; table: string; query: string; database?: string; connectionId?: string; dbType?: DbType; host?: string; port?: string; username?: string; password?: string; sslMode?: string }>();
 
   private connectionService = inject(ConnectionService);
-  private wsService = inject(BaseWebSocketService);
 
   mode = signal<'select' | 'new' | 'edit'>('select');
   selectedConnectionId = signal<string>('');
