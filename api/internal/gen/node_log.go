@@ -2,7 +2,6 @@ package gen
 
 import (
 	"api/internal/api/models"
-	"api/internal/gen/ir"
 	"fmt"
 )
 
@@ -12,55 +11,79 @@ func (g *LogGenerator) NodeType() models.NodeType {
 	return models.NodeTypeLog
 }
 
-func (g *LogGenerator) GenerateStruct(node *models.Node) (*ir.StructDecl, error) {
-	config, err := node.GetLogConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	structName := fmt.Sprintf("Node%dRow", node.ID)
-	builder := ir.NewStruct(structName)
-
-	for _, col := range config.Input {
-		tag := fmt.Sprintf(`db:"%s"`, col.Name)
-		builder.FieldWithTag(col.GoFieldName(), col.GoFieldType(), tag)
-	}
-
-	return builder.Build(), nil
+// GenerateStructData returns nil — log is a sink, it uses the input node's row type
+func (g *LogGenerator) GenerateStructData(node *models.Node) (*StructData, error) {
+	return nil, nil
 }
 
-func (g *LogGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext) (*ir.FuncDecl, error) {
-	config, err := node.GetLogConfig()
-	if err != nil {
-		return nil, err
+// GetLaunchArgs returns the launch arguments for log: [inputChannel]
+func (g *LogGenerator) GetLaunchArgs(node *models.Node, channels []channelInfo, dbConnections map[string]string) []string {
+	args := make([]string, 0, 1)
+
+	// Add input channel
+	for _, ch := range channels {
+		if ch.toNodeID == node.ID {
+			args = append(args, fmt.Sprintf("ch_%d", ch.portID))
+			break
+		}
 	}
-	structName := ctx.StructName(node)
+
+	return args
+}
+
+func (g *LogGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorContext) (*NodeFunctionData, error) {
+	ctx.AddImport("context")
+	ctx.AddImport("fmt")
+	ctx.AddImport("test/lib")
+
 	funcName := ctx.FuncName(node)
+	inputRowType := g.findInputRowType(node, ctx)
+	if inputRowType == "" {
+		inputRowType = "any"
+	}
 
-	fn := ir.NewFunc(funcName).
-		Param("ctx", "context.Context").
-		Param("data", fmt.Sprintf("%s", structName)).
-		Param("progress", "lib.ProgressFunc").
-		Body(
-			ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
-				ir.ForClassic(
-					ir.Define(ir.Id("j"), ir.Lit(0)),
-					ir.Lt(ir.Id("j"), ir.Lit(len(config.Input))),
-					ir.Assign(ir.Id("j"), ir.Add(ir.Id("j"), ir.Lit(1))),
-					ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
-						ir.Lit(node.ID),
-						ir.Lit(node.Name),
-						ir.Id("lib.StatusRunning"),
-						ir.Lit("j"),
-						ir.Lit("data[j]"),
-					))),
-				),
-			),
+	// Use template engine
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
+	}
 
-			ir.If(ir.Eq(ir.Id("progress"), ir.Nil()),
-				ir.ExprStatement(ir.Lit("panic(\"progress func not set\")")),
-			),
-		).
-		Build()
-	return fn, nil
+	templateData := LogTemplateData{
+		FuncName:  funcName,
+		NodeID:    node.ID,
+		NodeName:  node.Name,
+		InputType: inputRowType,
+	}
+
+	body, err := engine.GenerateNodeFunction("node_log.go.tmpl", templateData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate log function: %w", err)
+	}
+
+	return &NodeFunctionData{
+		Name:      funcName,
+		NodeID:    node.ID,
+		NodeName:  node.Name,
+		Signature: "", // Not used - template generates complete function
+		Body:      body,
+	}, nil
+}
+
+func (g *LogGenerator) findInputRowType(node *models.Node, ctx *GeneratorContext) string {
+	for _, port := range node.InputPort {
+		if port.Type == models.PortTypeInput {
+			// Use the connected node reference if available
+			sourceNode := &port.Node
+			// Check if we have a valid source node (skip start nodes)
+			if sourceNode != nil && sourceNode.ID != 0 && sourceNode.Type != models.NodeTypeStart {
+				// Check if this node has a struct already defined
+				if structName, exists := ctx.NodeStructNames[sourceNode.ID]; exists {
+					return structName
+				}
+				// Fallback: generate struct name
+				return ctx.StructName(sourceNode)
+			}
+		}
+	}
+	return ""
 }

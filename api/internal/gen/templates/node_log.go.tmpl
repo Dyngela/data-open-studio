@@ -1,0 +1,23 @@
+func {{ .FuncName }}(ctx context.Context, in <-chan *{{ .InputType }}, progress lib.ProgressFunc) error {
+	var totalRows int64
+
+	// Report start
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting log"))
+	}
+
+	for row := range in {
+		totalRows++
+		fmt.Printf("[log] row %d: %+v\n", totalRows, row)
+		if progress != nil {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("%v", row)))
+		}
+	}
+
+	// Report completion
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, totalRows, "completed"))
+	}
+
+	return nil
+}

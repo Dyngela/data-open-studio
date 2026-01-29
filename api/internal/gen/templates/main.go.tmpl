@@ -1,0 +1,120 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"sync"
+	{{- if .UseFlags }}
+	"flag"
+	{{- end }}
+	"test/lib"
+
+	{{- range .Imports }}
+	{{ if .Alias }}{{ .Alias }} {{ end }}"{{ .Path }}"
+	{{- end }}
+)
+
+{{- range .Structs }}
+
+// {{ .Name }} represents data for node {{ .NodeID }}
+type {{ .Name }} struct {
+	{{- range .Fields }}
+	{{ .Name }} {{ .Type }} {{ if .Tag }}`{{ .Tag }}`{{ end }}
+	{{- end }}
+}
+{{- end }}
+
+{{- range .NodeFunctions }}
+
+// {{ .Name }} executes node {{ .NodeID }}: {{ .NodeName }}
+{{ .Body }}
+{{- end }}
+
+// execute orchestrates the pipeline execution
+func execute(ctx context.Context, progress lib.ProgressFunc) error {
+	{{- if .DBConnections }}
+	// Open database connections
+	{{- range .DBConnections }}
+	db_{{ .ID }}, err := sql.Open("{{ .Driver }}", "{{ .ConnString }}")
+	if err != nil {
+		return fmt.Errorf("failed to connect to {{ .ID }}: %w", err)
+	}
+	defer db_{{ .ID }}.Close()
+	{{- end }}
+	{{- end }}
+
+	{{- if .Channels }}
+	// Create channels for data flow
+	{{- range .Channels }}
+	ch_{{ .PortID }} := make(chan *{{ .RowType }}, {{ .BufferSize }})
+	{{- end }}
+	{{- end }}
+
+	// Create synchronization primitives
+	var wg sync.WaitGroup
+	errChan := make(chan error, {{ .NodeCount }})
+
+	{{- range .NodeLaunches }}
+	// Launch node {{ .NodeID }}: {{ .NodeName }}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		{{- if .HasOutputChannel }}
+		defer close({{ .OutputChannel }})
+		{{- end }}
+		if err := {{ .FuncName }}(ctx{{ range .Args }}, {{ . }}{{ end }}, progress); err != nil {
+			errChan <- err
+		}
+	}()
+	{{- end }}
+
+	// Wait for all goroutines to complete
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	// Collect errors
+	var firstErr error
+	for err := range errChan {
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+
+	return firstErr
+}
+
+func main() {
+	ctx := context.Background()
+
+	{{- if .UseFlags }}
+	// Parse command-line flags
+	natsURL := flag.String("nats", "nats://localhost:4222", "NATS server URL")
+	tenantID := flag.String("tenant", "default", "Tenant ID")
+	jobID := flag.Uint("job", 0, "Job ID for progress reporting")
+	flag.Parse()
+
+	var progress lib.ProgressFunc
+	if *jobID > 0 {
+		reporter := lib.NewProgressReporter(*natsURL, *tenantID, *jobID)
+		defer reporter.Close()
+		progress = reporter.ReportFunc()
+		log.Printf("Progress reporting via NATS enabled for tenant %s, job %d", *tenantID, *jobID)
+	}
+	{{- else }}
+	// Use configured progress reporting
+	reporter := lib.NewProgressReporter("{{ .NatsURL }}", "{{ .TenantID }}", {{ .JobID }})
+	defer reporter.Close()
+	progress := reporter.ReportFunc()
+	log.Printf("Progress reporting via NATS: tenant.{{ .TenantID }}.job.{{ .JobID }}.progress")
+	{{- end }}
+
+	if err := execute(ctx, progress); err != nil {
+		log.Fatalf("execution failed: %v", err)
+	}
+
+	log.Println("Pipeline completed successfully")
+}

@@ -1,0 +1,43 @@
+func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightIn <-chan *{{ .RightType }}, outChan chan<- *{{ .OutputType }}, progress lib.ProgressFunc) error {
+	var rowCount int64
+
+	// Report start
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting left join"))
+	}
+
+	// Build right index
+	rightIndex := make(map[string]*{{ .RightType }})
+	for r := range rightIn {
+		key := fmt.Sprintf("%v", r.{{ .RightKey }})
+		rightIndex[key] = r
+	}
+
+	// Process left stream with lookup
+	for left := range leftIn {
+		key := fmt.Sprintf("%v", left.{{ .LeftKey }})
+		right := rightIndex[key]
+
+		out := &{{ .OutputType }}{}
+{{ .Transforms }}
+		rowCount++
+
+		// Report progress every 1000 rows
+		if progress != nil && rowCount % 1000 == 0 {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, rowCount, fmt.Sprintf("joined %d rows", rowCount)))
+		}
+
+		select {
+		case outChan <- out:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	// Report completion
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, rowCount, "completed"))
+	}
+
+	return nil
+}

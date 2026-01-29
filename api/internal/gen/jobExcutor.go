@@ -284,10 +284,6 @@ func (j *JobExecution) build() (*JobExecution, error) {
 		return nil, fmt.Errorf("failed to generate code: %w", err)
 	}
 
-	log.Printf("Successfully generated code with %d structs and %d functions",
-		len(j.FileBuilder.GetStructs()),
-		len(j.FileBuilder.GetFuncs()))
-
 	return j, nil
 }
 

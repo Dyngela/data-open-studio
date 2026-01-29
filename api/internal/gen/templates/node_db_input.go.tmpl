@@ -1,0 +1,47 @@
+func {{ .FuncName }}(ctx context.Context, db *sql.DB, out chan<- *{{ .StructName }}, progress lib.ProgressFunc) error {
+	query := {{ printf "%q" .Query }}
+	var rowCount int64
+
+	// Report start
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting query"))
+	}
+
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("node {{ .NodeID }} query failed: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var row {{ .StructName }}
+		err := rows.Scan({{ range $i, $field := .ScanFields }}{{if $i}}, {{end}}&row.{{ $field }}{{end}})
+		if err != nil {
+			return fmt.Errorf("node {{ .NodeID }} scan failed: %w", err)
+		}
+
+		rowCount++
+
+		// Report progress every {{ .ProgressInterval }} rows
+		if progress != nil && rowCount % {{ .ProgressInterval }} == 0 {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, rowCount, fmt.Sprintf("read %d rows", rowCount)))
+		}
+
+		select {
+		case out <- &row:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	// Report completion
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, rowCount, "completed"))
+	}
+
+	return nil
+}

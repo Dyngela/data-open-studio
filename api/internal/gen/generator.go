@@ -2,20 +2,31 @@ package gen
 
 import (
 	"api/internal/api/models"
-	"api/internal/gen/ir"
 	"fmt"
 )
 
-// NodeGenerator generates IR code for a specific node type
+// NodeGenerator generates code data for a specific node type
 type NodeGenerator interface {
 	// NodeType returns the type of node this generator handles
 	NodeType() models.NodeType
 
-	// GenerateStruct generates the row struct for this node (if applicable)
-	GenerateStruct(node *models.Node) (*ir.StructDecl, error)
+	// GenerateStructData generates the struct data for this node (if applicable)
+	GenerateStructData(node *models.Node) (*StructData, error)
 
-	// GenerateFunc generates the execution function for this node
-	GenerateFunc(node *models.Node, ctx *GeneratorContext) (*ir.FuncDecl, error)
+	// GenerateFuncData generates the function data for this node
+	GenerateFuncData(node *models.Node, ctx *GeneratorContext) (*NodeFunctionData, error)
+
+	// GetLaunchArgs returns the launch arguments for this node (db connections, channels, etc.)
+	GetLaunchArgs(node *models.Node, channels []channelInfo, dbConnections map[string]string) []string
+}
+
+// channelInfo is exposed for generators
+type ChannelInfo struct {
+	PortID     uint
+	FromNodeID int
+	ToNodeID   int
+	RowType    string
+	BufferSize int
 }
 
 // GeneratorContext holds context during code generation
@@ -107,4 +118,5 @@ func init() {
 	RegisterGenerator(&DBInputGenerator{})
 	RegisterGenerator(&DBOutputGenerator{})
 	RegisterGenerator(&MapGenerator{})
+	RegisterGenerator(&LogGenerator{})
 }

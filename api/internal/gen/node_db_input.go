@@ -2,7 +2,6 @@ package gen
 
 import (
 	"api/internal/api/models"
-	"api/internal/gen/ir"
 	"fmt"
 )
 
@@ -13,26 +12,59 @@ func (g *DBInputGenerator) NodeType() models.NodeType {
 	return models.NodeTypeDBInput
 }
 
-// GenerateStruct generates the row struct for this db_input node
-func (g *DBInputGenerator) GenerateStruct(node *models.Node) (*ir.StructDecl, error) {
+// GenerateStructData generates the struct data for this db_input node
+func (g *DBInputGenerator) GenerateStructData(node *models.Node) (*StructData, error) {
 	config, err := node.GetDBInputConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get db_input config: %w", err)
 	}
 
 	structName := fmt.Sprintf("Node%dRow", node.ID)
-	builder := ir.NewStruct(structName)
+	fields := make([]FieldData, len(config.DataModels))
 
-	for _, col := range config.DataModels {
-		tag := fmt.Sprintf(`db:"%s"`, col.Name)
-		builder.FieldWithTag(col.GoFieldName(), col.GoFieldType(), tag)
+	for i, col := range config.DataModels {
+		fields[i] = FieldData{
+			Name: col.GoFieldName(),
+			Type: col.GoFieldType(),
+			Tag:  fmt.Sprintf(`db:"%s"`, col.Name),
+		}
 	}
 
-	return builder.Build(), nil
+	return &StructData{
+		Name:   structName,
+		NodeID: node.ID,
+		Fields: fields,
+	}, nil
 }
 
-// GenerateFunc generates the execution function for this db_input node
-func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext) (*ir.FuncDecl, error) {
+// GetLaunchArgs returns the launch arguments for db_input: [db, outputChannel]
+func (g *DBInputGenerator) GetLaunchArgs(node *models.Node, channels []channelInfo, dbConnections map[string]string) []string {
+	config, err := node.GetDBInputConfig()
+	if err != nil {
+		return nil
+	}
+
+	args := make([]string, 0, 2)
+
+	// Add DB connection
+	connID := config.Connection.GetConnectionID()
+	if dbVar, ok := dbConnections[connID]; ok {
+		args = append(args, dbVar)
+	}
+
+	// Add output channel
+	for _, ch := range channels {
+		if ch.fromNodeID == node.ID {
+			args = append(args, fmt.Sprintf("ch_%d", ch.portID))
+			break
+		}
+	}
+
+	return args
+}
+
+// GenerateFuncData generates the function data for this db_input node
+func (g *DBInputGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorContext) (*NodeFunctionData, error) {
 	config, err := node.GetDBInputConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get db_input config: %w", err)
@@ -48,131 +80,49 @@ func (g *DBInputGenerator) GenerateFunc(node *models.Node, ctx *GeneratorContext
 
 	structName := ctx.StructName(node)
 	funcName := ctx.FuncName(node)
-	connID := config.Connection.GetConnectionID()
 
-	// build scan arguments: &row.Field1, &row.Field2, ...
-	scanArgs := make([]ir.Expr, len(config.DataModels))
+	// Build scan fields list
+	scanFields := make([]string, len(config.DataModels))
 	for i, col := range config.DataModels {
-		scanArgs[i] = ir.Addr(ir.Sel(ir.Id("row"), col.GoFieldName()))
+		scanFields[i] = col.GoFieldName()
 	}
 
-	// Get output port ID for the channel
-	var outputPortID uint
-	for _, port := range node.OutputPort {
-		if port.Type == models.PortTypeOutput {
-			outputPortID = port.ID
-			break
-		}
+	// Use template engine
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
 	}
 
-	// Progress report interval (every 1000 rows)
-	progressInterval := 1000
+	// Prepare template data
+	templateData := struct {
+		FuncName         string
+		StructName       string
+		NodeID           int
+		NodeName         string
+		Query            string
+		ScanFields       []string
+		ProgressInterval int
+	}{
+		FuncName:         funcName,
+		StructName:       structName,
+		NodeID:           node.ID,
+		NodeName:         node.Name,
+		Query:            config.QueryWithSchema,
+		ScanFields:       scanFields,
+		ProgressInterval: 1000,
+	}
 
-	fn := ir.NewFunc(funcName).
-		Param("ctx", "context.Context").
-		Param("db", "*sql.DB").
-		Param("out", fmt.Sprintf("chan<- *%s", structName)).
-		Param("progress", "lib.ProgressFunc").
-		Returns("error").
-		Body(
-			// query := "SELECT ..."
-			ir.Define(ir.Id("query"), ir.Lit(config.QueryWithSchema)),
+	// Generate body using template
+	body, err := engine.GenerateNodeFunction("node_db_input.go.tmpl", templateData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate db_input function: %w", err)
+	}
 
-			// var rowCount int64
-			ir.Var("rowCount", "int64"),
-
-			// Report start
-			ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
-				ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
-					ir.Lit(node.ID),
-					ir.Lit(node.Name),
-					ir.Id("lib.StatusRunning"),
-					ir.Lit(0),
-					ir.Lit("starting query"),
-				))),
-			),
-
-			// rows, err := db.QueryContext(ctx, query)
-			ir.DefineMulti(
-				[]ir.Expr{ir.Id("rows"), ir.Id("err")},
-				[]ir.Expr{ir.Call("db.QueryContext", ir.Id("ctx"), ir.Id("query"))},
-			),
-
-			// if err != nil { return fmt.Errorf(...) }
-			ir.If(ir.Neq(ir.Id("err"), ir.Nil()),
-				ir.Return(ir.Call("fmt.Errorf",
-					ir.Lit(fmt.Sprintf("node %d query failed: %%w", node.ID)),
-					ir.Id("err"),
-				)),
-			),
-
-			// defer rows.Close()
-			ir.Defer(ir.Call("rows.Close")),
-
-			// for rows.Next() { ... }
-			ir.For(ir.Call("rows.Next"),
-				// var row NodeXRow
-				ir.Var("row", structName),
-
-				// err := rows.Scan(&row.Field1, &row.Field2, ...)
-				ir.Define(ir.Id("err"), ir.Call("rows.Scan", scanArgs...)),
-
-				// if err != nil { return fmt.Errorf(...) }f
-				ir.If(ir.Neq(ir.Id("err"), ir.Nil()),
-					ir.Return(ir.Call("fmt.Errorf",
-						ir.Lit(fmt.Sprintf("node %d scan failed: %%w", node.ID)),
-						ir.Id("err"),
-					)),
-				),
-
-				// rowCount++
-				ir.RawStatement("rowCount++"),
-
-				// Report progress every N rows
-				ir.If(ir.And(ir.Neq(ir.Id("progress"), ir.Nil()), ir.Eq(ir.Mod(ir.Id("rowCount"), ir.Lit(progressInterval)), ir.Lit(0))),
-					ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
-						ir.Lit(node.ID),
-						ir.Lit(node.Name),
-						ir.Id("lib.StatusRunning"),
-						ir.Id("rowCount"),
-						ir.Lit(fmt.Sprintf("read %d rows", progressInterval)),
-					))),
-				),
-
-				// select { case out <- &row: case <-ctx.Done(): return ctx.Err() }
-				ir.RawStatementf(`select {
-		case out <- &row:
-		case <-ctx.Done():
-			return ctx.Err()
-		}`),
-			),
-
-			// if err := rows.Err(); err != nil { return err }
-			ir.IfInit(
-				ir.Define(ir.Id("err"), ir.Call("rows.Err")),
-				ir.Neq(ir.Id("err"), ir.Nil()),
-				ir.Return(ir.Id("err")),
-			),
-
-			// Report completion
-			ir.If(ir.Neq(ir.Id("progress"), ir.Nil()),
-				ir.ExprStatement(ir.Call("progress", ir.Call("lib.NewProgress",
-					ir.Lit(node.ID),
-					ir.Lit(node.Name),
-					ir.Id("lib.StatusCompleted"),
-					ir.Id("rowCount"),
-					ir.Lit("completed"),
-				))),
-			),
-
-			// return nil
-			ir.Return(ir.Nil()),
-		).
-		Build()
-
-	// Store the output port ID for later wiring
-	_ = outputPortID
-	_ = connID
-
-	return fn, nil
+	return &NodeFunctionData{
+		Name:      funcName,
+		NodeID:    node.ID,
+		NodeName:  node.Name,
+		Signature: "", // Not used - template generates complete function
+		Body:      body,
+	}, nil
 }
