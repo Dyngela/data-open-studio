@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NodeInstance } from '../../core/nodes-services/node.type';
 import { JobStateService } from '../../core/nodes-services/job-state.service';
 import { LogConfig } from './definition';
+import {LayoutService} from '../../core/services/layout-service';
 
 @Component({
   selector: 'app-log-modal',
@@ -13,8 +14,7 @@ import { LogConfig } from './definition';
 })
 export class LogModal {
   private jobState = inject(JobStateService);
-
-  close = output<void>();
+  private layoutService = inject(LayoutService);
   node = input.required<NodeInstance>();
 
   upstreamSchema = computed(() => {
@@ -29,10 +29,10 @@ export class LogModal {
       input: this.upstreamSchema(),
     };
     this.jobState.setNodeConfig(this.node().id, config);
-    this.close.emit();
+    this.layoutService.closeModal();
   }
 
   onCancel() {
-    this.close.emit();
+    this.layoutService.closeModal();
   }
 }

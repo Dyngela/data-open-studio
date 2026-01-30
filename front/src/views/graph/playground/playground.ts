@@ -25,8 +25,7 @@ import {JobService} from '../../../core/api/job.service';
 import {JobWithNodes, UpdateJobRequest} from '../../../core/api/job.type';
 import {NodeGraphService} from '../../../core/nodes-services/node-graph.service';
 import {JobStateService} from '../../../core/nodes-services/job-state.service';
-import {DbInputNodeConfig} from '../../../nodes/db-input/definition';
-import {MapNodeConfig} from '../../../nodes/transform/definition';
+import {LayoutService} from '../../../core/services/layout-service';
 
 @Component({
   selector: 'app-playground',
@@ -36,55 +35,26 @@ import {MapNodeConfig} from '../../../nodes/transform/definition';
   styleUrl: './playground.css',
 })
 export class Playground implements OnInit, AfterViewInit {
-  sidebarWidth = signal(250);
-  isResizing = signal(false);
-
-  leftTabs = signal([
-    { label: 'Nodes', icon: '📁', active: true, position: 'left' as const },
-    { label: 'Database', icon: '🗄️', active: false, position: 'left' as const },
-    { label: 'Console', icon: '🖥️', active: false, position: 'bot' as const },
-  ]);
-  selectedTab = computed(() => this.leftTabs().find(t => t.active && t.position === 'left'));
-
-  toggleSidebar(label: string, position: 'left' | 'bot') {
-    if (label === 'reset') {
-      this.leftTabs.update(tabs => tabs.map(t =>
-        t.position === position ? { ...t, active: false } : t
-      ));
-      return;
-    }
-    this.leftTabs.update(tabs => tabs.map(t => {
-      if (t.position !== position) return t;
-      return { ...t, active: t.label === label ? !t.active : false };
-    }));
-  }
-
-  startResizing(e: MouseEvent) {
-    this.isResizing.set(true);
-    e.preventDefault();
-  }
 
   @HostListener('window:mousemove', ['$event'])
   onMouseMove(e: MouseEvent) {
-    if (this.isResizing()) {
+    if (this.layoutService.isResizing()) {
       const newWidth = e.clientX - 30; // 30px est la largeur de la barre d'icones
-      if (newWidth > 100 && newWidth < 500) this.sidebarWidth.set(newWidth);
+      if (newWidth > 100 && newWidth < 500) this.layoutService.sidebarWidth.set(newWidth);
     }
   }
 
   @HostListener('window:mouseup')
   onMouseUp() {
-    this.isResizing.set(false);
+    this.layoutService.isResizing.set(false);
   }
-
-  // Calculer si un panneau latéral est ouvert
-  isAnySidePanelOpen = computed(() => this.leftTabs().some(t => t.active && t.label !== 'Console'));
-  IsBottomPanelOpen = computed(() => this.leftTabs().some(t => t.active && t.label === 'Console'));
 
   private route = inject(ActivatedRoute);
   private jobService = inject(JobService);
   protected nodeGraph = inject(NodeGraphService);
   private jobState = inject(JobStateService);
+  protected layoutService = inject(LayoutService);
+
 
   protected bottomBar = viewChild<PlaygroundBottomBar>('bottomBar')
   protected playgroundArea = viewChild<ElementRef>('playgroundArea')
@@ -96,8 +66,7 @@ export class Playground implements OnInit, AfterViewInit {
   currentJob = signal<JobWithNodes | null>(null);
   isLoadingJob = signal(false);
 
-  viewportWidth = signal(0);
-  viewportHeight = signal(0);
+
 
   // Canvas interaction state
   private isConnecting = signal(false);
@@ -116,7 +85,7 @@ export class Playground implements OnInit, AfterViewInit {
   private draggedNodeId = signal<number | null>(null);
   private dragNodeOffset = signal({ x: 0, y: 0 });
 
-  protected activeModal = signal<{ nodeId: number; nodeTypeId: string } | null>(null);
+
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -131,23 +100,11 @@ export class Playground implements OnInit, AfterViewInit {
     window.addEventListener('resize', () => {
       if (this.playgroundArea) {
         const rect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
-        this.viewportWidth.set(rect.width);
-        this.viewportHeight.set(rect.height);
+        this.layoutService.viewportWidth.set(rect.width);
+        this.layoutService.viewportHeight.set(rect.height);
       }
     });
   }
-
-  //#region Node callbacks
-  onDbInputSave(nodeId: number, config: DbInputNodeConfig) {
-    this.jobState.setNodeConfig(nodeId, config);
-    this.closeModal();
-  }
-
-  onTransformSave(nodeId: number, config: MapNodeConfig) {
-    this.jobState.setNodeConfig(nodeId, config);
-    this.closeModal();
-  }
-  //#endregion
 
   //#region Mouse event handlers
   onNodeMouseDown(event: MouseEvent, nodeId: number) {
@@ -313,16 +270,7 @@ export class Playground implements OnInit, AfterViewInit {
     }
   }
 
-  openNodeModal(nodeId: number) {
-    const node = this.nodeGraph.getNodeById(nodeId);
-    if (!node) return;
 
-      this.activeModal.set({ nodeId: node.id, nodeTypeId: node.type.id });
-  }
-
-  closeModal() {
-    this.activeModal.set(null);
-  }
 
   private getNodeSize(nodeId: number): { width: number; height: number } {
     const nodeElement = this.playgroundArea()?.nativeElement.querySelector(

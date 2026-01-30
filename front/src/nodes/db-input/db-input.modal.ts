@@ -8,6 +8,7 @@ import { DbNodeService } from '../../core/api/db-node.service';
 import { DbInputNodeConfig, isDbInputConfig } from './definition';
 import {KuiSelect, SelectOption} from '../../ui/form/select/kui-select/kui-select';
 import {JobStateService} from '../../core/nodes-services/job-state.service';
+import {LayoutService} from '../../core/services/layout-service';
 
 @Component({
   selector: 'app-db-input-modal',
@@ -19,9 +20,9 @@ import {JobStateService} from '../../core/nodes-services/job-state.service';
 export class DbInputModal implements OnInit {
   private metadata = inject(MetadataLocalService);
   private dbNodeService = inject(DbNodeService);
+  private layoutService = inject(LayoutService);
   private jobState = inject(JobStateService);
 
-  close = output<void>();
   node = input.required<NodeInstance>();
   connectionsOptions = computed<SelectOption[]>(() => {
     return this.metadata.db.data()?.map(conn => ({
@@ -135,6 +136,6 @@ export class DbInputModal implements OnInit {
   }
 
   onCancel() {
-    this.close.emit();
+    this.layoutService.closeModal()
   }
 }

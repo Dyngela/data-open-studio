@@ -1,8 +1,9 @@
-import { Component, signal, ViewChild, HostListener, output, model } from '@angular/core';
+import {Component, signal, ViewChild, HostListener, output, model, inject} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TabsModule } from 'primeng/tabs';
 import { Console } from '../console/console';
 import { JobConfig } from '../job-config/job-config';
+import {LayoutService} from '../../../core/services/layout-service';
 
 @Component({
   selector: 'app-playground-bottom-bar',
@@ -12,16 +13,14 @@ import { JobConfig } from '../job-config/job-config';
   styleUrl: './playground-bottom-bar.css',
 })
 export class PlaygroundBottomBar {
+  protected layout = inject(LayoutService)
+
   @ViewChild('consoleComponent') consoleComponent?: Console;
 
   // Output events (forwarded from console)
   onSave = output<void>();
   onExecute = output<void>();
   onStop = output<void>();
-
-  // State
-  height = signal(200);
-  activeTab = model<string>('console');
 
   // Resize state
   private isResizing = false;
@@ -35,7 +34,7 @@ export class PlaygroundBottomBar {
     event.preventDefault();
     this.isResizing = true;
     this.startY = event.clientY;
-    this.startHeight = this.height();
+    this.startHeight = this.layout.height();
   }
 
   @HostListener('document:mousemove', ['$event'])
@@ -48,7 +47,7 @@ export class PlaygroundBottomBar {
       Math.max(this.MIN_HEIGHT, this.startHeight + deltaY)
     );
 
-    this.height.set(newHeight);
+    this.layout.height.set(newHeight);
   }
 
   @HostListener('document:mouseup')

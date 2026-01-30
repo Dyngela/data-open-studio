@@ -1,11 +1,11 @@
-<div class="bottom-bar-container" [style.height.px]="height()">
+<div class="bottom-bar-container" [style.height.px]="layout.height()">
   <!-- Resize Handle -->
   <div class="resize-handle" (mousedown)="onResizeStart($event)">
     <div class="resize-grip"></div>
   </div>
 
   <!-- Tabs -->
-  <p-tabs [(value)]="activeTab" class="bottom-bar-tabs">
+  <p-tabs [(value)]="layout.activeTab" class="bottom-bar-tabs">
     <p-tablist>
       <p-tab value="console">
         <i class="pi pi-terminal"></i>

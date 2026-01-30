@@ -3,8 +3,8 @@
   <div class="flex grow overflow-hidden">
 
     <aside class="w-7.5 flex flex-col bg-jb-header border-r border-jb-border">
-      @for (tab of leftTabs(); track tab.label) {
-        <div (click)="toggleSidebar(tab.label, tab.position)"
+      @for (tab of layoutService.leftTabs(); track tab.label) {
+        <div (click)="layoutService.toggleSidebar(tab.label, tab.position)"
              class="group relative py-4 flex flex-col items-center cursor-pointer transition-colors"
              [class.bg-jb-dark]="tab.active"
              [class.hover:bg-jb-hover]="!tab.active">
@@ -23,13 +23,13 @@
       }
     </aside>
 
-    @if (isAnySidePanelOpen()) {
-      <div [style.width.px]="sidebarWidth()" class="bg-jb-header flex flex-col overflow-hidden">
+    @if (layoutService.isAnySidePanelOpen()) {
+      <div [style.width.px]="layoutService.sidebarWidth()" class="bg-jb-header flex flex-col overflow-hidden">
         <div class="p-2 text-[11px] font-bold uppercase opacity-80 flex justify-between">
-          <span>{{selectedTab()?.label}}</span>
-          <span class="hover:text-white cursor-pointer" (click)="toggleSidebar('reset', 'left')">✕</span>
+          <span>{{layoutService.selectedTab()?.label}}</span>
+          <span class="hover:text-white cursor-pointer" (click)="layoutService.toggleSidebar('reset', 'left')">✕</span>
         </div>
-        @switch (selectedTab()?.label) {
+        @switch (layoutService.selectedTab()?.label) {
           @case ('Nodes') {
             <app-node-panel />
           }
@@ -42,7 +42,7 @@
         }
       </div>
 
-      <div (mousedown)="startResizing($event)"
+      <div (mousedown)="layoutService.startResizing($event)"
            class="w-0.75 h-full cursor-col-resize hover:bg-jb-accent/50 active:bg-jb-accent transition-colors z-50">
       </div>
     }
@@ -104,7 +104,7 @@
         'px)'
       "
               (mousedown)="onNodeMouseDown($event, node.id)"
-              (dblclick)="openNodeModal(node.id)"
+              (dblclick)="layoutService.openNodeModal(node.id)"
             >
               <app-node-instance
                 [node]="node"
@@ -116,31 +116,26 @@
             </div>
           }
 
-          @if (activeModal(); as modal) {
+          @if (layoutService.activeModal(); as modal) {
             <div class="modal-overlay">
               <div class="modal-container">
                 @if (modal.nodeTypeId === 'db-input' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-db-input-modal
                     [node]="node"
-                    (close)="closeModal()"
                   ></app-db-input-modal>
                 }
                 @if (modal.nodeTypeId === 'start' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-start-modal
-                    (close)="closeModal()"
                   ></app-start-modal>
                 }
                 @if (modal.nodeTypeId === 'transform' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-transform-modal
                     [node]="node"
-                    (close)="closeModal()"
-                    (save)="onTransformSave(modal.nodeId, $event)"
                   ></app-transform-modal>
                 }
                 @if (modal.nodeTypeId === 'log' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-log-modal
                     [node]="node"
-                    (close)="closeModal()"
                   ></app-log-modal>
                 }
               </div>
@@ -149,13 +144,13 @@
 
           <app-minimap
             [nodes]="nodes()"
-            [viewportWidth]="viewportWidth()"
-            [viewportHeight]="viewportHeight()"
+            [viewportWidth]="layoutService.viewportWidth()"
+            [viewportHeight]="layoutService.viewportHeight()"
             [panOffset]="panOffset()"
           ></app-minimap>
         </div>
 
-        @if (IsBottomPanelOpen()) {
+        @if (layoutService.IsBottomPanelOpen()) {
           <app-playground-bottom-bar
             #bottomBar
             (onSave)="onJobSave()"

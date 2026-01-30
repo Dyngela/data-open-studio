@@ -1,4 +1,5 @@
 import { Component, input, output, signal, inject } from '@angular/core';
+import {LayoutService} from '../../core/services/layout-service';
 
 @Component({
   selector: 'app-start-modal',
@@ -8,9 +9,9 @@ import { Component, input, output, signal, inject } from '@angular/core';
   styleUrl: './start.modal.css',
 })
 export class StartModal {
-  close = output<void>();
+  private layout = inject(LayoutService);
 
   onCancel() {
-    this.close.emit();
+    this.layout.closeModal();
   }
 }

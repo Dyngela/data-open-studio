@@ -10,6 +10,7 @@ import {
   OutputFlow,
   isMapConfig,
 } from './definition';
+import {LayoutService} from '../../core/services/layout-service';
 
 @Component({
   selector: 'app-transform-modal',
@@ -19,8 +20,8 @@ import {
   styleUrl: './transform.modal.css',
 })
 export class TransformModal {
+  private layoutService = inject(LayoutService);
   node = input.required<NodeInstance>();
-  close = output<void>();
   save = output<MapNodeConfig>();
 
   private jobState = inject(JobStateService);
@@ -106,10 +107,10 @@ export class TransformModal {
       outputs: [outputFlow],
     };
 
-    this.save.emit(config);
+    this.jobState.setNodeConfig(this.node().id, config);
   }
 
   onCancel() {
-    this.close.emit();
+    this.layoutService.closeModal();
   }
 }
