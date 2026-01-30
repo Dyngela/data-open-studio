@@ -1,260 +1,140 @@
-import { Component, input, output, signal, inject, effect } from '@angular/core';
+import {Component, input, output, signal, inject, OnInit, computed, Signal} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { NodeInstance } from '../../../core/nodes-services/node.type';
-import { ConnectionService, DbConnection } from '../../../core/nodes-services/connection.service';
-import { BaseWebSocketService } from '../../../core/services/base-ws.service';
-import {DataModel, DbType} from '../../../core/api/metadata.type';
-import {MetadataLocalService} from '../../../core/services/metadata.local.service';
+import { DataModel, DbMetadata, DbType } from '../../../core/api/metadata.type';
+import { MetadataLocalService } from '../../../core/services/metadata.local.service';
+import { DbNodeService } from '../../../core/api/db-node.service';
+import { DbInputNodeConfig, isDbInputConfig } from '../../../core/nodes-services/node-configs.type';
+import {KuiSelect, SelectOption} from '../../../ui/form/select/kui-select/kui-select';
+import {JobStateService} from '../../../core/nodes-services/job-state.service';
 
 @Component({
   selector: 'app-db-input-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, KuiSelect],
   templateUrl: './db-input.modal.html',
   styleUrl: './db-input.modal.css',
 })
-export class DbInputModal {
-  metadata = inject(MetadataLocalService)
-  node = input.required<NodeInstance>();
+export class DbInputModal implements OnInit {
+  private metadata = inject(MetadataLocalService);
+  private dbNodeService = inject(DbNodeService);
+  private jobState = inject(JobStateService);
+
   close = output<void>();
-  save = output<{ connectionString: string; table: string; query: string; database?: string; connectionId?: string; dbType?: DbType; host?: string; port?: string; username?: string; password?: string; sslMode?: string }>();
+  node = input.required<NodeInstance>();
+  connectionsOptions = computed<SelectOption[]>(() => {
+    return this.metadata.db.data()?.map(conn => ({
+      label: `${conn.databaseName} (${conn.host}:${conn.port})`,
+      value: conn.id
+    })) ?? [];
+  });
 
-  private connectionService = inject(ConnectionService);
+  form = new FormGroup({
+    connectionId: new FormControl<number | null>(null),
+    query: new FormControl(''),
+  });
 
-  mode = signal<'select' | 'new' | 'edit'>('select');
-  selectedConnectionId = signal<string>('');
+  selectedConnection = signal<DbMetadata | null>(null);
 
-  // Schema guessing state
+  // Schema state
   isGuessingSchema = signal(false);
   guessedSchema = signal<DataModel[]>([]);
   guessError = signal<string | null>(null);
 
-  formState = {
-    connectionString: '',
-    table: '',
-    query: '',
-    database: '',
-    connectionName: '',
-    host: '',
-    port: '',
-    username: '',
-    password: '',
-    sslMode: 'disable',
-    dbType: DbType.Postgres,
-  };
+  ngOnInit() {
+    const cfg = this.node().config;
+    console.log(cfg)
+    if (cfg && typeof cfg === 'object' && 'kind' in cfg && isDbInputConfig(cfg as any)) {
+      const typed = cfg as DbInputNodeConfig;
+      this.form.patchValue({ query: typed.query ?? '' });
 
-  connections = this.metadata.db.data();
+      if (typed.connectionId) {
+        console.log(typed.connectionId)
+        const connId = Number(typed.connectionId);
+        this.form.patchValue({ connectionId: connId });
+        const conn = this.metadata.db.data()?.find(c => c.id === connId) ?? null;
+        console.log(conn)
+        this.selectedConnection.set(conn);
+      }
 
-  constructor() {
-    // Listen for guess schema responses
-    effect(() => {
-      console.log(this.connections)
+      if (typed.dataModels?.length) {
+        this.guessedSchema.set(typed.dataModels);
+      }
+      return;
+    }
+  }
+
+  onConnectionSelected(connId: number) {
+    this.form.patchValue({ connectionId: connId });
+    const conn = this.metadata.db.data()?.find(c => c.id === connId) ?? null;
+    this.selectedConnection.set(conn);
+  }
+
+  getConnectionDbIcon(conn: DbMetadata): string {
+    // Port-based heuristic since DbMetadata doesn't store dbType
+    if (conn.port === 1433) return 'pi pi-table';
+    if (conn.port === 3306) return 'pi pi-box';
+    return 'pi pi-database';
+  }
+
+  guessSchema() {
+    const query = this.form.value.query?.trim();
+    if (!query) {
+      this.guessError.set('Entrez une requête SQL d\'abord');
+      return;
+    }
+
+    const conn = this.selectedConnection();
+    if (!conn) {
+      this.guessError.set('Sélectionnez une connexion d\'abord');
+      return;
+    }
+
+    this.isGuessingSchema.set(true);
+    this.guessError.set(null);
+
+    const mutation = this.dbNodeService.guessSchema(
+      (response) => {
+        this.guessedSchema.set(response.dataModels || []);
+        this.isGuessingSchema.set(false);
+      },
+      (error) => {
+        this.guessError.set(error?.message || 'Impossible de détecter le schéma');
+        this.isGuessingSchema.set(false);
+      },
+    );
+
+    mutation.execute({
+      nodeId: String(this.node().id),
+      query,
+      connectionId: conn.id,
     });
   }
 
-  ngOnInit() {
-
-    const cfg = this.node().config || {};
-    this.formState = {
-      connectionString: cfg['connectionString'] ?? '',
-      table: cfg['table'] ?? '',
-      query: cfg['query'] ?? '',
-      database: cfg['database'] ?? '',
-      connectionName: '',
-      host: cfg['host'] ?? '',
-      port: cfg['port'] ?? '',
-      username: cfg['username'] ?? '',
-      password: cfg['password'] ?? '',
-      sslMode: cfg['sslMode'] ?? 'disable',
-      dbType: cfg['dbType'] ?? 'postgres',
-    };
-
-    const savedConnId = cfg['connectionId'];
-    if (savedConnId) {
-      this.selectedConnectionId.set(savedConnId);
-      this.mode.set('select');
-      const conn = this.connectionService.getConnectionById(savedConnId);
-      if (conn) {
-        this.formState.connectionString = conn.connectionString;
-        this.formState.database = conn.database ?? '';
-      }
-    }
-  }
-
-  switchMode(newMode: 'select' | 'new' | 'edit') {
-    this.mode.set(newMode);
-    if (newMode === 'new') {
-      this.formState.connectionString = '';
-      this.formState.host = '';
-      this.formState.port = '';
-      this.formState.username = '';
-      this.formState.password = '';
-      this.formState.database = '';
-      this.formState.sslMode = 'disable';
-      this.formState.dbType = DbType.Postgres;
-      this.formState.connectionName = '';
-      this.selectedConnectionId.set('');
-    } else if (newMode === 'select' && this.selectedConnectionId()) {
-      const conn = this.connectionService.getConnectionById(this.selectedConnectionId());
-      if (conn) {
-        this.formState.connectionString = conn.connectionString;
-        this.formState.database = conn.database ?? '';
-        this.formState.host = conn.host ?? '';
-        this.formState.port = conn.port ?? '';
-        this.formState.username = conn.username ?? '';
-        this.formState.password = conn.password ?? '';
-        this.formState.sslMode = conn.sslMode ?? 'disable';
-        this.formState.dbType = conn.type;
-      }
-    }
-  }
-
-  onConnectionSelected(connId: string) {
-    this.selectedConnectionId.set(connId);
-    const conn = this.connectionService.getConnectionById(connId);
-    if (conn) {
-      this.formState.connectionString = conn.connectionString;
-      this.formState.database = conn.database ?? '';
-      this.formState.host = conn.host ?? '';
-      this.formState.port = conn.port ?? '';
-      this.formState.username = conn.username ?? '';
-      this.formState.password = conn.password ?? '';
-      this.formState.sslMode = conn.sslMode ?? 'disable';
-    }
-  }
-
   onSave() {
-    // Validation pour mode 'new'
-    if (this.mode() === 'new') {
-      if (!this.formState.connectionName?.trim()) {
-        alert('Le nom de la connexion est obligatoire');
-        return;
-      }
-      if (!this.formState.dbType) {
-        alert('Le type de base de données est obligatoire');
-        return;
-      }
-      if (!this.formState.connectionString && !this.formState.host) {
-        alert('Remplissez soit la Connection DNS, soit les détails séparés (Host, Port, Base de données, Utilisateur, Mot de passe)');
-        return;
-      }
-      if (this.formState.connectionString) {
-        if (!this.formState.connectionString.trim()) {
-          alert('La Connection DNS est obligatoire si vous utilisez l\'option 1');
-          return;
-        }
-      } else {
-        if (!this.formState.host?.trim()) {
-          alert('Host est obligatoire');
-          return;
-        }
-        if (!this.formState.port?.toString().trim()) {
-          alert('Port est obligatoire');
-          return;
-        }
-        if (!this.formState.database?.trim()) {
-          alert('Base de données est obligatoire');
-          return;
-        }
-        if (!this.formState.username?.trim()) {
-          alert('Utilisateur est obligatoire');
-          return;
-        }
-        if (!this.formState.password?.toString().trim()) {
-          alert('Mot de passe est obligatoire');
-          return;
-        }
-      }
-    }
+    const conn = this.selectedConnection();
+    if (!conn) return;
 
-    if (this.mode() === 'new') {
-      const newConn = this.connectionService.addConnection(
-        this.formState.connectionName || 'Custom Connection',
-        this.formState.dbType,
-        this.formState.connectionString,
-        this.formState.database,
-        this.formState.host,
-        this.formState.port,
-        this.formState.username,
-        this.formState.password,
-        this.formState.sslMode
-      );
-      this.save.emit({
-        connectionString: this.formState.connectionString,
-        table: this.formState.table,
-        query: this.formState.query,
-        database: this.formState.database,
-        connectionId: newConn.id,
-        dbType: this.formState.dbType,
-        host: this.formState.host,
-        port: this.formState.port,
-        username: this.formState.username,
-        password: this.formState.password,
-        sslMode: this.formState.sslMode,
-      });
-    } else {
-      this.save.emit({
-        connectionString: this.formState.connectionString,
-        table: this.formState.table,
-        query: this.formState.query,
-        database: this.formState.database,
-        connectionId: this.selectedConnectionId(),
-        dbType: this.formState.dbType,
-        host: this.formState.host,
-        port: this.formState.port,
-        username: this.formState.username,
-        password: this.formState.password,
-        sslMode: this.formState.sslMode,
-      });
-    }
+    const config: DbInputNodeConfig = {
+      kind: 'db-input',
+      query: this.form.value.query ?? '',
+      connectionId: String(conn.id),
+      connection: {
+        type: DbType.Postgres,
+        host: conn.host,
+        port: conn.port,
+        database: conn.databaseName,
+        username: conn.user,
+        password: conn.password,
+        sslMode: conn.sslMode || 'disable',
+      },
+      dataModels: this.guessedSchema(),
+    };
+    this.jobState.setNodeConfig(this.node().id, config);
   }
 
   onCancel() {
     this.close.emit();
-  }
-
-  getConnectionDbIcon(dbType: string): string {
-    switch (dbType) {
-      case 'postgresql':
-        return 'pi pi-database';
-      case 'sqlserver':
-        return 'pi pi-table';
-      case 'mysql':
-        return 'pi pi-box';
-      default:
-        return 'pi pi-database';
-    }
-  }
-
-  onSaveExistingConnection() {
-    const connId = this.selectedConnectionId();
-    if (connId) {
-      this.connectionService.updateConnection(
-        connId,
-        this.formState.connectionName,
-        this.formState.dbType,
-        this.formState.connectionString,
-        this.formState.database,
-        this.formState.host,
-        this.formState.port,
-        this.formState.username,
-        this.formState.password,
-        this.formState.sslMode
-      );
-      this.switchMode('select');
-    }
-  }
-
-  /**
-   * Guess the schema/data model from the query
-   */
-  guessSchema() {
-    if (!this.formState.query?.trim()) {
-      this.guessError.set('Please enter a query first');
-      return;
-    }
-
-
   }
 }

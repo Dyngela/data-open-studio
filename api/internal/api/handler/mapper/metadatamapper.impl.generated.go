@@ -37,6 +37,7 @@ func (mapper *MetadataMapperImpl) ToMetadataResponse(m models.MetadataDatabase) 
 	result.DatabaseName = m.DatabaseName
 	result.SSLMode = m.SSLMode
 	result.Extra = m.Extra
+	result.DbType = m.DbType
 	return result
 
 }
@@ -56,7 +57,6 @@ func (mapper *MetadataMapperImpl) CreateDbMetadata(req request.CreateMetadata) m
 
 // UpdateDbMetadata  update
 func (mapper *MetadataMapperImpl) UpdateDbMetadata(req request.UpdateMetadata, m *models.MetadataDatabase) {
-	m.ID = req.ID
 	if req.Host != nil {
 		m.Host = *req.Host
 	}
@@ -81,7 +81,6 @@ func (mapper *MetadataMapperImpl) UpdateDbMetadata(req request.UpdateMetadata, m
 // PatchDbMetadata  patch
 func (mapper *MetadataMapperImpl) PatchDbMetadata(req request.UpdateMetadata) map[string]any {
 	result := make(map[string]any)
-	result["id"] = req.ID
 	if req.Host != nil {
 		result["host"] = *req.Host
 	}

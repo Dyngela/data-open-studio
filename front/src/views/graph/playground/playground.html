@@ -1,16 +1,16 @@
 <div class="flex flex-col h-screen w-full bg-jb-dark text-jb-text select-none playground-container">
 
-  <div class="flex flex-grow overflow-hidden">
+  <div class="flex grow overflow-hidden">
 
-    <aside class="w-[30px] flex flex-col bg-jb-header border-r border-jb-border">
+    <aside class="w-7.5 flex flex-col bg-jb-header border-r border-jb-border">
       @for (tab of leftTabs(); track tab.label) {
-        <div (click)="toggleSidebar(tab.label)"
+        <div (click)="toggleSidebar(tab.label, tab.position)"
              class="group relative py-4 flex flex-col items-center cursor-pointer transition-colors"
              [class.bg-jb-dark]="tab.active"
              [class.hover:bg-jb-hover]="!tab.active">
 
           @if (tab.active) {
-            <div class="absolute left-0 top-0 bottom-0 w-[2px] bg-jb-accent"></div>
+            <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-jb-accent"></div>
           }
 
           <span class="text-sm mb-2" [class.text-white]="tab.active">{{ tab.icon }}</span>
@@ -27,7 +27,7 @@
       <div [style.width.px]="sidebarWidth()" class="bg-jb-header flex flex-col overflow-hidden">
         <div class="p-2 text-[11px] font-bold uppercase opacity-80 flex justify-between">
           <span>{{selectedTab()?.label}}</span>
-          <span class="hover:text-white cursor-pointer" (click)="toggleSidebar('reset')">✕</span>
+          <span class="hover:text-white cursor-pointer" (click)="toggleSidebar('reset', 'left')">✕</span>
         </div>
         @switch (selectedTab()?.label) {
           @case ('Nodes') {
@@ -43,11 +43,11 @@
       </div>
 
       <div (mousedown)="startResizing($event)"
-           class="w-[3px] h-full cursor-col-resize hover:bg-jb-accent/50 active:bg-jb-accent transition-colors z-50">
+           class="w-0.75 h-full cursor-col-resize hover:bg-jb-accent/50 active:bg-jb-accent transition-colors z-50">
       </div>
     }
 
-    <main class="flex-grow flex flex-col min-w-0">
+    <main class="grow flex flex-col min-w-0">
       <div class="main-area">
         <div
           #playgroundArea
@@ -123,7 +123,6 @@
                   <app-db-input-modal
                     [node]="node"
                     (close)="closeModal()"
-                    (save)="onDbInputSave(modal.nodeId, $event)"
                   ></app-db-input-modal>
                 }
                 @if (modal.nodeTypeId === 'start' && nodeGraph.getNodeById(modal.nodeId); as node) {
@@ -133,8 +132,16 @@
                 }
                 @if (modal.nodeTypeId === 'transform' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-transform-modal
+                    [node]="node"
                     (close)="closeModal()"
+                    (save)="onTransformSave(modal.nodeId, $event)"
                   ></app-transform-modal>
+                }
+                @if (modal.nodeTypeId === 'log' && nodeGraph.getNodeById(modal.nodeId); as node) {
+                  <app-log-modal
+                    [node]="node"
+                    (close)="closeModal()"
+                  ></app-log-modal>
                 }
               </div>
             </div>
@@ -148,13 +155,14 @@
           ></app-minimap>
         </div>
 
-        <!-- Bottom bar avec onglets Console/Config -->
-        <app-playground-bottom-bar
-          #bottomBar
-          (onSave)="onJobSave()"
-          (onExecute)="onJobExecute()"
-          (onStop)="onJobStop()"
-        ></app-playground-bottom-bar>
+        @if (IsBottomPanelOpen()) {
+          <app-playground-bottom-bar
+            #bottomBar
+            (onSave)="onJobSave()"
+            (onExecute)="onJobExecute()"
+            (onStop)="onJobStop()"
+          ></app-playground-bottom-bar>
+        }
       </div>
 
     </main>

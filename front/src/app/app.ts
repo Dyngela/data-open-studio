@@ -10,7 +10,7 @@ import {NodePanel} from '../views/graph/node-panel/node-panel';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, Toast, Button, NodePanel],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, Toast],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

@@ -21,7 +21,8 @@ export interface DataModel {
 export interface DbMetadata {
   id: number;
   host: string;
-  port: string;
+  port: number;
+  databaseType: DbType;
   user: string;
   password: string;
   databaseName: string;
@@ -32,7 +33,7 @@ export interface DbMetadata {
 // Request: Create DB Metadata
 export interface CreateDbMetadataRequest {
   host: string;
-  port: string;
+  port: number;
   user: string;
   password: string;
   databaseName: string;
@@ -55,7 +56,7 @@ export interface UpdateDbMetadataRequest {
 export interface SftpMetadata {
   id: number;
   host: string;
-  port: string;
+  port: number;
   user: string;
   password: string;
   privateKey: string;
@@ -66,7 +67,7 @@ export interface SftpMetadata {
 // Request: Create SFTP Metadata
 export interface CreateSftpMetadataRequest {
   host: string;
-  port: string;
+  port: number;
   user: string;
   password?: string;
   privateKey?: string;

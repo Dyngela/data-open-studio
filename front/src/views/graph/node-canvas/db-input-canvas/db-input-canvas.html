@@ -1,0 +1,9 @@
+@if (query(); as q) {
+  <div class="db-query-display">{{ q }}</div>
+}
+@if (columnCount(); as count) {
+  <div class="schema-badge">
+    <i class="pi pi-list"></i>
+    {{ count }} col.
+  </div>
+}

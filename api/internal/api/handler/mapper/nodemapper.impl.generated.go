@@ -19,7 +19,6 @@ func NewNodeMapper() NodeMapper {
 func (mapper *NodeMapperImpl) GuessSchemaRequestToDBInputConfig(req request.GuessSchemaRequest) models.DBInputConfig {
 	var result models.DBInputConfig
 	result.Query = req.Query
-	result.DbSchema = req.DbSchema
 	return result
 
 }

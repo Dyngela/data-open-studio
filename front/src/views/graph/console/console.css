@@ -188,7 +188,7 @@
   font-size: 1rem;
 }
 
-/* Log Entries */
+/* LogModal Entries */
 .log-entry {
   display: flex;
   gap: 0.75rem;
@@ -221,7 +221,7 @@
   word-break: break-word;
 }
 
-/* Log Level Colors */
+/* LogModal Level Colors */
 .log-info .log-level {
   color: #3b82f6;
 }

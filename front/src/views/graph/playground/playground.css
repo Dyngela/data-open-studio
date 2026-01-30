@@ -232,3 +232,55 @@
   max-width: 90%;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
 }
+
+.modal-container:has(app-transform-modal) {
+  width: 720px;
+}
+
+/* Bottom tab strip */
+.bottom-tab-strip {
+  display: flex;
+  align-items: center;
+  height: 25px;
+  background-color: red;
+  border-top: 1px solid #333;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.bottom-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 11px;
+  cursor: pointer;
+  height: 100%;
+  position: relative;
+  transition: color 0.15s;
+}
+
+.bottom-tab-btn:hover {
+  color: #ccc;
+}
+
+.bottom-tab-btn.active {
+  color: #fff;
+}
+
+.bottom-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #4ec9b0;
+}
+
+.bottom-tab-btn i {
+  font-size: 11px;
+}

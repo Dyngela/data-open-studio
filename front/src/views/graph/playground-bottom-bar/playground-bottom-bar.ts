@@ -1,4 +1,4 @@
-import { Component, signal, ViewChild, HostListener, output } from '@angular/core';
+import { Component, signal, ViewChild, HostListener, output, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TabsModule } from 'primeng/tabs';
 import { Console } from '../console/console';
@@ -21,7 +21,7 @@ export class PlaygroundBottomBar {
 
   // State
   height = signal(200);
-  activeTab = signal<string>('console');
+  activeTab = model<string>('console');
 
   // Resize state
   private isResizing = false;

@@ -4,6 +4,11 @@ import {Select} from "primeng/select";
 import {NgClass} from "@angular/common";
 import {FloatLabel} from "primeng/floatlabel";
 
+export interface SelectOption {
+  label: any;
+  value: any;
+}
+
 @Component({
   selector: 'kui-select',
   imports: [

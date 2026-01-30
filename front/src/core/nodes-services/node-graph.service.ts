@@ -9,6 +9,7 @@ import {
   PortType,
   TempConnection,
 } from './node.type';
+import {NodeConfig} from './node-configs.type';
 import {JobWithNodes, Node as ApiNode} from '../api/job.type';
 
 @Injectable({ providedIn: 'root' })
@@ -44,10 +45,10 @@ export class NodeGraphService {
     return node;
   }
 
-  updateNodeConfig(nodeId: number, config: Record<string, any>): void {
+  updateNodeConfig(nodeId: number, config: NodeConfig | Record<string, any>): void {
     this.nodes.update(nodes =>
       nodes.map(node =>
-        node.id === nodeId ? { ...node, config: { ...node.config, ...config } } : node,
+        node.id === nodeId ? { ...node, config } : node,
       ),
     );
   }

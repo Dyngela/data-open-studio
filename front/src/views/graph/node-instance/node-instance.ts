@@ -1,11 +1,15 @@
-import { Component, input, output, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {NodeInstance, PortType} from '../../../core/nodes-services/node.type';
+import { NodeInstance, PortType } from '../../../core/nodes-services/node.type';
+import { JobStateService } from '../../../core/nodes-services/job-state.service';
+import { isDbInputConfig } from '../../../core/nodes-services/node-configs.type';
+import { DbInputCanvasComponent } from '../node-canvas/db-input-canvas/db-input-canvas';
+import { MapCanvasComponent } from '../node-canvas/map-canvas/map-canvas';
 
 @Component({
   selector: 'app-node-instance',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DbInputCanvasComponent, MapCanvasComponent],
   templateUrl: './node-instance.html',
   styleUrl: './node-instance.css',
 })
@@ -16,7 +20,7 @@ export class NodeInstanceComponent {
   outputPortClick = output<{ nodeId: number; portIndex: number; portType: PortType }>();
   inputPortClick = output<{ nodeId: number; portIndex: number; portType: PortType }>();
 
-  constructor(private elementRef: ElementRef) {}
+  private jobState = inject(JobStateService);
 
   onOutputPortClick(portIndex: number, portType: PortType, event: MouseEvent) {
     event.stopPropagation();
@@ -44,49 +48,42 @@ export class NodeInstanceComponent {
     return this.node().type.hasFlowOutput ? [0] : [];
   }
 
-  getDbName(): string | null {
-    const cfg = (this.node().config as Record<string, any>) || {};
-    if (cfg['database']) return String(cfg['database']);
-    const cs = cfg['connectionString'];
-    if (!cs || typeof cs !== 'string') return null;
-    try {
-      if (cs.includes('://')) {
-        const u = new URL(cs);
-        const path = (u.pathname || '').replace(/^\//, '');
-        if (path) return path.split('/')[0];
-        const qp = u.searchParams.get('database') || u.searchParams.get('db');
-        if (qp) return qp;
+  /** Header icon — typed config aware for db-input */
+  protected headerIcon = computed(() => {
+    const n = this.node();
+    if (n.type.id === 'db-input') {
+      const config = this.jobState.getNodeConfig(n.id);
+      if (isDbInputConfig(config)) {
+        switch (config.connection?.type) {
+          case 'postgres': return 'pi pi-database';
+          case 'sqlserver': return 'pi pi-table';
+          case 'mysql': return 'pi pi-box';
+        }
       }
-      const m =
-        cs.match(/(?:^|;)\s*Database\s*=\s*([^;]+)/i) ||
-        cs.match(/(?:^|;)\s*Initial\s*Catalog\s*=\s*([^;]+)/i) ||
-        cs.match(/(?:^|;)\s*db\s*=\s*([^;]+)/i);
-      if (m) return m[1].trim();
-    } catch {}
-    return null;
-  }
-
-  getDbTypeIcon(): string {
-    const cfg = (this.node().config as Record<string, any>) || {};
-    const dbType = cfg['dbType'] || 'postgresql';
-
-    switch (dbType) {
-      case 'postgresql':
-        return 'pi pi-database';
-      case 'sqlserver':
-        return 'pi pi-table';
-      case 'mysql':
-        return 'pi pi-box';
-      default:
-        return 'pi pi-database';
+      // Fallback to untyped
+      const cfg = n.config as Record<string, any> | undefined;
+      const dbType = cfg?.['dbType'] || 'postgresql';
+      switch (dbType) {
+        case 'postgresql': return 'pi pi-database';
+        case 'sqlserver': return 'pi pi-table';
+        case 'mysql': return 'pi pi-box';
+        default: return 'pi pi-database';
+      }
     }
-  }
+    return n.type.icon || 'pi pi-box';
+  });
 
-  getDbQuery(): string {
-    const query = this.node().config?.['query'];
-    if (Array.isArray(query)) return query.join('\n');
-    return query || '';
-  }
+  /** Header DB badge — typed config aware */
+  protected dbName = computed(() => {
+    const n = this.node();
+    if (n.type.id !== 'db-input') return null;
+    const config = this.jobState.getNodeConfig(n.id);
+    if (isDbInputConfig(config)) {
+      return config.connection?.database || null;
+    }
+    const cfg = n.config as Record<string, any> | undefined;
+    return cfg?.['database'] ? String(cfg['database']) : null;
+  });
 
   protected readonly PortType = PortType;
 }

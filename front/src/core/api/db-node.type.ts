@@ -4,16 +4,7 @@ import {DataModel, DbType} from './metadata.type';
 export interface GuessSchemaRequest {
   nodeId: string;
   query: string;
-  dbType: DbType;
-  dbSchema?: string;
-  host: string;
-  port: number;
-  database: string;
-  username: string;
-  password: string;
-  sslMode?: string;
-  extra?: Record<string, string>;
-  dsn?: string;
+  connectionId: number;
 }
 
 // Response from guess schema endpoint

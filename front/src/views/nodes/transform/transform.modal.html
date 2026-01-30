@@ -1,7 +1,94 @@
 <div class="modal-header">
   <div>
     <h3>Transformation</h3>
-    <p class="subtitle">Choisis les transformations que tu veux appliqué sur la donnée !</p>
+    <p class="subtitle">Configure les colonnes de sortie en mappant les entrées</p>
   </div>
   <button class="icon-btn" type="button" (click)="onCancel()">×</button>
+</div>
+
+<div class="modal-body">
+  <div class="transform-layout">
+    <!-- Left: Upstream Inputs -->
+    <div class="panel inputs-panel">
+      <div class="panel-header">
+        <i class="pi pi-sign-in"></i>
+        <span>Entrées</span>
+      </div>
+
+      @if (upstreamInputs().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-info-circle"></i>
+          <span>Aucune entrée connectée</span>
+        </div>
+      }
+
+      @for (input of upstreamInputs(); track input.name) {
+        <div class="input-group">
+          <div class="input-group-header">
+            <span class="input-name">{{ input.name }}</span>
+            <span class="col-count">{{ input.schema.length }} col.</span>
+          </div>
+          <div class="column-list">
+            @for (col of input.schema; track col.name) {
+              <div
+                class="column-item"
+                (click)="addColumn(input.name, col)"
+                title="Cliquer pour ajouter"
+              >
+                <span class="col-name">{{ col.name }}</span>
+                <span class="col-type">{{ col.type }}</span>
+                <i class="pi pi-plus add-icon"></i>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Right: Output Columns -->
+    <div class="panel outputs-panel">
+      <div class="panel-header">
+        <i class="pi pi-sign-out"></i>
+        <span>Colonnes de sortie</span>
+        <span class="col-count-badge">{{ outputColumns().length }}</span>
+      </div>
+
+      @if (outputColumns().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-arrow-left"></i>
+          <span>Cliquer sur une colonne à gauche pour l'ajouter</span>
+        </div>
+      }
+
+      <div class="output-list">
+        @for (col of outputColumns(); track $index; let i = $index) {
+          <div class="output-item">
+            <div class="output-item-info">
+              <span class="output-name">{{ col.name }}</span>
+              <span class="output-type">{{ col.dataType }}</span>
+              @if (col.inputRef) {
+                <span class="output-ref">{{ col.inputRef }}</span>
+              }
+            </div>
+            <div class="output-item-actions">
+              <button class="btn-sm" (click)="moveUp(i)" [disabled]="i === 0" title="Monter">
+                <i class="pi pi-chevron-up"></i>
+              </button>
+              <button class="btn-sm" (click)="moveDown(i)" [disabled]="i === outputColumns().length - 1" title="Descendre">
+                <i class="pi pi-chevron-down"></i>
+              </button>
+              <button class="btn-sm btn-remove" (click)="removeColumn(i)" title="Supprimer">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-footer">
+  <button class="btn secondary" type="button" (click)="onCancel()">Annuler</button>
+  <button class="btn primary" type="button" (click)="onSave()">Enregistrer</button>
 </div>

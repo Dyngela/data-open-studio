@@ -50,6 +50,17 @@ export class NodeRegistryService {
       hasFlowOutput: false,
       type: 'output',
     },
+    {
+      id: 'log',
+      label: 'Log',
+      icon: 'pi pi-save',
+      color: 'rgba(165,165,158,0.93)',
+      hasDataInput: true,
+      hasDataOutput: false,
+      hasFlowInput: true,
+      hasFlowOutput: false,
+      type: 'output',
+    },
   ];
 
   getNodeTypes(): NodeType[] {

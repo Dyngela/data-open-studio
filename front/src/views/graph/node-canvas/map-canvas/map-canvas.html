@@ -1,0 +1,20 @@
+<div class="map-info">
+  @if (inputCount()) {
+    <span class="info-badge input-badge">
+      <i class="pi pi-sign-in"></i>
+      {{ inputCount() }} input{{ inputCount() > 1 ? 's' : '' }}
+    </span>
+  }
+  @if (outputColumnCount()) {
+    <span class="info-badge output-badge">
+      <i class="pi pi-list"></i>
+      {{ outputColumnCount() }} col.
+    </span>
+  }
+  @if (joinType(); as jt) {
+    <span class="info-badge join-badge">
+      <i class="pi pi-link"></i>
+      {{ jt }}
+    </span>
+  }
+</div>

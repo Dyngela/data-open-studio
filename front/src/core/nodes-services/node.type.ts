@@ -1,3 +1,5 @@
+import { NodeConfig } from './node-configs.type';
+
 export interface NodeType {
   id: string;
   label: string;
@@ -14,7 +16,7 @@ export interface NodeInstance {
   id: number;
   type: NodeType;
   position: { x: number; y: number };
-  config?: Record<string, any>;
+  config?: NodeConfig | Record<string, any>;
   status?: 'idle' | 'waiting' | 'running' | 'success' | 'error';
 }
 

@@ -23,35 +23,42 @@ import {TransformModal} from '../../nodes/transform/transform.modal';
 import {JobService} from '../../../core/api/job.service';
 import {JobWithNodes, UpdateJobRequest} from '../../../core/api/job.type';
 import {NodeGraphService} from '../../../core/nodes-services/node-graph.service';
+import {JobStateService} from '../../../core/nodes-services/job-state.service';
+import {DbInputNodeConfig} from '../../../core/nodes-services/node-configs.type';
+import {MapNodeConfig} from '../../../core/nodes-services/node-configs.type';
+import {LogModal} from '../../nodes/log/log.modal';
 
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal],
+  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
 export class Playground implements OnInit, AfterViewInit {
-
-  // États de l'interface
   sidebarWidth = signal(250);
   isResizing = signal(false);
 
-  // Données des onglets (Signals)
   leftTabs = signal([
-    { label: 'Nodes', icon: '📁', active: true },
-    { label: 'Database', icon: '🗄️', active: false }
+    { label: 'Nodes', icon: '📁', active: true, position: 'left' as const },
+    { label: 'Database', icon: '🗄️', active: false, position: 'left' as const },
+    { label: 'Console', icon: '🖥️', active: false, position: 'bot' as const },
   ]);
-  selectedTab = computed(() => this.leftTabs().find(t => t.active));
+  selectedTab = computed(() => this.leftTabs().find(t => t.active && t.position === 'left'));
 
-  // Actions
-  toggleSidebar(label: string) {
-    this.leftTabs.update(tabs => tabs.map(t => ({
-      ...t, active: t.label === label ? !t.active : false
-    })));
+  toggleSidebar(label: string, position: 'left' | 'bot') {
+    if (label === 'reset') {
+      this.leftTabs.update(tabs => tabs.map(t =>
+        t.position === position ? { ...t, active: false } : t
+      ));
+      return;
+    }
+    this.leftTabs.update(tabs => tabs.map(t => {
+      if (t.position !== position) return t;
+      return { ...t, active: t.label === label ? !t.active : false };
+    }));
   }
 
-  // Logique du Splitter
   startResizing(e: MouseEvent) {
     this.isResizing.set(true);
     e.preventDefault();
@@ -71,12 +78,13 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   // Calculer si un panneau latéral est ouvert
-  isAnySidePanelOpen = computed(() => this.leftTabs().some(t => t.active));
-
+  isAnySidePanelOpen = computed(() => this.leftTabs().some(t => t.active && t.label !== 'Console'));
+  IsBottomPanelOpen = computed(() => this.leftTabs().some(t => t.active && t.label === 'Console'));
 
   private route = inject(ActivatedRoute);
   private jobService = inject(JobService);
   protected nodeGraph = inject(NodeGraphService);
+  private jobState = inject(JobStateService);
 
   protected bottomBar = viewChild<PlaygroundBottomBar>('bottomBar')
   protected playgroundArea = viewChild<ElementRef>('playgroundArea')
@@ -130,28 +138,16 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   //#region Node callbacks
-  onDbInputSave(
-    nodeId: number,
-    config: {
-      connectionString: string;
-      table: string;
-      query: string;
-      database?: string;
-      connectionId?: string;
-      dbType?: string;
-      host?: string;
-      port?: string;
-      username?: string;
-      password?: string;
-      sslMode?: string;
-    },
-  ) {
-    this.nodeGraph.updateNodeConfig(nodeId, config);
+  onDbInputSave(nodeId: number, config: DbInputNodeConfig) {
+    this.jobState.setNodeConfig(nodeId, config);
+    this.closeModal();
+  }
+
+  onTransformSave(nodeId: number, config: MapNodeConfig) {
+    this.jobState.setNodeConfig(nodeId, config);
     this.closeModal();
   }
   //#endregion
-
-
 
   //#region Mouse event handlers
   onNodeMouseDown(event: MouseEvent, nodeId: number) {
@@ -321,9 +317,7 @@ export class Playground implements OnInit, AfterViewInit {
     const node = this.nodeGraph.getNodeById(nodeId);
     if (!node) return;
 
-    if (node.type.id === 'db-input' || node.type.id === 'transform' || node.type.id === 'start') {
       this.activeModal.set({ nodeId: node.id, nodeTypeId: node.type.id });
-    }
   }
 
   closeModal() {
@@ -390,8 +384,6 @@ export class Playground implements OnInit, AfterViewInit {
 
   //#endregion
 
-  // ── Job orchestration ──────────────────────────────────────
-
   //#region Job
   loadJob(jobId: number) {
     this.isLoadingJob.set(true);
@@ -403,13 +395,12 @@ export class Playground implements OnInit, AfterViewInit {
       if (!result.isLoading()) {
         clearInterval(checkLoaded);
         this.isLoadingJob.set(false);
-        console.log(result.data())
-
 
         const job = result.data();
         if (job) {
           this.currentJob.set(job);
           this.nodeGraph.loadFromJob(job);
+          this.jobState.loadFromNodes(this.nodeGraph.nodes());
         }
       }
     }, 100);
@@ -435,8 +426,6 @@ export class Playground implements OnInit, AfterViewInit {
       connexions: this.nodeGraph.connections(),
     };
 
-    console.log(request)
-
     const mutation = this.jobService.update(
       jobId,
       (updatedJob) => {
@@ -454,7 +443,6 @@ export class Playground implements OnInit, AfterViewInit {
   }
 
   onJobExecute() {
-    console.log("execute")
     const localConsole = this.bottomBar()?.getConsole();
     if (!localConsole) return;
     const id = this.currentJobId()

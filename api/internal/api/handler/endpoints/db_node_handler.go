@@ -6,6 +6,8 @@ import (
 	"api/internal/api/handler/middleware"
 	"api/internal/api/handler/request"
 	"api/internal/api/handler/response"
+	"api/internal/api/models"
+	"api/internal/api/service"
 	"api/pkg"
 	"net/http"
 
@@ -15,16 +17,18 @@ import (
 )
 
 type dbNodeHandler struct {
-	logger     zerolog.Logger
-	config     api.AppConfig
-	nodeMapper mapper.NodeMapper
+	logger          zerolog.Logger
+	config          api.AppConfig
+	nodeMapper      mapper.NodeMapper
+	metadataService *service.MetadataService
 }
 
 func newDbNodeHandler() *dbNodeHandler {
 	return &dbNodeHandler{
-		logger:     api.Logger,
-		config:     api.GetConfig(),
-		nodeMapper: mapper.NewNodeMapper(),
+		logger:          api.Logger,
+		config:          api.GetConfig(),
+		nodeMapper:      mapper.NewNodeMapper(),
+		metadataService: service.NewMetadataService(),
 	}
 }
 
@@ -50,12 +54,26 @@ func (slf *dbNodeHandler) guessSchema(c *gin.Context) {
 
 	slf.logger.Debug().
 		Str("query", req.Query).
-		Str("dbType", string(req.DbType)).
-		Str("host", req.Host).
 		Msg("Guessing schema for query")
 
 	// build the DB input config
 	node := slf.nodeMapper.GuessSchemaRequestToDBInputConfig(req)
+	conn, err := slf.metadataService.FindByID(req.ConnectionID)
+	if err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to find connection for guessing schema")
+	}
+
+	node.Connection = models.DBConnectionConfig{
+		Type:     conn.DbType,
+		Host:     conn.Host,
+		Port:     conn.Port,
+		Database: conn.DatabaseName,
+		Username: conn.User,
+		Password: conn.Password,
+		SSLMode:  conn.SSLMode,
+		Extra:    nil,
+		DSN:      "",
+	}
 
 	// execute schema introspection
 	if err := node.FillDataModels(); err != nil {

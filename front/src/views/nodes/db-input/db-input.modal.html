@@ -1,434 +1,90 @@
-<div class="modal-header">
-  <div>
-    <h3>Database Input</h3>
-    <p class="subtitle">Choisir ou créer une connexion</p>
-  </div>
-  <button class="icon-btn" type="button" (click)="onCancel()">×</button>
-</div>
-
-<div class="modal-body">
-  <div class="mode-selector">
-    <button
-      class="mode-btn"
-      [class.active]="mode() === 'select'"
-      type="button"
-      (click)="switchMode('select')"
-    >
-      Connexion existante
-    </button>
-    <button
-      class="mode-btn"
-      [class.active]="mode() === 'new'"
-      type="button"
-      (click)="switchMode('new')"
-    >
-      Nouvelle connexion
-    </button>
+<div class="z-[max]">
+  <div class="modal-header">
+    <div>
+      <h3>Database Input</h3>
+      <p class="subtitle">Sélectionner une connexion et configurer la requête</p>
+    </div>
+    <button class="icon-btn" type="button" (click)="onCancel()">×</button>
   </div>
 
-  <!-- Select Existing Connection -->
-  @if (mode() === 'select') {
-    <div class="select-connection-section">
-      <label class="field">
-        <span class="field-label">
-          <i class="pi pi-link"></i>
-          Connexion
-        </span>
-        <select [ngModel]="selectedConnectionId()" (ngModelChange)="onConnectionSelected($event)">
-          <option value="" disabled>Sélectionner une connexion</option>
-          @for (conn of connections; track conn.id) {
-            <option [value]="conn.id">{{ conn.databaseName }}</option>
-          }
-        </select>
-      </label>
+  <div class="modal-body" [formGroup]="form">
 
-      @if (selectedConnectionId()) {
-        <div class="connection-details-card">
-          <div class="connection-details-header">
-            <i class="pi pi-check-circle" style="color: #4caf50;"></i>
-            <span>Détails de la connexion</span>
+    <!-- Connection select -->
+<!--    <label class="field">-->
+<!--    <span class="field-label">-->
+<!--      <i class="pi pi-link"></i>-->
+<!--      Connexion-->
+<!--    </span>-->
+<!--      <select-->
+<!--        [value]="form.controls.connectionId.value"-->
+<!--        (change)="onConnectionSelected(+$any($event.target).value)"-->
+<!--      >-->
+<!--        <option [value]="null" disabled selected>Sélectionner une connexion</option>-->
+<!--        @for (conn of connections(); track conn.id) {-->
+<!--          <option [value]="conn.id">{{ conn.databaseName }} ({{ conn.host }}:{{ conn.port }})</option>-->
+<!--        }-->
+<!--      </select>-->
+<!--    </label>-->
+<!--    -->
+    <kui-select
+    [control]="form.controls.connectionId"
+    [options]="connectionsOptions()"
+
+    >
+
+    </kui-select>
+
+    <!-- Connection details card -->
+    @if (selectedConnection(); as conn) {
+      <div class="connection-details-card">
+        <div class="connection-details-header">
+          <i class="pi pi-check-circle" style="color: #4caf50;"></i>
+          <span>Détails de la connexion</span>
+        </div>
+
+        <div class="connection-details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Type:</span>
+            <span class="detail-value">
+            <i [class]="getConnectionDbIcon(conn)"></i>
+            {{ conn.databaseType || '—' }}
+          </span>
           </div>
 
-          <div class="connection-details-grid">
-            <div class="detail-item">
-              <span class="detail-label">Type:</span>
-              <span class="detail-value">
-                <i [class]="getConnectionDbIcon(formState.dbType)"></i>
-                {{ formState.dbType  }}
-              </span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Host:</span>
-              <span class="detail-value">{{ formState.host || '—' }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Port:</span>
-              <span class="detail-value">{{ formState.port || '—' }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Base de données:</span>
-              <span class="detail-value">{{ formState.database || '—' }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">Utilisateur:</span>
-              <span class="detail-value">{{ formState.username || '—' }}</span>
-            </div>
-
-            <div class="detail-item">
-              <span class="detail-label">SSL:</span>
-              <span class="detail-value">
-                <i [class]="formState.sslMode === 'require' ? 'pi pi-check-circle' : 'pi pi-times-circle'"
-                   [style.color]="formState.sslMode === 'require' ? '#4caf50' : '#ff6b6b'"></i>
-                {{ formState.sslMode === 'require' ? 'Activé' : 'Désactivé' }}
-              </span>
-            </div>
+          <div class="detail-item">
+            <span class="detail-label">Host:</span>
+            <span class="detail-value">{{ conn.host || '—' }}</span>
           </div>
 
-          <button class="btn-edit-connection" type="button" (click)="switchMode('edit')">
-            <i class="pi pi-pencil"></i>
-            Modifier cette connexion
-          </button>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- Edit Existing Connection -->
-  @if (mode() === 'edit') {
-    <div class="edit-connection-section">
-      <div class="edit-header">
-        <button class="btn-back" type="button" (click)="switchMode('select')">
-          <i class="pi pi-arrow-left"></i>
-        </button>
-        <span>Modifier la connexion</span>
-      </div>
-
-      <!-- Connection Details for Editing -->
-      <div class="field-grid">
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-bookmark"></i>
-            Nom
-          </span>
-          <input
-            type="text"
-            [(ngModel)]="formState.connectionName"
-            placeholder="ex: Production DB"
-          />
-        </label>
-
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-server"></i>
-            Type
-          </span>
-          <select [(ngModel)]="formState.dbType">
-            <option value="postgresql">PostgreSQL</option>
-            <option value="sqlserver">SQL Server</option>
-            <option value="mysql">MySQL</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="field-grid">
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-server"></i>
-            Host
-          </span>
-          <input
-            type="text"
-            [(ngModel)]="formState.host"
-            placeholder="localhost"
-          />
-        </label>
-
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-server"></i>
-            Port
-          </span>
-          <input
-            type="text"
-            [(ngModel)]="formState.port"
-            placeholder="5432"
-          />
-        </label>
-      </div>
-
-      <div class="field-grid">
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-database"></i>
-            Base de données
-          </span>
-          <input
-            type="text"
-            [(ngModel)]="formState.database"
-            placeholder="mydb"
-          />
-        </label>
-
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-lock"></i>
-            SSL
-          </span>
-          <div class="checkbox-wrapper">
-            <input
-              type="checkbox"
-              id="sslToggleEdit"
-              [checked]="formState.sslMode === 'require'"
-              (change)="formState.sslMode = $any($event.target).checked ? 'require' : 'disable'"
-            />
-            <label for="sslToggleEdit" class="checkbox-label">
-              <span>{{ formState.sslMode === 'require' ? 'Activé' : 'Désactivé' }}</span>
-            </label>
+          <div class="detail-item">
+            <span class="detail-label">Port:</span>
+            <span class="detail-value">{{ conn.port || '—' }}</span>
           </div>
-        </label>
-      </div>
 
-      <div class="field-grid">
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-user"></i>
-            Utilisateur
+          <div class="detail-item">
+            <span class="detail-label">Base de données:</span>
+            <span class="detail-value">{{ conn.databaseName || '—' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Utilisateur:</span>
+            <span class="detail-value">{{ conn.user || '—' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">SSL:</span>
+            <span class="detail-value">
+            <i [class]="conn.sslMode === 'require' ? 'pi pi-check-circle' : 'pi pi-times-circle'"
+               [style.color]="conn.sslMode === 'require' ? '#4caf50' : '#ff6b6b'"></i>
+              {{ conn.sslMode === 'require' ? 'Activé' : 'Désactivé' }}
           </span>
-          <input
-            type="text"
-            [(ngModel)]="formState.username"
-            placeholder="postgres"
-          />
-        </label>
-
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-lock"></i>
-            Mot de passe
-          </span>
-          <input
-            type="password"
-            [(ngModel)]="formState.password"
-            placeholder="••••••"
-          />
-        </label>
-      </div>
-
-      <div class="edit-actions">
-        <button class="btn secondary" type="button" (click)="switchMode('select')">Annuler</button>
-        <button class="btn primary" type="button" (click)="onSaveExistingConnection()">
-          <i class="pi pi-save"></i>
-          Enregistrer les modifications
-        </button>
-      </div>
-    </div>
-  }
-
-  <!-- Create New Connection -->
-  @if (mode() === 'new') {
-    <div class="new-connection-section">
-      <!-- Nom de la connexion -->
-      <label class="field field-highlight">
-        <span class="field-label">
-          <i class="pi pi-bookmark"></i>
-          Nom de la connexion
-          <span class="required-badge">*</span>
-        </span>
-        <input
-          type="text"
-          [(ngModel)]="formState.connectionName"
-          placeholder="ex: Production DB, Local Test..."
-          class="input-highlight"
-          required
-        />
-      </label>
-
-      <!-- Type de base de données -->
-      <label class="field field-db-type">
-        <span class="field-label">
-          <i class="pi pi-server"></i>
-          Type de base de données
-          <span class="required-badge">*</span>
-        </span>
-        <div class="db-type-selector">
-          <label class="db-type-option">
-            <input
-              type="radio"
-              name="dbType"
-              value="postgresql"
-              [(ngModel)]="formState.dbType"
-              required
-            />
-            <div class="db-type-card">
-              <i class="pi pi-database"></i>
-              <span class="db-type-name">PostgreSQL</span>
-            </div>
-          </label>
-          <label class="db-type-option">
-            <input
-              type="radio"
-              name="dbType"
-              value="sqlserver"
-              [(ngModel)]="formState.dbType"
-              required
-            />
-            <div class="db-type-card">
-              <i class="pi pi-table"></i>
-              <span class="db-type-name">SQL Server</span>
-            </div>
-          </label>
-          <label class="db-type-option">
-            <input
-              type="radio"
-              name="dbType"
-              value="mysql"
-              [(ngModel)]="formState.dbType"
-              required
-            />
-            <div class="db-type-card">
-              <i class="pi pi-box"></i>
-              <span class="db-type-name">MySQL</span>
-            </div>
-          </label>
-        </div>
-      </label>
-
-      <!-- Option 1: Connection String -->
-      <div class="connection-option">
-        <div class="option-header">
-          <span class="option-title">Option 1 : Connection DNS complète</span>
-          <span class="option-badge">Avancé</span>
-        </div>
-        <label class="field">
-          <span class="field-label">
-            <i class="pi pi-link"></i>
-            Connection DNS
-            <span class="required-badge">*</span>
-          </span>
-          <input
-            type="text"
-            [(ngModel)]="formState.connectionString"
-            placeholder="postgres://user:pass@host:5432/db"
-            [required]="!formState.host"
-          />
-          <span class="field-hint">Format URI complet de la base de données</span>
-        </label>
-      </div>
-
-      <!-- Separator -->
-      <div class="separator">
-        <span>OU</span>
-      </div>
-
-      <!-- Option 2: Détails séparés -->
-      <div class="connection-option">
-        <div class="option-header">
-          <span class="option-title">Option 2 : Détails séparés</span>
-          <span class="option-badge recommended">Recommandé</span>
-        </div>
-
-        <div class="field-grid">
-          <label class="field">
-            <span class="field-label">
-              <i class="pi pi-server"></i>
-              Host / Serveur
-              <span class="required-badge">*</span>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="formState.host"
-              placeholder="localhost ou 192.168.1.100"
-              [required]="!formState.connectionString"
-            />
-          </label>
-
-          <label class="field">
-            <span class="field-label">
-              <i class="pi pi-server"></i>
-              Port
-              <span class="required-badge">*</span>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="formState.port"
-              placeholder="5432"
-              [required]="!formState.connectionString"
-            />
-          </label>
-        </div>
-
-        <div class="field-grid">
-          <label class="field">
-            <span class="field-label">
-              <i class="pi pi-database"></i>
-              Base de données
-              <span class="required-badge">*</span>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="formState.database"
-              placeholder="mydb"
-              [required]="!formState.connectionString"
-            />
-          </label>
-
-          <label class="field">
-            <span class="field-label">
-              <i class="pi pi-lock"></i>
-              SSL
-            </span>
-            <div class="checkbox-wrapper">
-              <input
-                type="checkbox"
-                id="sslToggle"
-                [checked]="formState.sslMode === 'require'"
-                (change)="formState.sslMode = $any($event.target).checked ? 'require' : 'disable'"
-              />
-              <label for="sslToggle" class="checkbox-label">
-                <span>{{ formState.sslMode === 'require' ? 'Activé' : 'Désactivé' }}</span>
-              </label>
-            </div>
-          </label>
-        </div>
-
-        <div class="field-grid">
-          <label class="field">
-            <span class="field-label">
-              <i class="pi pi-user"></i>
-              Utilisateur
-              <span class="required-badge">*</span>
-            </span>
-            <input
-              type="text"
-              [(ngModel)]="formState.username"
-              placeholder="postgres"
-              [required]="!formState.connectionString"
-            />
-          </label>
-
-          <label class="field">
-            <span class="field-label">
-              <i class="pi pi-lock"></i>
-              Mot de passe
-              <span class="required-badge">*</span>
-            </span>
-            <input
-              type="password"
-              [(ngModel)]="formState.password"
-              placeholder="••••••"
-              [required]="!formState.connectionString"
-            />
-          </label>
+          </div>
         </div>
       </div>
-    </div>
-  }
+    }
 
-  <label class="field">
+    <!-- SQL Query -->
+    <label class="field">
     <span class="field-label">
       <i class="pi pi-code"></i>
       Requête SQL
@@ -448,61 +104,68 @@
         }
       </button>
     </span>
-    <textarea
-      rows="5"
-      [(ngModel)]="formState.query"
-      placeholder="SELECT * FROM customers WHERE active = true;"
-      class="code-input"
-    ></textarea>
-    <span class="field-hint">Optionnel : Laissez vide pour récupérer toutes les données</span>
-  </label>
+      <textarea
+        rows="5"
+        formControlName="query"
+        placeholder="SELECT * FROM customers WHERE active = true;"
+        class="code-input"
+      ></textarea>
+      <span class="field-hint">Optionnel : Laissez vide pour récupérer toutes les données</span>
+    </label>
 
-  <!-- Schema guess error -->
-  @if (guessError()) {
-    <div class="schema-error">
-      <i class="pi pi-exclamation-triangle"></i>
-      {{ guessError() }}
-    </div>
-  }
-
-  <!-- Guessed schema results -->
-  @if (guessedSchema().length > 0) {
-    <div class="schema-results">
-      <div class="schema-header">
-        <i class="pi pi-check-circle" style="color: #4caf50;"></i>
-        <span>Schéma détecté ({{ guessedSchema().length }} colonnes)</span>
+    <!-- Schema guess error -->
+    @if (guessError()) {
+      <div class="schema-error">
+        <i class="pi pi-exclamation-triangle"></i>
+        {{ guessError() }}
       </div>
-      <div class="schema-table">
-        <table>
-          <thead>
+    }
+
+    <!-- Guessed schema results -->
+    @if (guessedSchema().length > 0) {
+      <div class="schema-results">
+        <div class="schema-header">
+          <i class="pi pi-check-circle" style="color: #4caf50;"></i>
+          <span>Schéma détecté ({{ guessedSchema().length }} colonnes)</span>
+        </div>
+        <div class="schema-table">
+          <table>
+            <thead>
             <tr>
               <th>Colonne</th>
               <th>Type DB</th>
               <th>Type Go</th>
               <th>Nullable</th>
             </tr>
-          </thead>
-          <tbody>
-            @for (col of guessedSchema(); track col.name) {
-              <tr>
-                <td class="col-name">{{ col.name }}</td>
-                <td class="col-type">{{ col.type }}</td>
-                <td class="col-go-type">{{ col.goType }}</td>
-                <td class="col-nullable">
-                  <i [class]="col.nullable ? 'pi pi-check' : 'pi pi-times'"
-                     [style.color]="col.nullable ? '#4caf50' : '#888'"></i>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (col of guessedSchema(); track col.name) {
+                <tr>
+                  <td class="col-name">{{ col.name }}</td>
+                  <td class="col-type">{{ col.type }}</td>
+                  <td class="col-go-type">{{ col.goType }}</td>
+                  <td class="col-nullable">
+                    <i [class]="col.nullable ? 'pi pi-check' : 'pi pi-times'"
+                       [style.color]="col.nullable ? '#4caf50' : '#888'"></i>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  }
+    }
 
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn secondary" type="button" (click)="onCancel()">Annuler</button>
+    <button
+      class="btn primary"
+      type="button"
+      (click)="onSave()"
+      [disabled]="!selectedConnection()"
+    >Enregistrer</button>
+  </div>
 </div>
 
-<div class="modal-footer">
-  <button class="btn secondary" type="button" (click)="onCancel()">Annuler</button>
-  <button class="btn primary" type="button" (click)="onSave()">Enregistrer</button>
-</div>

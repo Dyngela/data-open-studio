@@ -4,7 +4,7 @@
   [style.border-color]="node().type.color"
 >
   <div class="node-header" [style.background-color]="node().type.color">
-    <!-- Flow Input Port (avant le titre) -->
+    <!-- Flow Input Port -->
     <div class="flow-input-ports">
       @for (portIndex of getFlowInputPorts(); track portIndex) {
         <div
@@ -18,14 +18,14 @@
       }
     </div>
 
-    <i [class]="node().type.id === 'db-input' ? getDbTypeIcon() : node().type.icon"></i>
+    <i [class]="headerIcon()"></i>
     <span class="node-title">{{ node().type.label }}</span>
 
-    @if (node().type.id === 'db-input' && getDbName(); as dbName) {
-      <span class="db-badge" title="Base connectée">DB: {{ dbName }}</span>
+    @if (dbName(); as name) {
+      <span class="db-badge" title="Base connectée">DB: {{ name }}</span>
     }
 
-    <!-- Flow Output Port (après le titre) -->
+    <!-- Flow Output Port -->
     <div class="flow-output-ports">
       @for (portIndex of getFlowOutputPorts(); track portIndex) {
         <div
@@ -43,7 +43,6 @@
   <div class="node-body">
     <div class="ports-container">
       <div class="input-ports">
-        <!-- Data Input Ports -->
         @for (portIndex of getDataInputPorts(); track portIndex) {
           <div
             class="port input-port data-port"
@@ -57,7 +56,6 @@
       </div>
 
       <div class="output-ports">
-        <!-- Data Output Ports -->
         @for (portIndex of getDataOutputPorts(); track portIndex) {
           <div
             class="port output-port data-port"
@@ -70,10 +68,14 @@
         }
       </div>
     </div>
-    @if (node().type.id === 'db-input' && getDbQuery(); as dbQuery) {
-      <div class="db-query-display">
-        {{ dbQuery }}
-      </div>
+
+    @switch (node().type.id) {
+      @case ('db-input') {
+        <app-db-input-canvas [node]="node()" />
+      }
+      @case ('transform') {
+        <app-map-canvas [node]="node()" />
+      }
     }
   </div>
 </div>
