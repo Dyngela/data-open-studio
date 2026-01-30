@@ -7,7 +7,7 @@ import {
   NodeConfig,
   isDbInputConfig,
   isMapConfig,
-} from './node-configs.type';
+} from '../../nodes';
 import { Connection, NodeInstance, PortType } from './node.type';
 import { NodeGraphService } from './node-graph.service';
 import { inject } from '@angular/core';

@@ -2,14 +2,15 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NodeInstance, PortType } from '../../../core/nodes-services/node.type';
 import { JobStateService } from '../../../core/nodes-services/job-state.service';
-import { isDbInputConfig } from '../../../core/nodes-services/node-configs.type';
-import { DbInputCanvasComponent } from '../node-canvas/db-input-canvas/db-input-canvas';
-import { MapCanvasComponent } from '../node-canvas/map-canvas/map-canvas';
+import { isDbInputConfig } from '../../../nodes/db-input/definition';
+import { DbInputCanvasComponent } from '../../../nodes/db-input/db-input-canvas';
+import { MapCanvasComponent } from '../../../nodes/transform/map-canvas';
+import { LogCanvasComponent } from '../../../nodes/log/log-canvas';
 
 @Component({
   selector: 'app-node-instance',
   standalone: true,
-  imports: [CommonModule, DbInputCanvasComponent, MapCanvasComponent],
+  imports: [CommonModule, DbInputCanvasComponent, MapCanvasComponent, LogCanvasComponent],
   templateUrl: './node-instance.html',
   styleUrl: './node-instance.css',
 })

@@ -1,8 +1,8 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NodeInstance } from '../../../../core/nodes-services/node.type';
-import { JobStateService } from '../../../../core/nodes-services/job-state.service';
-import { isMapConfig } from '../../../../core/nodes-services/node-configs.type';
+import { NodeInstance } from '../../core/nodes-services/node.type';
+import { JobStateService } from '../../core/nodes-services/job-state.service';
+import { isMapConfig } from './definition';
 
 @Component({
   selector: 'app-map-canvas',

@@ -1,0 +1,55 @@
+<div>
+  <div class="modal-header">
+    <div>
+      <h3>Log Output</h3>
+      <p class="subtitle">Affiche les lignes entrantes dans la console</p>
+    </div>
+    <button class="icon-btn" type="button" (click)="onCancel()">&#215;</button>
+  </div>
+
+  <div class="modal-body">
+    @if (upstreamSchema().length > 0) {
+      <div class="schema-results">
+        <div class="schema-header">
+          <i class="pi pi-list"></i>
+          <span>Colonnes en entree ({{ upstreamSchema().length }})</span>
+        </div>
+        <div class="schema-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Colonne</th>
+                <th>Type DB</th>
+                <th>Type Go</th>
+                <th>Nullable</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (col of upstreamSchema(); track col.name) {
+                <tr>
+                  <td class="col-name">{{ col.name }}</td>
+                  <td class="col-type">{{ col.type }}</td>
+                  <td class="col-go-type">{{ col.goType }}</td>
+                  <td class="col-nullable">
+                    <i [class]="col.nullable ? 'pi pi-check' : 'pi pi-times'"
+                       [style.color]="col.nullable ? '#4caf50' : '#888'"></i>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <div class="empty-state">
+        <i class="pi pi-info-circle"></i>
+        <span>Connectez un noeud en amont pour voir le schema</span>
+      </div>
+    }
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn secondary" type="button" (click)="onCancel()">Annuler</button>
+    <button class="btn primary" type="button" (click)="onSave()">Enregistrer</button>
+  </div>
+</div>

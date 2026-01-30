@@ -1,15 +1,15 @@
 import { Component, input, output, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NodeInstance } from '../../../core/nodes-services/node.type';
-import { JobStateService } from '../../../core/nodes-services/job-state.service';
+import { NodeInstance } from '../../core/nodes-services/node.type';
+import { JobStateService } from '../../core/nodes-services/job-state.service';
 import {
   InputFlow,
   MapNodeConfig,
   MapOutputCol,
   OutputFlow,
   isMapConfig,
-} from '../../../core/nodes-services/node-configs.type';
+} from './definition';
 
 @Component({
   selector: 'app-transform-modal',

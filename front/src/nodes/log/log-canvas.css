@@ -1,0 +1,17 @@
+.schema-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(165, 165, 158, 0.12);
+  border: 1px solid rgba(165, 165, 158, 0.25);
+  color: #a5a59e;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.schema-badge i {
+  font-size: 0.65rem;
+}

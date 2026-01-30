@@ -1,8 +1,8 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NodeInstance } from '../../../../core/nodes-services/node.type';
-import { JobStateService } from '../../../../core/nodes-services/job-state.service';
-import { isDbInputConfig } from '../../../../core/nodes-services/node-configs.type';
+import { NodeInstance } from '../../core/nodes-services/node.type';
+import { JobStateService } from '../../core/nodes-services/job-state.service';
+import { isDbInputConfig } from './definition';
 
 @Component({
   selector: 'app-db-input-canvas',

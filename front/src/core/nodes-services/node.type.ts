@@ -1,4 +1,4 @@
-import { NodeConfig } from './node-configs.type';
+import { NodeConfig } from '../../nodes';
 
 export interface NodeType {
   id: string;
@@ -9,7 +9,7 @@ export interface NodeType {
   hasDataOutput: boolean;
   hasFlowInput: boolean;
   hasFlowOutput: boolean;
-  type: 'start' | 'input' | 'output' | 'process';
+  type: 'start' | 'input' | 'output' | 'process' | 'log';
 }
 
 export interface NodeInstance {

@@ -17,16 +17,16 @@ import {NodeInstanceComponent} from '../node-instance/node-instance';
 import {Minimap} from '../minimap/minimap';
 import {PlaygroundBottomBar} from '../playground-bottom-bar/playground-bottom-bar';
 import {Connection, Direction, NodeType, PortType, TempConnection} from '../../../core/nodes-services/node.type';
-import {DbInputModal} from '../../nodes/db-input/db-input.modal';
-import {StartModal} from '../../nodes/start/start.modal';
-import {TransformModal} from '../../nodes/transform/transform.modal';
+import {DbInputModal} from '../../../nodes/db-input/db-input.modal';
+import {StartModal} from '../../../nodes/start/start.modal';
+import {TransformModal} from '../../../nodes/transform/transform.modal';
+import {LogModal} from '../../../nodes/log/log.modal';
 import {JobService} from '../../../core/api/job.service';
 import {JobWithNodes, UpdateJobRequest} from '../../../core/api/job.type';
 import {NodeGraphService} from '../../../core/nodes-services/node-graph.service';
 import {JobStateService} from '../../../core/nodes-services/job-state.service';
-import {DbInputNodeConfig} from '../../../core/nodes-services/node-configs.type';
-import {MapNodeConfig} from '../../../core/nodes-services/node-configs.type';
-import {LogModal} from '../../nodes/log/log.modal';
+import {DbInputNodeConfig} from '../../../nodes/db-input/definition';
+import {MapNodeConfig} from '../../../nodes/transform/definition';
 
 @Component({
   selector: 'app-playground',

@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
-import { NodeRegistryService } from '../../../core/nodes-services/node-registry.service';
+import { NodeRegistryService } from '../../../nodes/node-registry.service';
 import { NodeType } from '../../../core/nodes-services/node.type';
 
 @Component({

@@ -1,9 +1,10 @@
 // Enums
 import {Connection} from '../nodes-services/node.type';
+import {ApiNodeType} from '../../nodes';
 
 export type JobVisibility = 'public' | 'private';
 export type OwningRole = 'owner' | 'editor' | 'viewer';
-export type NodeType = 'start' | 'db_input' | 'db_output' | 'map';
+export type NodeType = ApiNodeType;
 
 // Node type
 export interface Node {

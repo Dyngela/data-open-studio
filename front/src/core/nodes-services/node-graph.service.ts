@@ -1,4 +1,4 @@
-import {Injectable, signal} from '@angular/core';
+import {inject, Injectable, signal} from '@angular/core';
 import {
   Connection,
   Direction,
@@ -9,11 +9,14 @@ import {
   PortType,
   TempConnection,
 } from './node.type';
-import {NodeConfig} from './node-configs.type';
+import {NodeConfig} from '../../nodes';
 import {JobWithNodes, Node as ApiNode} from '../api/job.type';
+import {NodeRegistryService} from '../../nodes/node-registry.service';
 
 @Injectable({ providedIn: 'root' })
 export class NodeGraphService {
+  private registry = inject(NodeRegistryService);
+
   readonly nodes = signal<NodeInstance[]>([]);
   readonly connections = signal<Connection[]>([]);
 
@@ -83,7 +86,7 @@ export class NodeGraphService {
     if (job.nodes && job.nodes.length > 0) {
       const nodeInstances: NodeInstance[] = job.nodes.map(apiNode => ({
         id: apiNode.id,
-        type: this.getNodeTypeFromApiType(apiNode.type),
+        type: this.registry.getNodeTypeFromApiType(apiNode.type),
         position: { x: apiNode.xpos, y: apiNode.ypos },
         config: (apiNode.data as Record<string, any>) || {},
         status: 'idle' as const,
@@ -97,7 +100,7 @@ export class NodeGraphService {
   toApiNodes(jobId: number): ApiNode[] {
     return this.nodes().map(node => ({
       id: node.id,
-      type: this.getApiTypeFromNodeType(node.type.id),
+      type: this.registry.getApiType(node.type.id),
       name: node.type.label,
       xpos: node.position.x,
       ypos: node.position.y,
@@ -106,38 +109,6 @@ export class NodeGraphService {
       data: node.config || {},
       jobId,
     }));
-  }
-
-  getNodeTypeFromApiType(apiType: string): NodeType {
-    const typeMap: Record<string, NodeType> = {
-      start: {
-        id: 'start', label: 'Start', icon: 'pi-play', type: 'start',
-        hasFlowInput: false, hasFlowOutput: true, hasDataInput: false, hasDataOutput: false,
-      },
-      db_input: {
-        id: 'db-input', label: 'DB Input', icon: 'pi-database', type: 'input',
-        hasFlowInput: true, hasFlowOutput: true, hasDataInput: false, hasDataOutput: true,
-      },
-      db_output: {
-        id: 'db-output', label: 'DB Output', icon: 'pi-database', type: 'output',
-        hasFlowInput: true, hasFlowOutput: true, hasDataInput: true, hasDataOutput: false,
-      },
-      map: {
-        id: 'transform', label: 'Transform', icon: 'pi-cog', type: 'process',
-        hasFlowInput: true, hasFlowOutput: true, hasDataInput: true, hasDataOutput: true,
-      },
-    };
-    return typeMap[apiType] || typeMap['start'];
-  }
-
-  getApiTypeFromNodeType(nodeTypeId: string): 'start' | 'db_input' | 'db_output' | 'map' {
-    const typeMap: Record<string, 'start' | 'db_input' | 'db_output' | 'map'> = {
-      start: 'start',
-      'db-input': 'db_input',
-      'db-output': 'db_output',
-      transform: 'map',
-    };
-    return typeMap[nodeTypeId] || 'start';
   }
 
   calculatePortPosition(

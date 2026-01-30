@@ -1,13 +1,13 @@
 import {Component, input, output, signal, inject, OnInit, computed, Signal} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
-import { NodeInstance } from '../../../core/nodes-services/node.type';
-import { DataModel, DbMetadata, DbType } from '../../../core/api/metadata.type';
-import { MetadataLocalService } from '../../../core/services/metadata.local.service';
-import { DbNodeService } from '../../../core/api/db-node.service';
-import { DbInputNodeConfig, isDbInputConfig } from '../../../core/nodes-services/node-configs.type';
-import {KuiSelect, SelectOption} from '../../../ui/form/select/kui-select/kui-select';
-import {JobStateService} from '../../../core/nodes-services/job-state.service';
+import { NodeInstance } from '../../core/nodes-services/node.type';
+import { DataModel, DbMetadata, DbType } from '../../core/api/metadata.type';
+import { MetadataLocalService } from '../../core/services/metadata.local.service';
+import { DbNodeService } from '../../core/api/db-node.service';
+import { DbInputNodeConfig, isDbInputConfig } from './definition';
+import {KuiSelect, SelectOption} from '../../ui/form/select/kui-select/kui-select';
+import {JobStateService} from '../../core/nodes-services/job-state.service';
 
 @Component({
   selector: 'app-db-input-modal',
