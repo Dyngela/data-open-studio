@@ -1,6 +1,19 @@
 import { Injectable } from '@angular/core';
 import { NodeType } from '../core/nodes-services/node.type';
-import { ALL_NODE_DEFINITIONS, ApiNodeType } from './index';
+import type { ApiNodeType } from './node-definition.type';
+import { startDefinition } from './start/definition';
+import { dbInputDefinition } from './db-input/definition';
+import { transformDefinition } from './transform/definition';
+import { logDefinition } from './log/definition';
+import { outputDefinition } from './output/definition';
+
+const ALL_NODE_DEFINITIONS = [
+  startDefinition,
+  dbInputDefinition,
+  transformDefinition,
+  logDefinition,
+  outputDefinition,
+] as const;
 
 @Injectable({
   providedIn: 'root',

@@ -9,7 +9,7 @@ import {
   PortType,
   TempConnection,
 } from './node.type';
-import {NodeConfig} from '../../nodes';
+import type {NodeConfig} from '../../nodes/node-definition.type';
 import {JobWithNodes, Node as ApiNode} from '../api/job.type';
 import {NodeRegistryService} from '../../nodes/node-registry.service';
 
@@ -59,6 +59,12 @@ export class NodeGraphService {
   updateNodePosition(nodeId: number, position: { x: number; y: number }): void {
     this.nodes.update(nodes =>
       nodes.map(node => (node.id === nodeId ? { ...node, position } : node)),
+    );
+  }
+
+  updateNodeStatus(nodeId: number, status: NonNullable<NodeInstance['status']>): void {
+    this.nodes.update(nodes =>
+      nodes.map(node => (node.id === nodeId ? { ...node, status } : node)),
     );
   }
 

@@ -5,6 +5,7 @@ import {
   ElementRef,
   HostListener,
   inject,
+  OnDestroy,
   OnInit,
   signal,
   viewChild,
@@ -26,6 +27,7 @@ import {JobWithNodes, UpdateJobRequest} from '../../../core/api/job.type';
 import {NodeGraphService} from '../../../core/nodes-services/node-graph.service';
 import {JobStateService} from '../../../core/nodes-services/job-state.service';
 import {LayoutService} from '../../../core/services/layout-service';
+import {JobRealtimeService} from '../../../core/services/base-ws.service';
 
 @Component({
   selector: 'app-playground',
@@ -34,7 +36,7 @@ import {LayoutService} from '../../../core/services/layout-service';
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
-export class Playground implements OnInit, AfterViewInit {
+export class Playground implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:mousemove', ['$event'])
   onMouseMove(e: MouseEvent) {
@@ -54,7 +56,27 @@ export class Playground implements OnInit, AfterViewInit {
   protected nodeGraph = inject(NodeGraphService);
   private jobState = inject(JobStateService);
   protected layoutService = inject(LayoutService);
+  private realtime = inject(JobRealtimeService);
 
+  /** Track how many nodes are still running so we know when the job finishes */
+  private runningNodes = new Set<number>();
+  private unsubProgress: () => void;
+
+  constructor() {
+    // React to every progress message: update node visual status and track completion
+    this.unsubProgress = this.realtime.onProgress((progress) => {
+      const nodeStatus = progress.status === 'running' ? 'running'
+        : progress.status === 'completed' ? 'success'
+        : 'error';
+      this.nodeGraph.updateNodeStatus(progress.nodeId, nodeStatus);
+
+      if (progress.status === 'running') {
+        this.runningNodes.add(progress.nodeId);
+      } else {
+        this.runningNodes.delete(progress.nodeId);
+      }
+    });
+  }
 
   protected bottomBar = viewChild<PlaygroundBottomBar>('bottomBar')
   protected playgroundArea = viewChild<ElementRef>('playgroundArea')
@@ -294,8 +316,6 @@ export class Playground implements OnInit, AfterViewInit {
   ): { x: number; y: number } {
     const node = this.nodeGraph.getNodeById(nodeId);
     if (!node) return { x: 0, y: 0 };
-
-    // Try DOM-based position first
     const portElement = this.getPortElement(nodeId, portIndex, portType, connectionType);
     if (portElement && this.playgroundArea) {
       const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
@@ -390,25 +410,47 @@ export class Playground implements OnInit, AfterViewInit {
     mutation.execute(request);
   }
 
-  onJobExecute() {
+  async onJobExecute() {
     const localConsole = this.bottomBar()?.getConsole();
     if (!localConsole) return;
-    const id = this.currentJobId()
-    if (!id) {
-      return
+    const id = this.currentJobId();
+    if (!id) return;
+
+    // Reset node statuses
+    this.runningNodes.clear();
+    for (const node of this.nodeGraph.nodes()) {
+      this.nodeGraph.updateNodeStatus(node.id, 'idle');
     }
-    const mutation = this.jobService.execute(id, () => {
-        console.log("ok")
-    },
-      (error) => {
-        console.log(error)
-      }
-      );
-    mutation.execute(null);
+
+    // Wait for WebSocket to connect and subscribe before triggering execution
+    localConsole.addLog('info', 'Connexion au flux temps réel...');
+    try {
+      await this.realtime.subscribeToJob(id);
+    } catch {
+      localConsole.addLog('warn', 'WebSocket non disponible, lancement sans suivi temps réel');
+    }
+
+    // const mutation = this.jobService.execute(id,
+    //   () => {
+    //     localConsole.addLog('info', 'Job lancé, en attente des résultats...');
+    //   },
+    //   (error) => {
+    //     localConsole.markError(error?.message ?? 'Erreur lors du lancement du job');
+    //   },
+    // );
+    // mutation.execute(null);
   }
 
   onJobStop() {
-    this.bottomBar()?.getConsole()?.addLog('warn', 'Exécution interrompue par l\'utilisateur');
+    const localConsole = this.bottomBar()?.getConsole();
+    localConsole?.addLog('warn', 'Exécution interrompue par l\'utilisateur');
+    this.realtime.disconnect();
+    localConsole?.setRunning(false);
+  }
+
+  ngOnDestroy(): void {
+    this.unsubProgress();
+    this.realtime.disconnect();
   }
   //#endregion
 }

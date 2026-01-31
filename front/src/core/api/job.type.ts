@@ -1,6 +1,6 @@
 // Enums
 import {Connection} from '../nodes-services/node.type';
-import {ApiNodeType} from '../../nodes';
+import type {ApiNodeType} from '../../nodes/node-definition.type';
 
 export type JobVisibility = 'public' | 'private';
 export type OwningRole = 'owner' | 'editor' | 'viewer';
@@ -38,6 +38,11 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   sharedUser: SharedUser[];
+}
+
+export interface PrintCode {
+  code: string;
+  steps: any[][];
 }
 
 // Job response with nodes (for single job get)

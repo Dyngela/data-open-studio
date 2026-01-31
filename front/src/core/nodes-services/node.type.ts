@@ -1,4 +1,4 @@
-import { NodeConfig } from '../../nodes';
+import type { NodeConfig } from '../../nodes/node-definition.type';
 
 export interface NodeType {
   id: string;

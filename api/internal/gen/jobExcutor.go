@@ -52,9 +52,18 @@ func (j *JobExecution) Run() error {
 	return j.runInDocker()
 }
 
+func (j *JobExecution) LogDebug() (string, []Step, error) {
+	if _, err := j.build(); err != nil {
+		return "", nil, err
+	}
+
+	source, err := j.generateSource()
+	return string(source), j.Steps, err
+}
+
 // outputToLocal writes the generated source, runtime lib and go.mod to ../../bin for inspection.
 func (j *JobExecution) outputToLocal() error {
-	binDir := "../../bin"
+	binDir := "../bin"
 	if err := os.MkdirAll(binDir, 0755); err != nil {
 		return fmt.Errorf("failed to create output dir: %w", err)
 	}

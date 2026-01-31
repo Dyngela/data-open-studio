@@ -23,6 +23,15 @@
     <div class="console-actions">
       <button
         class="action-btn save-btn"
+        (click)="printCode()"
+        [disabled]="isRunning() || isSaving()"
+        title="Preview le job"
+      >
+        <i class="pi pi-save"></i>
+        <span>Preview</span>
+      </button>
+      <button
+        class="action-btn save-btn"
         (click)="saveJob()"
         [disabled]="isRunning() || isSaving()"
         title="Sauvegarder le job"

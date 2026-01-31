@@ -18,7 +18,7 @@ type DBInputConfig struct {
 
 	Connection DBConnectionConfig `json:"connection"`
 	// DataModels Give the query result data model with type and col name
-	DataModels []DataModel `json:"dataModel"`
+	DataModels []DataModel `json:"dataModels"`
 }
 
 func (slf *DBInputConfig) Validate() error {

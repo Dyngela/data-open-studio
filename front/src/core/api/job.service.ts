@@ -7,7 +7,7 @@ import {
   CreateJobRequest,
   UpdateJobRequest,
   ShareJobRequest,
-  DeleteResponse
+  DeleteResponse, PrintCode
 } from './job.type';
 import {ApiError} from './api-response.type';
 
@@ -113,5 +113,13 @@ export class JobService {
           onError?: (error: any) => void
   ): ApiMutation<ApiError<any>, null> {
     return this.api.post(`${this.basePath}/${id}/execute`)
+  }
+
+  printCode(id: number, onSuccess?: (data:PrintCode) => void): ApiMutation<PrintCode, void> {
+    return this.api.post<PrintCode>(`${this.basePath}/${id}/print-code`, onSuccess);
+  }
+
+  stop(id: number): ApiMutation<null, void> {
+    return this.api.post(`${this.basePath}/${id}/stop`);
   }
 }

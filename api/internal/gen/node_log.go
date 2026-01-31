@@ -72,16 +72,12 @@ func (g *LogGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorContext
 func (g *LogGenerator) findInputRowType(node *models.Node, ctx *GeneratorContext) string {
 	for _, port := range node.InputPort {
 		if port.Type == models.PortTypeInput {
-			// Use the connected node reference if available
-			sourceNode := &port.Node
-			// Check if we have a valid source node (skip start nodes)
-			if sourceNode != nil && sourceNode.ID != 0 && sourceNode.Type != models.NodeTypeStart {
-				// Check if this node has a struct already defined
-				if structName, exists := ctx.NodeStructNames[sourceNode.ID]; exists {
-					return structName
-				}
-				// Fallback: generate struct name
-				return ctx.StructName(sourceNode)
+			sourceNodeID := int(port.ConnectedNodeID)
+			if sourceNodeID == 0 {
+				continue
+			}
+			if structName, exists := ctx.NodeStructNames[sourceNodeID]; exists {
+				return structName
 			}
 		}
 	}

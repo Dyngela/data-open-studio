@@ -1,13 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import { DataModel } from '../api/metadata.type';
-import {
-  DbInputNodeConfig,
-  InputFlow,
-  MapNodeConfig,
-  NodeConfig,
-  isDbInputConfig,
-  isMapConfig,
-} from '../../nodes';
+import type { NodeConfig } from '../../nodes/node-definition.type';
+import { type DbInputNodeConfig, isDbInputConfig } from '../../nodes/db-input/definition';
+import { type InputFlow, type MapNodeConfig, isMapConfig } from '../../nodes/transform/definition';
 import { Connection, NodeInstance, PortType } from './node.type';
 import { NodeGraphService } from './node-graph.service';
 import { inject } from '@angular/core';

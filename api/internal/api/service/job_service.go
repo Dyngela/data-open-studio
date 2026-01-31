@@ -5,6 +5,7 @@ import (
 	"api/internal/api/models"
 	"api/internal/api/repo"
 	"api/internal/gen"
+	"api/pkg"
 	"errors"
 
 	"github.com/rs/zerolog"
@@ -345,6 +346,7 @@ func (slf *JobService) Execute(id uint) error {
 	if err != nil {
 		return err
 	}
+	pkg.PrettyPrint(job)
 	executer := gen.NewJobExecution(&job)
 	err = executer.Run()
 
@@ -354,4 +356,13 @@ func (slf *JobService) Execute(id uint) error {
 
 	return err
 
+}
+
+func (slf *JobService) PrintCode(id uint) (string, any, error) {
+	job, err := slf.jobRepo.FindByID(id)
+	if err != nil {
+		return "", nil, err
+	}
+	executer := gen.NewJobExecution(&job)
+	return executer.LogDebug()
 }

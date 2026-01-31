@@ -50,6 +50,8 @@ func JobHandler(router *graceful.Graceful) {
 		routes.DELETE("/:id/share", h.unshare)
 
 		routes.POST("/:id/execute", h.execute)
+		routes.POST("/:id/print-code", h.printCode)
+		routes.POST("/:id/stop", h.stop)
 	}
 }
 
@@ -366,5 +368,32 @@ func (slf *jobHandler) execute(ctx *gin.Context) {
 		return
 	}
 
-	slf.jobService.Execute(uint(id))
+	go func() {
+		if err := slf.jobService.Execute(uint(id)); err != nil {
+			slf.logger.Error().Err(err).Uint64("id", id).Msg("Job execution failed")
+		}
+	}()
+
+	ctx.JSON(http.StatusAccepted, gin.H{"message": "Job execution started", "jobId": id})
+}
+
+func (slf *jobHandler) stop(ctx *gin.Context) {}
+
+func (slf *jobHandler) printCode(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+	source, steps, err := slf.jobService.PrintCode(uint(id))
+	if err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to print job code")
+		ctx.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to print job code"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		source:  source,
+		"steps": steps,
+	})
 }

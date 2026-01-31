@@ -1,5 +1,14 @@
+import type { StartNodeConfig } from './start/definition';
+import type { DbInputNodeConfig } from './db-input/definition';
+import type { MapNodeConfig } from './transform/definition';
+import type { LogConfig } from './log/definition';
+import type { OutputNodeConfig } from './output/definition';
+
 /** API-side node type identifiers (snake_case, match backend enum) */
 export type ApiNodeType = 'start' | 'db_input' | 'db_output' | 'map' | 'log';
+
+/** Discriminated union of all node config types */
+export type NodeConfig = StartNodeConfig | DbInputNodeConfig | MapNodeConfig | LogConfig | OutputNodeConfig;
 
 /**
  * Every node type must satisfy this interface.

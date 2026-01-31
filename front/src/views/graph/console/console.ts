@@ -1,5 +1,7 @@
-import { Component, signal, ViewChild, ElementRef, HostListener, AfterViewChecked, output } from '@angular/core';
+import {Component, signal, ViewChild, ElementRef, HostListener, AfterViewChecked, OnDestroy, output, inject} from '@angular/core';
 import { CommonModule, DatePipe, UpperCasePipe } from '@angular/common';
+import {JobService} from '../../../core/api/job.service';
+import {JobRealtimeService} from '../../../core/services/base-ws.service';
 
 export interface LogEntry {
   id: string;
@@ -15,7 +17,33 @@ export interface LogEntry {
   templateUrl: './console.html',
   styleUrl: './console.css',
 })
-export class Console implements AfterViewChecked {
+export class Console implements AfterViewChecked, OnDestroy {
+  private jobService = inject(JobService);
+  private realtime = inject(JobRealtimeService);
+  private unsubProgress: () => void;
+
+  constructor() {
+    this.unsubProgress = this.realtime.onProgress((progress) => {
+      const statusMap: Record<string, LogEntry['level']> = {
+        running: 'info',
+        completed: 'success',
+        failed: 'error',
+      };
+
+      const level = statusMap[progress.status] ?? 'info';
+      const rowInfo = progress.rowCount > 0 ? ` (${progress.rowCount} rows)` : '';
+      this.addLog(level, `[${progress.nodeName}] ${progress.message}${rowInfo}`);
+
+      if (progress.status === 'failed') {
+        this.markError(`Node "${progress.nodeName}" failed: ${progress.message}`);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.unsubProgress();
+  }
+
   @ViewChild('logContainer') logContainer?: ElementRef<HTMLDivElement>;
 
   // Output events
@@ -90,6 +118,13 @@ export class Console implements AfterViewChecked {
     this.isRunning.set(true);
     this.addLog('info', 'Démarrage de l\'exécution du job...');
     this.onExecute.emit();
+  }
+
+  printCode() {
+    this.jobService.printCode(1,
+      (data) => { 
+      console.log(data)
+    }).execute()
   }
 
   stopJob() {
