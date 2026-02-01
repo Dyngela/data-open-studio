@@ -430,15 +430,15 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
       localConsole.addLog('warn', 'WebSocket non disponible, lancement sans suivi temps réel');
     }
 
-    // const mutation = this.jobService.execute(id,
-    //   () => {
-    //     localConsole.addLog('info', 'Job lancé, en attente des résultats...');
-    //   },
-    //   (error) => {
-    //     localConsole.markError(error?.message ?? 'Erreur lors du lancement du job');
-    //   },
-    // );
-    // mutation.execute(null);
+    const mutation = this.jobService.execute(id,
+      () => {
+        localConsole.addLog('info', 'Job lancé, en attente des résultats...');
+      },
+      (error) => {
+        localConsole.markError(error?.message ?? 'Erreur lors du lancement du job');
+      },
+    );
+    mutation.execute(null);
   }
 
   onJobStop() {

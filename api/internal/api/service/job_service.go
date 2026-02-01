@@ -5,7 +5,6 @@ import (
 	"api/internal/api/models"
 	"api/internal/api/repo"
 	"api/internal/gen"
-	"api/pkg"
 	"errors"
 
 	"github.com/rs/zerolog"
@@ -346,7 +345,6 @@ func (slf *JobService) Execute(id uint) error {
 	if err != nil {
 		return err
 	}
-	pkg.PrettyPrint(job)
 	executer := gen.NewJobExecution(&job)
 	err = executer.Run()
 

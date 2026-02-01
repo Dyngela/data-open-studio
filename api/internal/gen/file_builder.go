@@ -119,6 +119,9 @@ func (b *FileBuilder) Build() error {
 		}
 	}
 
+	// Auto-detect imports required by struct field types (e.g. time.Time)
+	b.resolveStructImports()
+
 	// Collect channels
 	channels := b.collectChannels()
 	for _, ch := range channels {
@@ -268,6 +271,24 @@ func (b *FileBuilder) generateNodeLaunchData(node *models.Node, channels []chann
 		Args:             args,
 		HasOutputChannel: hasOutput,
 		OutputChannel:    outputChan,
+	}
+}
+
+// resolveStructImports scans struct field types and adds missing imports
+func (b *FileBuilder) resolveStructImports() {
+	// Map of type substring → required import path
+	typeImports := map[string]string{
+		"time.": "time",
+	}
+
+	for _, s := range b.templateData.Structs {
+		for _, f := range s.Fields {
+			for prefix, importPath := range typeImports {
+				if strings.Contains(f.Type, prefix) {
+					b.ctx.AddImport(importPath)
+				}
+			}
+		}
 	}
 }
 

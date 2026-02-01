@@ -140,8 +140,11 @@ func (j *JobExecution) dockerRun(imageTag, containerName string) error {
 	return pkg.RunCommandLine("", "docker", args...)
 }
 
-// dockerRmi removes the Docker image after execution
-func (j *JobExecution) dockerRmi(imageTag string) {
+// dockerCleanup removes the container and then the image after execution
+func (j *JobExecution) dockerCleanup(containerName, imageTag string) {
+	if err := pkg.RunCommandLine("", "docker", "rm", "-f", containerName); err != nil {
+		j.logger.Warn().Err(err).Msgf("Failed to remove container %s", containerName)
+	}
 	if err := pkg.RunCommandLine("", "docker", "rmi", imageTag); err != nil {
 		j.logger.Warn().Err(err).Msgf("Failed to remove image %s", imageTag)
 	}

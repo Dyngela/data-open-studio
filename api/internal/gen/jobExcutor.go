@@ -46,9 +46,9 @@ func (j *JobExecution) Run() error {
 		return err
 	}
 
-	if j.isDebug() {
-		return j.outputToLocal()
-	}
+	//if j.isDebug() {
+	//	return j.outputToLocal()
+	//}
 	return j.runInDocker()
 }
 
@@ -96,12 +96,13 @@ func (j *JobExecution) runInDocker() error {
 	defer os.RemoveAll(workDir)
 
 	imageTag := j.newImageTag()
-	defer j.dockerRmi(imageTag)
+	containerName := imageTag
+	defer j.dockerCleanup(containerName, imageTag)
 
 	if err := j.dockerBuild(workDir, imageTag); err != nil {
 		return fmt.Errorf("docker build failed: %w", err)
 	}
-	if err := j.dockerRun(imageTag, imageTag); err != nil {
+	if err := j.dockerRun(imageTag, containerName); err != nil {
 		return fmt.Errorf("job execution failed: %w", err)
 	}
 	return nil
