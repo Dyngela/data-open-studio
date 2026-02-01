@@ -103,9 +103,11 @@ export class JobRealtimeService implements OnDestroy {
             const envelope: WsEnvelope = JSON.parse(event.data);
             if (envelope.type === 'job.progress') {
               const progress: ProgressEvent = { ...envelope.payload, jobId: envelope.jobId };
-              this.zone.run(() => {
+              // Dispatch outside the current CD cycle to avoid NG0100
+              // (node status update recalculates SVG paths mid-check)
+              setTimeout(() => this.zone.run(() => {
                 for (const fn of this.progressListeners) fn(progress);
-              });
+              }));
             }
           } catch {
             // ignore non-JSON frames (pong, etc.)

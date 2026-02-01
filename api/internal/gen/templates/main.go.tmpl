@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	{{- if .UseFlags }}
 	"flag"
 	{{- end }}
@@ -88,7 +91,8 @@ func execute(ctx context.Context, progress lib.ProgressFunc) error {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	{{- if .UseFlags }}
 	// Parse command-line flags

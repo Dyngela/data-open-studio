@@ -377,7 +377,21 @@ func (slf *jobHandler) execute(ctx *gin.Context) {
 	ctx.JSON(http.StatusAccepted, gin.H{"message": "Job execution started", "jobId": id})
 }
 
-func (slf *jobHandler) stop(ctx *gin.Context) {}
+func (slf *jobHandler) stop(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	if err := slf.jobService.Stop(uint(id)); err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to stop job")
+		ctx.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to stop job"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Job stopped", "jobId": id})
+}
 
 func (slf *jobHandler) printCode(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
@@ -393,7 +407,7 @@ func (slf *jobHandler) printCode(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		source:  source,
-		"steps": steps,
+		"source": source,
+		"steps":  steps,
 	})
 }

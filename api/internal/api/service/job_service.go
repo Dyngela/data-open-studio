@@ -5,6 +5,7 @@ import (
 	"api/internal/api/models"
 	"api/internal/api/repo"
 	"api/internal/gen"
+	"api/internal/gen/lib"
 	"errors"
 
 	"github.com/rs/zerolog"
@@ -352,8 +353,30 @@ func (slf *JobService) Execute(id uint) error {
 	slf.logger.Info().Msgf("steps: %v", executer.Steps)
 	slf.logger.Info().Msgf("context: %v", executer.Context)
 
-	return err
+	// Notify frontend via NATS that the job is done
+	slf.notifyJobDone(id, err)
 
+	return err
+}
+
+// notifyJobDone publishes a final progress message (nodeId=0) so the frontend knows the job ended.
+func (slf *JobService) notifyJobDone(jobID uint, jobErr error) {
+	natsURL := api.GetEnv("NATS_URL", "nats://localhost:4222")
+	tenantID := api.GetEnv("TENANT_ID", "default")
+
+	reporter := lib.NewProgressReporter(natsURL, tenantID, jobID)
+	defer reporter.Close()
+
+	progress := reporter.ReportFunc()
+	if jobErr != nil {
+		progress(lib.NewProgress(0, "Pipeline", lib.StatusFailed, 0, jobErr.Error()))
+	} else {
+		progress(lib.NewProgress(0, "Pipeline", lib.StatusCompleted, 0, "Pipeline completed successfully"))
+	}
+}
+
+func (slf *JobService) Stop(id uint) error {
+	return gen.DockerStop(id, slf.logger)
 }
 
 func (slf *JobService) PrintCode(id uint) (string, any, error) {

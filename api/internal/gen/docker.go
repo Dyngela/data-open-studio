@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 //go:embed all:lib
@@ -150,9 +151,25 @@ func (j *JobExecution) dockerCleanup(containerName, imageTag string) {
 	}
 }
 
+// containerName returns a deterministic container name for this job so it can be stopped by job ID.
+func (j *JobExecution) containerName() string {
+	return fmt.Sprintf("job-%d", j.Job.ID)
+}
+
 // newImageTag generates a unique Docker image tag for this job run
 func (j *JobExecution) newImageTag() string {
 	return fmt.Sprintf("job-%d-%s", j.Job.ID, uuid.NewString()[:8])
+}
+
+// DockerStop gracefully stops a running container for the given job ID.
+// docker stop sends SIGTERM, waits for the timeout, then SIGKILL.
+func DockerStop(jobID uint, logger zerolog.Logger) error {
+	name := fmt.Sprintf("job-%d", jobID)
+	logger.Info().Msgf("Stopping container %s", name)
+	if err := pkg.RunCommandLine("", "docker", "stop", "-t", "5", name); err != nil {
+		return fmt.Errorf("failed to stop container %s: %w", name, err)
+	}
+	return nil
 }
 
 func (j *JobExecution) isDebug() bool {

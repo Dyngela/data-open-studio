@@ -3,6 +3,7 @@ package gen
 import (
 	"api"
 	"api/internal/api/models"
+	"api/pkg"
 	"fmt"
 	"log"
 	"os"
@@ -96,7 +97,11 @@ func (j *JobExecution) runInDocker() error {
 	defer os.RemoveAll(workDir)
 
 	imageTag := j.newImageTag()
-	containerName := imageTag
+	containerName := j.containerName()
+
+	// Remove any stale container from a previous run of this job
+	_ = pkg.RunCommandLine("", "docker", "rm", "-f", containerName)
+
 	defer j.dockerCleanup(containerName, imageTag)
 
 	if err := j.dockerBuild(workDir, imageTag); err != nil {

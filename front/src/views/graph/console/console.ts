@@ -24,6 +24,16 @@ export class Console implements AfterViewChecked, OnDestroy {
 
   constructor() {
     this.unsubProgress = this.realtime.onProgress((progress) => {
+      // nodeId === 0 is a job-level message (pipeline finished)
+      if (progress.nodeId === 0) {
+        if (progress.status === 'completed') {
+          this.markSuccess();
+        } else if (progress.status === 'failed') {
+          this.markError(progress.message);
+        }
+        return;
+      }
+
       const statusMap: Record<string, LogEntry['level']> = {
         running: 'info',
         completed: 'success',
@@ -33,10 +43,6 @@ export class Console implements AfterViewChecked, OnDestroy {
       const level = statusMap[progress.status] ?? 'info';
       const rowInfo = progress.rowCount > 0 ? ` (${progress.rowCount} rows)` : '';
       this.addLog(level, `[${progress.nodeName}] ${progress.message}${rowInfo}`);
-
-      if (progress.status === 'failed') {
-        this.markError(`Node "${progress.nodeName}" failed: ${progress.message}`);
-      }
     });
   }
 
