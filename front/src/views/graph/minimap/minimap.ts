@@ -23,6 +23,7 @@ export class Minimap {
   viewportWidth = input(800);
   viewportHeight = input(600);
   panOffset = input({ x: 0, y: 0 });
+  zoom = input(1);
 
   minimapWidth = 200;
   minimapHeight = 150;
@@ -98,13 +99,14 @@ export class Minimap {
     const bounds = this.bounds();
     const scale = this.scale();
     const offset = this.panOffset();
+    const z = this.zoom();
     if (!bounds) return null;
 
     return {
-      x: (-offset.x - bounds.minX) * scale,
-      y: (-offset.y - bounds.minY) * scale,
-      width: this.viewportWidth() * scale,
-      height: this.viewportHeight() * scale,
+      x: (-offset.x / z - bounds.minX) * scale,
+      y: (-offset.y / z - bounds.minY) * scale,
+      width: (this.viewportWidth() / z) * scale,
+      height: (this.viewportHeight() / z) * scale,
     };
   });
 }

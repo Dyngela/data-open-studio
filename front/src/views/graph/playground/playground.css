@@ -20,15 +20,26 @@
   position: relative;
   background-color: #1a1a1a;
   background-image: radial-gradient(circle, #333 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-size: calc(20px * var(--zoom, 1)) calc(20px * var(--zoom, 1));
+  background-position: calc(var(--pan-x, 0) * 1px) calc(var(--pan-y, 0) * 1px);
   overflow: hidden;
   cursor: default;
-  user-select: none; /* Empêche la sélection de texte pendant le drag */
-  min-height: 0; /* Important pour que flex fonctionne correctement */
+  user-select: none;
+  min-height: 0;
 }
 
 .playground-area.panning {
   cursor: grabbing !important;
+}
+
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .connections-layer {
@@ -64,6 +75,15 @@
   stroke-width: 5;
 }
 
+.connection-hit-area {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.connection-selected {
+  filter: drop-shadow(0 0 6px rgba(255, 152, 0, 0.6));
+}
+
 .temp-connection {
   opacity: 0.6;
 }
@@ -85,6 +105,11 @@
 .node-wrapper:active {
   cursor: grabbing;
   z-index: 100;
+}
+
+.node-wrapper.node-selected {
+  filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.7));
+  z-index: 50;
 }
 
 /* Preview du CDK pour le drag depuis le panel */
@@ -283,4 +308,79 @@
 
 .bottom-tab-btn i {
   font-size: 11px;
+}
+
+/* Rename dialog */
+.rename-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+}
+
+.rename-dialog {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #242424;
+  border: 1px solid #444;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  min-width: 220px;
+  transform: translate(-50%, 8px);
+}
+
+.rename-label {
+  font-size: 0.75rem;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rename-input {
+  padding: 0.4rem 0.5rem;
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #e5e7eb;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.rename-input:focus {
+  border-color: #4ec9b0;
+}
+
+.rename-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.rename-btn {
+  padding: 0.3rem 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.rename-btn-cancel {
+  background: #333;
+  color: #ccc;
+}
+
+.rename-btn-cancel:hover {
+  background: #444;
+}
+
+.rename-btn-confirm {
+  background: #4ec9b0;
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+.rename-btn-confirm:hover {
+  background: #5edcc2;
 }

@@ -1,6 +1,8 @@
 import {
+  AfterViewChecked,
   AfterViewInit,
   Component,
+  computed,
   ElementRef,
   HostListener,
   inject,
@@ -12,6 +14,9 @@ import {
 import {CommonModule} from '@angular/common';
 import {ActivatedRoute, RouterOutlet} from '@angular/router';
 import {CdkDragDrop, CdkDropList} from '@angular/cdk/drag-drop';
+import {FormsModule} from '@angular/forms';
+import {ContextMenu} from 'primeng/contextmenu';
+import {MenuItem} from 'primeng/api';
 import {NodePanel} from '../node-panel/node-panel';
 import {NodeInstanceComponent} from '../node-instance/node-instance';
 import {Minimap} from '../minimap/minimap';
@@ -27,15 +32,16 @@ import {NodeGraphService} from '../../../core/nodes-services/node-graph.service'
 import {JobStateService} from '../../../core/nodes-services/job-state.service';
 import {LayoutService} from '../../../core/services/layout-service';
 import {JobRealtimeService} from '../../../core/services/base-ws.service';
+import {NodeRegistryService} from '../../../nodes/node-registry.service';
 
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal],
+  imports: [CommonModule, CdkDropList, FormsModule, ContextMenu, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })
-export class Playground implements OnInit, AfterViewInit, OnDestroy {
+export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
 
   @HostListener('window:mousemove', ['$event'])
   onMouseMove(e: MouseEvent) {
@@ -50,16 +56,30 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
     this.layoutService.isResizing.set(false);
   }
 
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Delete' && !this.isRenaming()) {
+      if (this.selectedConnection()) {
+        this.nodeGraph.deleteConnection(this.selectedConnection()!);
+        this.selectedConnection.set(null);
+      } else if (this.selectedNodeId() !== null) {
+        this.nodeGraph.deleteNode(this.selectedNodeId()!);
+        this.selectedNodeId.set(null);
+      }
+    }
+  }
+
   private route = inject(ActivatedRoute);
   private jobService = inject(JobService);
   protected nodeGraph = inject(NodeGraphService);
   private jobState = inject(JobStateService);
   protected layoutService = inject(LayoutService);
   private realtime = inject(JobRealtimeService);
+  private nodeRegistry = inject(NodeRegistryService);
 
   /** Track how many nodes are still running so we know when the job finishes */
   private runningNodes = new Set<number>();
-  private unsubProgress: () => void;
+  private readonly unsubProgress: () => void;
 
   constructor() {
     // React to every progress message: update node visual status and track completion
@@ -82,15 +102,33 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
 
   protected bottomBar = viewChild<PlaygroundBottomBar>('bottomBar')
   protected playgroundArea = viewChild<ElementRef>('playgroundArea')
+  protected contextMenu = viewChild<ContextMenu>('contextMenu');
 
   readonly nodes = this.nodeGraph.nodes;
   readonly connections = this.nodeGraph.connections;
+
+  // Context menu state
+  protected contextMenuItems = signal<MenuItem[]>([]);
+  private contextWorldPos = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Selection state
+  protected selectedConnection = signal<Connection | null>(null);
+  protected selectedNodeId = signal<number | null>(null);
+
+  // Rename dialog state
+  protected isRenaming = signal(false);
+  protected renameValue = signal('');
+  private renameNodeId = signal<number | null>(null);
+  protected renamePosition = signal<{ x: number; y: number }>({ x: 0, y: 0 });
 
   currentJobId = signal<number | null>(null);
   currentJob = signal<JobWithNodes | null>(null);
   isLoadingJob = signal(false);
 
 
+
+  // Pre-computed connection paths (updated after each render via DOM reading)
+  protected connectionPathStrings = signal<string[]>([]);
 
   // Canvas interaction state
   private isConnecting = signal(false);
@@ -104,10 +142,16 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
   protected panOffset = signal({ x: 0, y: 0 });
   protected isPanning = signal(false);
   private panStart = signal({ x: 0, y: 0 });
+  protected zoom = signal(1);
+
+  protected canvasTransform = computed(
+    () => `translate(${this.panOffset().x}px, ${this.panOffset().y}px) scale(${this.zoom()})`,
+  );
 
   private isDraggingNode = signal(false);
   private draggedNodeId = signal<number | null>(null);
   private dragNodeOffset = signal({ x: 0, y: 0 });
+  private pathUpdateScheduled = false;
 
 
 
@@ -130,6 +174,23 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+
+  ngAfterViewChecked() {
+    if (this.pathUpdateScheduled) return;
+    this.pathUpdateScheduled = true;
+      const conns = this.connections();
+      const newPaths = conns.map(conn =>
+        this.nodeGraph.getConnectionPath(conn, (nodeId, portIndex, portType, connectionType) =>
+          this.getPortPosition(nodeId, portIndex, portType, connectionType),
+        ),
+      );
+      const current = this.connectionPathStrings();
+      if (newPaths.length !== current.length || newPaths.some((p, i) => p !== current[i])) {
+        this.connectionPathStrings.set(newPaths);
+      }
+    this.pathUpdateScheduled = false;
+  }
+
   //#region Mouse event handlers
   onNodeMouseDown(event: MouseEvent, nodeId: number) {
     if (this.isConnecting() || this.isPanning() || event.button !== 0) {
@@ -137,6 +198,8 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
     }
 
     event.stopPropagation();
+    this.selectedNodeId.set(nodeId);
+    this.selectedConnection.set(null);
     this.isDraggingNode.set(true);
     this.draggedNodeId.set(nodeId);
 
@@ -144,13 +207,14 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
     if (node) {
       const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
       const offset = this.panOffset();
+      const z = this.zoom();
 
-      const mouseCanvasX = event.clientX - playgroundRect.left - offset.x;
-      const mouseCanvasY = event.clientY - playgroundRect.top - offset.y;
+      const mouseWorldX = (event.clientX - playgroundRect.left - offset.x) / z;
+      const mouseWorldY = (event.clientY - playgroundRect.top - offset.y) / z;
 
       this.dragNodeOffset.set({
-        x: mouseCanvasX - node.position.x,
-        y: mouseCanvasY - node.position.y,
+        x: mouseWorldX - node.position.x,
+        y: mouseWorldY - node.position.y,
       });
     }
   }
@@ -195,13 +259,14 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
       if (nodeId) {
         const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
         const offset = this.panOffset();
+        const z = this.zoom();
         const dragOffset = this.dragNodeOffset();
 
-        const mouseCanvasX = event.clientX - playgroundRect.left - offset.x;
-        const mouseCanvasY = event.clientY - playgroundRect.top - offset.y;
+        const mouseWorldX = (event.clientX - playgroundRect.left - offset.x) / z;
+        const mouseWorldY = (event.clientY - playgroundRect.top - offset.y) / z;
 
-        const newX = mouseCanvasX - dragOffset.x;
-        const newY = mouseCanvasY - dragOffset.y;
+        const newX = mouseWorldX - dragOffset.x;
+        const newY = mouseWorldY - dragOffset.y;
 
         const adjusted = this.nodeGraph.resolveCollision(
           nodeId, newX, newY, (id) => this.getNodeSize(id),
@@ -238,11 +303,13 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
         source.portType,
       );
 
+      const z = this.zoom();
+      const offset = this.panOffset();
       this.tempConnection.set({
         x1: sourcePortPos.x,
         y1: sourcePortPos.y,
-        x2: event.clientX - playgroundRect.left,
-        y2: event.clientY - playgroundRect.top,
+        x2: (event.clientX - playgroundRect.left - offset.x) / z,
+        y2: (event.clientY - playgroundRect.top - offset.y) / z,
       });
     }
   }
@@ -263,6 +330,9 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    this.selectedConnection.set(null);
+    this.selectedNodeId.set(null);
+
     if (this.isConnecting()) {
       this.isConnecting.set(false);
       this.sourcePort.set(null);
@@ -270,12 +340,152 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  getConnectionPath(connection: Connection): string {
-    return this.nodeGraph.getConnectionPath(
-      connection,
-      (nodeId, portIndex, portType, connectionType) =>
-        this.getPortPosition(nodeId, portIndex, portType, connectionType),
-    );
+  onWheel(event: WheelEvent) {
+    event.preventDefault();
+    if (this.layoutService.activeModal !== null) return;
+    const oldZoom = this.zoom();
+    const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+    const newZoom = Math.min(Math.max(oldZoom * factor, 0.2), 5);
+
+    const rect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    const ratio = newZoom / oldZoom;
+    const oldPan = this.panOffset();
+
+    this.panOffset.set({
+      x: mouseX - (mouseX - oldPan.x) * ratio,
+      y: mouseY - (mouseY - oldPan.y) * ratio,
+    });
+    this.zoom.set(newZoom);
+  }
+
+  isConnectionSelected(connection: Connection): boolean {
+    const sel = this.selectedConnection();
+    if (!sel) return false;
+    return sel.sourceNodeId === connection.sourceNodeId
+      && sel.sourcePort === connection.sourcePort
+      && sel.sourcePortType === connection.sourcePortType
+      && sel.targetNodeId === connection.targetNodeId
+      && sel.targetPort === connection.targetPort
+      && sel.targetPortType === connection.targetPortType;
+  }
+  //#endregion
+
+  //#region Context menu & selection
+  onConnectionClick(event: MouseEvent, connection: Connection) {
+    event.stopPropagation();
+    this.selectedConnection.set(connection);
+    this.selectedNodeId.set(null);
+  }
+
+  onConnectionContextMenu(event: MouseEvent, connection: Connection) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.selectedConnection.set(connection);
+
+    this.contextMenuItems.set([
+      {
+        label: 'Delete Connection',
+        icon: 'pi pi-trash',
+        command: () => {
+          this.nodeGraph.deleteConnection(connection);
+          this.selectedConnection.set(null);
+        },
+      },
+    ]);
+
+    this.contextMenu()?.show(event);
+  }
+
+  onNodeContextMenu(event: MouseEvent, nodeId: number) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.contextMenuItems.set([
+      {
+        label: 'Open Settings',
+        icon: 'pi pi-cog',
+        command: () => this.layoutService.openNodeModal(nodeId),
+      },
+      {
+        label: 'Rename',
+        icon: 'pi pi-pencil',
+        command: () => this.startRename(nodeId, event),
+      },
+      { separator: true },
+      {
+        label: 'Delete',
+        icon: 'pi pi-trash',
+        command: () => this.nodeGraph.deleteNode(nodeId),
+      },
+    ]);
+
+    this.contextMenu()?.show(event);
+  }
+
+  onPlaygroundContextMenu(event: MouseEvent) {
+    event.preventDefault();
+
+    const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
+    if (!playgroundRect) return;
+
+    const offset = this.panOffset();
+    const z = this.zoom();
+    const worldX = (event.clientX - playgroundRect.left - offset.x) / z;
+    const worldY = (event.clientY - playgroundRect.top - offset.y) / z;
+    this.contextWorldPos.set({ x: worldX, y: worldY });
+
+    const nodeTypes = this.nodeRegistry.getNodeTypes();
+    const addNodeItems: MenuItem[] = nodeTypes.map(nt => ({
+      label: nt.label,
+      icon: nt.icon,
+      command: () => {
+        const position = this.nodeGraph.findNonOverlappingPosition(
+          this.contextWorldPos().x,
+          this.contextWorldPos().y,
+        );
+        this.nodeGraph.createNode(nt, position);
+      },
+    }));
+
+    this.contextMenuItems.set([
+      {
+        label: 'Add Node',
+        icon: 'pi pi-plus',
+        items: addNodeItems,
+      },
+    ]);
+
+    this.contextMenu()?.show(event);
+  }
+
+  private startRename(nodeId: number, event: MouseEvent) {
+    const node = this.nodeGraph.getNodeById(nodeId);
+    if (!node) return;
+
+    this.renameNodeId.set(nodeId);
+    this.renameValue.set(node.name || node.type.label);
+    this.renamePosition.set({ x: event.clientX, y: event.clientY });
+    this.isRenaming.set(true);
+  }
+
+  confirmRename() {
+    const nodeId = this.renameNodeId();
+    const value = this.renameValue().trim();
+    if (nodeId !== null && value) {
+      this.nodeGraph.renameNode(nodeId, value);
+    }
+    this.cancelRename();
+  }
+
+  cancelRename() {
+    this.isRenaming.set(false);
+    this.renameNodeId.set(null);
+    this.renameValue.set('');
   }
   //#endregion
 
@@ -285,9 +495,10 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
       const nodeType = event.item.data as NodeType;
       const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
       const offset = this.panOffset();
+      const z = this.zoom();
 
-      const dropX = event.dropPoint.x - playgroundRect.left - offset.x;
-      const dropY = event.dropPoint.y - playgroundRect.top - offset.y;
+      const dropX = (event.dropPoint.x - playgroundRect.left - offset.x) / z;
+      const dropY = (event.dropPoint.y - playgroundRect.top - offset.y) / z;
 
       const position = this.nodeGraph.findNonOverlappingPosition(dropX, dropY);
       this.nodeGraph.createNode(nodeType, position);
@@ -298,11 +509,12 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
 
   private getNodeSize(nodeId: number): { width: number; height: number } {
     const nodeElement = this.playgroundArea()?.nativeElement.querySelector(
-      `[data-node-id="${nodeId}"]`,
+      `.node-instance[data-node-id="${nodeId}"]`,
     ) as HTMLElement | null;
     if (nodeElement) {
       const rect = nodeElement.getBoundingClientRect();
-      return { width: rect.width, height: rect.height };
+      const z = this.zoom();
+      return { width: rect.width / z, height: rect.height / z };
     }
     return {
       width: this.nodeGraph.NODE_DIMENSIONS.width,
@@ -318,38 +530,32 @@ export class Playground implements OnInit, AfterViewInit, OnDestroy {
   ): { x: number; y: number } {
     const node = this.nodeGraph.getNodeById(nodeId);
     if (!node) return { x: 0, y: 0 };
-    const portElement = this.getPortElement(nodeId, portIndex, portType, connectionType);
-    if (portElement && this.playgroundArea) {
-      const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
-      const portRect = portElement.getBoundingClientRect();
 
-      return {
-        x: portRect.left - playgroundRect.left + portRect.width / 2,
-        y: portRect.top - playgroundRect.top + portRect.height / 2,
-      };
+    const playground = this.playgroundArea()?.nativeElement;
+    if (!playground) {
+      return this.nodeGraph.calculatePortPosition(node, portIndex, portType, connectionType);
     }
 
-    // Fallback to calculated position
-    return this.nodeGraph.calculatePortPosition(node, portIndex, portType, connectionType, this.panOffset());
-  }
+    // Build a unique selector that directly targets the port element
+    const dirClass = portType === 'input' ? 'input-port' : 'output-port';
+    const typeClass = `${connectionType}-port`;
+    const selector =
+      `.node-instance[data-node-id="${nodeId}"] .${dirClass}.${typeClass}[data-port-index="${portIndex}"]`;
 
-  private getPortElement(
-    nodeId: number,
-    portIndex: number,
-    portType: Direction,
-    connectionType: PortType = PortType.DATA,
-  ): HTMLElement | null {
-    const nodeElement = this.playgroundArea()?.nativeElement.querySelector(
-      `[data-node-id="${nodeId}"]`,
-    );
-    if (!nodeElement) return null;
+    const portElement = playground.querySelector(selector) as HTMLElement | null;
+    if (!portElement) {
+      return this.nodeGraph.calculatePortPosition(node, portIndex, portType, connectionType);
+    }
 
-    const portSelector =
-      portType === 'input'
-        ? `.input-port.${connectionType}-port[data-port-index="${portIndex}"]`
-        : `.output-port.${connectionType}-port[data-port-index="${portIndex}"]`;
+    const playgroundRect = playground.getBoundingClientRect();
+    const portRect = portElement.getBoundingClientRect();
+    const z = this.zoom();
+    const offset = this.panOffset();
 
-    return nodeElement.querySelector(portSelector);
+    return {
+      x: (portRect.left + portRect.width / 2 - playgroundRect.left - offset.x) / z,
+      y: (portRect.top + portRect.height / 2 - playgroundRect.top - offset.y) / z,
+    };
   }
 
   //#endregion

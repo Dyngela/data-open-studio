@@ -56,6 +56,32 @@ export class NodeGraphService {
     );
   }
 
+  deleteConnection(connection: Connection): void {
+    this.connections.update(conns =>
+      conns.filter(c =>
+        c.sourceNodeId !== connection.sourceNodeId ||
+        c.sourcePort !== connection.sourcePort ||
+        c.sourcePortType !== connection.sourcePortType ||
+        c.targetNodeId !== connection.targetNodeId ||
+        c.targetPort !== connection.targetPort ||
+        c.targetPortType !== connection.targetPortType,
+      ),
+    );
+  }
+
+  deleteNode(nodeId: number): void {
+    this.nodes.update(nodes => nodes.filter(n => n.id !== nodeId));
+    this.connections.update(conns =>
+      conns.filter(c => c.sourceNodeId !== nodeId && c.targetNodeId !== nodeId),
+    );
+  }
+
+  renameNode(nodeId: number, name: string): void {
+    this.nodes.update(nodes =>
+      nodes.map(n => n.id === nodeId ? { ...n, name } : n),
+    );
+  }
+
   updateNodePosition(nodeId: number, position: { x: number; y: number }): void {
     this.nodes.update(nodes =>
       nodes.map(node => (node.id === nodeId ? { ...node, position } : node)),
@@ -90,13 +116,17 @@ export class NodeGraphService {
 
   loadFromJob(job: JobWithNodes): void {
     if (job.nodes && job.nodes.length > 0) {
-      const nodeInstances: NodeInstance[] = job.nodes.map(apiNode => ({
-        id: apiNode.id,
-        type: this.registry.getNodeTypeFromApiType(apiNode.type),
-        position: { x: apiNode.xpos, y: apiNode.ypos },
-        config: (apiNode.data as Record<string, any>) || {},
-        status: 'idle' as const,
-      }));
+      const nodeInstances: NodeInstance[] = job.nodes.map(apiNode => {
+        const nodeType = this.registry.getNodeTypeFromApiType(apiNode.type);
+        return {
+          id: apiNode.id,
+          type: nodeType,
+          name: apiNode.name !== nodeType.label ? apiNode.name : undefined,
+          position: { x: apiNode.xpos, y: apiNode.ypos },
+          config: (apiNode.data as Record<string, any>) || {},
+          status: 'idle' as const,
+        };
+      });
       this.connections.set(job.connexions || [])
       this.nodes.set(nodeInstances);
       this.nodeIdCounter = Math.max(...job.nodes.map(n => n.id)) + 1;
@@ -107,7 +137,7 @@ export class NodeGraphService {
     return this.nodes().map(node => ({
       id: node.id,
       type: this.registry.getApiType(node.type.id),
-      name: node.type.label,
+      name: node.name ?? node.type.label,
       xpos: node.position.x,
       ypos: node.position.y,
       inputPort: [],
@@ -122,7 +152,6 @@ export class NodeGraphService {
     portIndex: number,
     portType: Direction,
     connectionType: PortType,
-    panOffset: { x: number; y: number },
   ): { x: number; y: number } {
     const dim = this.NODE_DIMENSIONS;
     const estimatedHeaderHeight = dim.headerPadding * 2 + 16;
@@ -136,21 +165,16 @@ export class NodeGraphService {
           : dim.width + dim.portOffset - portCenterOffset;
 
       return {
-        x: node.position.x + portX + panOffset.x,
-        y: node.position.y + portY + panOffset.y,
+        x: node.position.x + portX,
+        y: node.position.y + portY,
       };
     }
 
-    // Data ports
-    const portCount =
-      portType === 'input'
-        ? (node.type.hasDataInput ? 1 : 0)
-        : (node.type.hasDataOutput ? 1 : 0);
-
-    const bodyTop = estimatedHeaderHeight + dim.bodyPadding;
-    const totalPortsHeight = portCount * dim.portSize + (portCount - 1) * dim.portGap;
-    const portsStartY = bodyTop - totalPortsHeight / 2;
-    const portY = portsStartY + portIndex * (dim.portSize + dim.portGap) + dim.portSize / 2;
+    // Data ports — fixed top offset (matches CSS: .input-ports/.output-ports { top: 8px })
+    // top is relative to padding box of .node-body, so bodyPadding is NOT added
+    const dataPortCssTop = 8;
+    const portY = estimatedHeaderHeight + dataPortCssTop
+      + portIndex * (dim.portSize + dim.portGap) + dim.portSize / 2;
 
     const portCenterOffset = dim.portSize / 2;
     const portX =
@@ -159,8 +183,8 @@ export class NodeGraphService {
         : dim.width + dim.portOffset - portCenterOffset;
 
     return {
-      x: node.position.x + portX + panOffset.x,
-      y: node.position.y + portY + panOffset.y,
+      x: node.position.x + portX,
+      y: node.position.y + portY,
     };
   }
 

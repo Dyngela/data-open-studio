@@ -15,6 +15,7 @@ export interface NodeType {
 export interface NodeInstance {
   id: number;
   type: NodeType;
+  name?: string;
   position: { x: number; y: number };
   config?: NodeConfig | Record<string, any>;
   status?: 'idle' | 'waiting' | 'running' | 'success' | 'error';

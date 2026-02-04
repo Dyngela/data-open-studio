@@ -19,7 +19,7 @@
     </div>
 
     <i [class]="headerIcon()"></i>
-    <span class="node-title">{{ node().type.label }}</span>
+    <span class="node-title">{{ node().name || node().type.label }}</span>
 
     @if (dbName(); as name) {
       <span class="db-badge" title="Base connectée">DB: {{ name }}</span>

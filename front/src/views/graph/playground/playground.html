@@ -60,59 +60,74 @@
           (mousemove)="onPlaygroundMouseMove($event)"
           (mouseup)="onPlaygroundMouseUp($event)"
           (click)="onPlaygroundClick($event)"
+          (wheel)="onWheel($event)"
+          (contextmenu)="onPlaygroundContextMenu($event)"
           [class.panning]="isPanning()"
+          [style.--zoom]="zoom()"
+          [style.--pan-x]="panOffset().x"
+          [style.--pan-y]="panOffset().y"
         >
+
+          <div class="canvas" [style.transform]="canvasTransform()">
+            <svg class="connections-layer">
+              @for (connection of connections(); track $index) {
+                <!-- Invisible wide hit area for easier clicking -->
+                <path
+                  [attr.d]="connectionPathStrings()[$index] ?? ''"
+                  fill="none"
+                  stroke="transparent"
+                  stroke-width="14"
+                  class="connection-hit-area"
+                  (click)="onConnectionClick($event, connection)"
+                  (contextmenu)="onConnectionContextMenu($event, connection)"
+                />
+                <path
+                  [attr.d]="connectionPathStrings()[$index] ?? ''"
+                  [class]="'connection connection-' + nodeGraph.getConnectionKind(connection) + (isConnectionSelected(connection) ? ' connection-selected' : '')"
+                  fill="none"
+                  [attr.stroke]="isConnectionSelected(connection) ? '#FF9800' : (nodeGraph.getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50')"
+                  [attr.stroke-width]="isConnectionSelected(connection) ? 4 : 3"
+                  (click)="onConnectionClick($event, connection)"
+                  (contextmenu)="onConnectionContextMenu($event, connection)"
+                />
+              }
+
+              @if (tempConnection(); as temp) {
+                <path
+                  [attr.d]="nodeGraph.getTempConnectionPath(temp)"
+                  class="temp-connection"
+                  fill="none"
+                  stroke="#FF9800"
+                  stroke-width="3"
+                  stroke-dasharray="5,5"
+                />
+              }
+            </svg>
+
+            @for (node of nodes(); track node.id) {
+              <div
+                class="node-wrapper"
+                [class.node-selected]="selectedNodeId() === node.id"
+                [style.transform]="'translate(' + node.position.x + 'px, ' + node.position.y + 'px)'"
+                (mousedown)="onNodeMouseDown($event, node.id)"
+                (click)="$event.stopPropagation()"
+                (dblclick)="layoutService.openNodeModal(node.id)"
+                (contextmenu)="onNodeContextMenu($event, node.id)"
+              >
+                <app-node-instance
+                  [node]="node"
+                  [isPanning]="isPanning()"
+                  (outputPortClick)="onOutputPortClick($event)"
+                  (inputPortClick)="onInputPortClick($event)"
+                ></app-node-instance>
+              </div>
+            }
+          </div>
 
           @if (isLoadingJob()) {
             <div class="loading-overlay">
               <i class="pi pi-spin pi-spinner"></i>
               <span>Chargement du job...</span>
-            </div>
-          }
-
-          <svg class="connections-layer">
-            @for (connection of connections(); track $index) {
-              <path
-                [attr.d]="getConnectionPath(connection)"
-                [class]="'connection connection-' + nodeGraph.getConnectionKind(connection)"
-                fill="none"
-                [attr.stroke]="nodeGraph.getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50'"
-                stroke-width="3"
-              />
-            }
-
-            @if (tempConnection(); as temp) {
-              <path
-                [attr.d]="nodeGraph.getTempConnectionPath(temp)"
-                class="temp-connection"
-                fill="none"
-                stroke="#FF9800"
-                stroke-width="3"
-                stroke-dasharray="5,5"
-              />
-            }
-          </svg>
-
-          @for (node of nodes(); track node.id) {
-            <div
-              class="node-wrapper"
-              [style.transform]="
-        'translate(' +
-        (node.position.x + panOffset().x) +
-        'px, ' +
-        (node.position.y + panOffset().y) +
-        'px)'
-      "
-              (mousedown)="onNodeMouseDown($event, node.id)"
-              (dblclick)="layoutService.openNodeModal(node.id)"
-            >
-              <app-node-instance
-                [node]="node"
-                [panOffset]="panOffset()"
-                [isPanning]="isPanning()"
-                (outputPortClick)="onOutputPortClick($event)"
-                (inputPortClick)="onInputPortClick($event)"
-              ></app-node-instance>
             </div>
           }
 
@@ -147,7 +162,35 @@
             [viewportWidth]="layoutService.viewportWidth()"
             [viewportHeight]="layoutService.viewportHeight()"
             [panOffset]="panOffset()"
+            [zoom]="zoom()"
           ></app-minimap>
+
+          <p-contextMenu #contextMenu [model]="contextMenuItems()" appendTo="body" />
+
+          @if (isRenaming()) {
+            <div class="rename-overlay" (click)="cancelRename()">
+              <div
+                class="rename-dialog"
+                [style.left.px]="renamePosition().x"
+                [style.top.px]="renamePosition().y"
+                (click)="$event.stopPropagation()"
+              >
+                <label class="rename-label">Rename node</label>
+                <input
+                  class="rename-input"
+                  [ngModel]="renameValue()"
+                  (ngModelChange)="renameValue.set($event)"
+                  (keydown.enter)="confirmRename()"
+                  (keydown.escape)="cancelRename()"
+                  autofocus
+                />
+                <div class="rename-actions">
+                  <button class="rename-btn rename-btn-cancel" (click)="cancelRename()">Cancel</button>
+                  <button class="rename-btn rename-btn-confirm" (click)="confirmRename()">Rename</button>
+                </div>
+              </div>
+            </div>
+          }
         </div>
 
         @if (layoutService.IsBottomPanelOpen()) {
