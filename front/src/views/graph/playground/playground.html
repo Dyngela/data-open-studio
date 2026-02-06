@@ -73,7 +73,7 @@
               @for (connection of connections(); track $index) {
                 <!-- Invisible wide hit area for easier clicking -->
                 <path
-                  [attr.d]="connectionPathStrings()[$index] ?? ''"
+                  [attr.d]="connectionPathStrings()[$index]"
                   fill="none"
                   stroke="transparent"
                   stroke-width="14"
@@ -82,7 +82,7 @@
                   (contextmenu)="onConnectionContextMenu($event, connection)"
                 />
                 <path
-                  [attr.d]="connectionPathStrings()[$index] ?? ''"
+                  [attr.d]="connectionPathStrings()[$index]"
                   [class]="'connection connection-' + nodeGraph.getConnectionKind(connection) + (isConnectionSelected(connection) ? ' connection-selected' : '')"
                   fill="none"
                   [attr.stroke]="isConnectionSelected(connection) ? '#FF9800' : (nodeGraph.getConnectionKind(connection) === 'data' ? '#2196F3' : '#4CAF50')"

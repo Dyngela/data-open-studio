@@ -27,12 +27,10 @@
 <!--    </label>-->
 <!--    -->
     <kui-select
-    [control]="form.controls.connectionId"
-    [options]="connectionsOptions()"
-
-    >
-
-    </kui-select>
+      [control]="form.controls.connectionId"
+      [options]="connectionsOptions()"
+      (change)="onConnectionSelected($event)"
+    ></kui-select>
 
     <!-- Connection details card -->
     @if (selectedConnection(); as conn) {

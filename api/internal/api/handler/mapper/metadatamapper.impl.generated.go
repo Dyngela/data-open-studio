@@ -51,6 +51,7 @@ func (mapper *MetadataMapperImpl) CreateDbMetadata(req request.CreateMetadata) m
 	result.Password = req.Password
 	result.DatabaseName = req.DatabaseName
 	result.SSLMode = req.SSLMode
+	result.DbType = models.DBType(req.DbType)
 	return result
 
 }
@@ -75,6 +76,9 @@ func (mapper *MetadataMapperImpl) UpdateDbMetadata(req request.UpdateMetadata, m
 	if req.SSLMode != nil {
 		m.SSLMode = *req.SSLMode
 	}
+	if req.DbType != nil {
+		m.DbType = models.DBType(*req.DbType)
+	}
 
 }
 
@@ -98,6 +102,9 @@ func (mapper *MetadataMapperImpl) PatchDbMetadata(req request.UpdateMetadata) ma
 	}
 	if req.SSLMode != nil {
 		result["ssl_mode"] = *req.SSLMode
+	}
+	if req.DbType != nil {
+		result["db_type"] = *req.DbType
 	}
 	return result
 

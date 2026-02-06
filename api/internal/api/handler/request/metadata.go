@@ -9,6 +9,7 @@ type CreateMetadata struct {
 	Password     string `json:"password"`
 	DatabaseName string `json:"databaseName"`
 	SSLMode      string `json:"sslMode"`
+	DbType       string `json:"databaseType" validate:"required"`
 }
 
 type UpdateMetadata struct {
@@ -18,6 +19,7 @@ type UpdateMetadata struct {
 	Password     *string `json:"password,omitempty"`
 	DatabaseName *string `json:"databaseName,omitempty"`
 	SSLMode      *string `json:"sslMode,omitempty"`
+	DbType       *string `json:"databaseType,omitempty"`
 }
 
 // SFTP Metadata DTOs

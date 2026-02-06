@@ -33,9 +33,8 @@ export class SftpMetadataList {
       Validators.maxLength(255),
       Validators.pattern(/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/)
     ]],
-    port: ['22', [
+    port: [22, [
       Validators.required,
-      Validators.pattern(/^\d+$/),
       Validators.min(1),
       Validators.max(65535)
     ]],
@@ -70,7 +69,7 @@ export class SftpMetadataList {
     this.authMode.set('password');
     this.form.reset({
       host: '',
-      port: '22',
+      port: 22,
       user: '',
       password: '',
       privateKey: '',
@@ -118,7 +117,7 @@ export class SftpMetadataList {
     }
 
     this.isSubmitting.set(true);
-    const formValue = this.form.value;
+    const formValue = { ...this.form.value, port: Number(this.form.value.port) };
     const editing = this.editingItem();
 
     if (editing) {

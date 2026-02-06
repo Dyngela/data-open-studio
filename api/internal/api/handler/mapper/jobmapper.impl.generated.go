@@ -57,7 +57,7 @@ func (mapper *JobMapperImpl) PatchJob(req request.UpdateJob) map[string]any {
 
 }
 
-// ToJobResponses  Response mapping (simple, without nodes)
+// ToJobResponses  Message mapping (simple, without nodes)
 func (mapper *JobMapperImpl) ToJobResponses(entities []models.Job) []response.Job {
 	result := make([]response.Job, len(entities))
 	for i, item := range entities {

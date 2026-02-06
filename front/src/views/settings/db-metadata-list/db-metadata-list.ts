@@ -32,9 +32,8 @@ export class DbMetadataList {
       Validators.maxLength(255),
       Validators.pattern(/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/)
     ]],
-    port: ['', [
+    port: [5432, [
       Validators.required,
-      Validators.pattern(/^\d+$/),
       Validators.min(1),
       Validators.max(65535)
     ]],
@@ -52,17 +51,19 @@ export class DbMetadataList {
       Validators.pattern(/^[a-zA-Z_][a-zA-Z0-9_-]*$/)
     ]],
     sslMode: ['disable', Validators.required],
+    databaseType: ['postgres', Validators.required],
   });
 
   openCreateModal() {
     this.editingItem.set(null);
     this.form.reset({
       host: '',
-      port: '5432',
+      port: 5432,
       user: '',
       password: '',
       databaseName: '',
       sslMode: 'disable',
+      databaseType: 'postgres',
     });
     this.showModal.set(true);
   }
@@ -76,6 +77,7 @@ export class DbMetadataList {
       password: item.password,
       databaseName: item.databaseName,
       sslMode: item.sslMode || 'disable',
+      databaseType: item.databaseType || 'postgres',
     });
     this.showModal.set(true);
   }
@@ -93,7 +95,7 @@ export class DbMetadataList {
     }
 
     this.isSubmitting.set(true);
-    const formValue = this.form.value;
+    const formValue = { ...this.form.value, port: Number(this.form.value.port) };
     const editing = this.editingItem();
 
     if (editing) {

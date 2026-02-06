@@ -67,4 +67,5 @@ func initAPI(router *graceful.Graceful) {
 	endpoints.DbMetadataHandler(router)
 	endpoints.DbNodeHandler(router)
 	endpoints.JobHandler(router)
+	endpoints.SqlHandler(router)
 }

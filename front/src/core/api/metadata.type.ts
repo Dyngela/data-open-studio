@@ -38,16 +38,18 @@ export interface CreateDbMetadataRequest {
   password: string;
   databaseName: string;
   sslMode?: string;
+  databaseType: DbType;
 }
 
 // Request: Update DB Metadata
 export interface UpdateDbMetadataRequest {
   host?: string;
-  port?: string;
+  port?: number;
   user?: string;
   password?: string;
   databaseName?: string;
   sslMode?: string;
+  databaseType?: DbType;
 }
 
 // ============ SFTP Metadata ============
@@ -78,7 +80,7 @@ export interface CreateSftpMetadataRequest {
 // Request: Update SFTP Metadata
 export interface UpdateSftpMetadataRequest {
   host?: string;
-  port?: string;
+  port?: number;
   user?: string;
   password?: string;
   privateKey?: string;
