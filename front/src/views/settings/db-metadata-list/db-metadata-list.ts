@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MetadataService } from '../../../core/api/metadata.service';
-import { DbMetadata, CreateDbMetadataRequest, UpdateDbMetadataRequest } from '../../../core/api/metadata.type';
+import { DbMetadata, CreateDbMetadataRequest, UpdateDbMetadataRequest, TestConnectionResult } from '../../../core/api/metadata.type';
 
 @Component({
   selector: 'app-db-metadata-list',
@@ -24,6 +24,10 @@ export class DbMetadataList {
   showModal = signal(false);
   editingItem = signal<DbMetadata | null>(null);
   isSubmitting = signal(false);
+
+  // Test connection
+  isTestingConnection = signal(false);
+  connectionTestResult = signal<TestConnectionResult | null>(null);
 
   // Form
   form: FormGroup = this.fb.group({
@@ -56,6 +60,7 @@ export class DbMetadataList {
 
   openCreateModal() {
     this.editingItem.set(null);
+    this.connectionTestResult.set(null);
     this.form.reset({
       host: '',
       port: 5432,
@@ -70,6 +75,7 @@ export class DbMetadataList {
 
   openEditModal(item: DbMetadata) {
     this.editingItem.set(item);
+    this.connectionTestResult.set(null);
     this.form.patchValue({
       host: item.host,
       port: item.port,
@@ -136,6 +142,26 @@ export class DbMetadataList {
       }
     );
     mutation.execute();
+  }
+
+  testConnection() {
+    if (this.form.invalid || this.isTestingConnection()) return;
+
+    this.isTestingConnection.set(true);
+    this.connectionTestResult.set(null);
+
+    const formValue = { ...this.form.value, port: Number(this.form.value.port) };
+    const mutation = this.metadataService.testDbConnection(
+      (result) => {
+        this.isTestingConnection.set(false);
+        this.connectionTestResult.set(result);
+      },
+      () => {
+        this.isTestingConnection.set(false);
+        this.connectionTestResult.set({ success: false, message: 'Erreur de connexion' });
+      }
+    );
+    mutation.execute(formValue as CreateDbMetadataRequest);
   }
 
   // Helper methods for template

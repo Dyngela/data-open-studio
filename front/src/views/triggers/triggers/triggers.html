@@ -1,1 +1,782 @@
-<p>triggers works!</p>
+<div class="triggers-container">
+  <p-toast />
+  <p-confirmDialog />
+
+  <!-- Header -->
+  <div class="triggers-header">
+    <div class="header-left">
+      <h1>Triggers</h1>
+      <p class="subtitle">Déclenchez automatiquement vos jobs</p>
+    </div>
+    <div class="header-right">
+      <p-button
+        label="Nouveau trigger"
+        icon="pi pi-plus"
+        (onClick)="openCreateModal()"
+      />
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="triggers-content">
+    @if (isLoading()) {
+      <div class="loading-state">
+        <i class="pi pi-spin pi-spinner"></i>
+        <span>Chargement des triggers...</span>
+      </div>
+    } @else if (triggers().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-bolt"></i>
+        <h3>Aucun trigger</h3>
+        <p>Créez un trigger pour automatiser l'exécution de vos jobs</p>
+        <p-button
+          label="Créer un trigger"
+          icon="pi pi-plus"
+          (onClick)="openCreateModal()"
+        />
+      </div>
+    } @else {
+      <!-- Triggers Table -->
+      <p-table
+        [value]="triggers()"
+        [paginator]="true"
+        [rows]="10"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="Affichage {first} à {last} sur {totalRecords} triggers"
+        styleClass="p-datatable-striped"
+      >
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Nom</th>
+            <th>Type</th>
+            <th>Statut</th>
+            <th>Intervalle</th>
+            <th>Dernier poll</th>
+            <th>Jobs liés</th>
+            <th style="width: 150px">Actions</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-trigger>
+          <tr class="trigger-row" (click)="viewTrigger(trigger)">
+            <td>
+              <div class="trigger-name">
+                <i [class]="getTypeIcon(trigger.type)"></i>
+                <div>
+                  <span class="name">{{ trigger.name }}</span>
+                  @if (trigger.description) {
+                    <span class="description">{{ trigger.description }}</span>
+                  }
+                </div>
+              </div>
+            </td>
+            <td>{{ getTypeLabel(trigger.type) }}</td>
+            <td>
+              <p-tag
+                [value]="getStatusLabel(trigger.status)"
+                [severity]="getStatusSeverity(trigger.status)"
+              />
+              @if (trigger.lastError) {
+                <i class="pi pi-exclamation-circle error-icon" [pTooltip]="trigger.lastError"></i>
+              }
+            </td>
+            <td>{{ trigger.pollingInterval }}s</td>
+            <td>{{ formatDate(trigger.lastPolledAt) }}</td>
+            <td>
+              <p-chip [label]="trigger.jobCount + ' job(s)'" />
+            </td>
+            <td>
+              <div class="actions" (click)="$event.stopPropagation()">
+                @if (trigger.status === 'active') {
+                  <p-button
+                    icon="pi pi-pause"
+                    severity="secondary"
+                    [text]="true"
+                    pTooltip="Mettre en pause"
+                    (onClick)="pauseTrigger(trigger)"
+                  />
+                } @else {
+                  <p-button
+                    icon="pi pi-play"
+                    severity="success"
+                    [text]="true"
+                    pTooltip="Activer"
+                    (onClick)="activateTrigger(trigger)"
+                  />
+                }
+                <p-button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  [text]="true"
+                  pTooltip="Supprimer"
+                  (onClick)="deleteTrigger(trigger)"
+                />
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</div>
+
+<!-- Trigger Details Sidebar -->
+@if (selectedTrigger()) {
+  <div class="trigger-details-overlay" (click)="closeTriggerDetails()"></div>
+  <div class="trigger-details-sidebar">
+    <div class="sidebar-header">
+      <div class="header-info">
+        <i [class]="getTypeIcon(selectedTrigger()!.type)"></i>
+        <div>
+          <h2>{{ selectedTrigger()!.name }}</h2>
+          <p-tag
+            [value]="getStatusLabel(selectedTrigger()!.status)"
+            [severity]="getStatusSeverity(selectedTrigger()!.status)"
+          />
+        </div>
+      </div>
+      <div class="header-actions">
+        <p-button
+          icon="pi pi-pencil"
+          severity="secondary"
+          [text]="true"
+          pTooltip="Modifier"
+          (onClick)="openEditModal(selectedTrigger()!)"
+        />
+        <p-button
+          icon="pi pi-times"
+          severity="secondary"
+          [text]="true"
+          (onClick)="closeTriggerDetails()"
+        />
+      </div>
+    </div>
+
+    <p-tabs value="config">
+      <p-tablist>
+        <p-tab value="config">Configuration</p-tab>
+        <p-tab value="rules">Règles</p-tab>
+        <p-tab value="jobs">Jobs liés</p-tab>
+        <p-tab value="history">Historique</p-tab>
+      </p-tablist>
+
+      <p-tabpanels>
+        <!-- Config Tab -->
+        <p-tabpanel value="config">
+          <div class="config-section">
+            <h3>Informations générales</h3>
+            <div class="config-grid">
+              <div class="config-item">
+                <label>Type</label>
+                <span>{{ getTypeLabel(selectedTrigger()!.type) }}</span>
+              </div>
+              <div class="config-item">
+                <label>Intervalle de polling</label>
+                <span>{{ selectedTrigger()!.pollingInterval }} secondes</span>
+              </div>
+              <div class="config-item">
+                <label>Dernier poll</label>
+                <span>{{ formatDate(selectedTrigger()!.lastPolledAt) }}</span>
+              </div>
+            </div>
+
+            @if (selectedTrigger()!.type === 'database' && selectedTrigger()!.config.database) {
+              <h3>Configuration base de données</h3>
+              <div class="config-grid">
+                @if (selectedTrigger()!.config.database!.metadataDatabaseId) {
+                  <div class="config-item">
+                    <label>Connexion</label>
+                    <span>{{ getDbConnectionName(selectedTrigger()!.config.database!.metadataDatabaseId!) }}</span>
+                  </div>
+                }
+                <div class="config-item">
+                  <label>Table surveillée</label>
+                  <span>{{ selectedTrigger()!.config.database!.tableName }}</span>
+                </div>
+                <div class="config-item">
+                  <label>Colonne watermark</label>
+                  <span>{{ selectedTrigger()!.config.database!.watermarkColumn }}</span>
+                </div>
+                <div class="config-item">
+                  <label>Type de watermark</label>
+                  <span>{{ selectedTrigger()!.config.database!.watermarkType }}</span>
+                </div>
+                <div class="config-item">
+                  <label>Dernier watermark</label>
+                  <span>{{ selectedTrigger()!.config.database!.lastWatermark || '-' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </p-tabpanel>
+
+        <!-- Rules Tab -->
+        <p-tabpanel value="rules">
+          <div class="rules-section">
+            <div class="section-header">
+              <h3>Règles de filtrage</h3>
+              <p-button
+                label="Ajouter une règle"
+                icon="pi pi-plus"
+                size="small"
+                (onClick)="openAddRuleModal()"
+              />
+            </div>
+
+            @if (selectedTrigger()!.rules.length === 0) {
+              <div class="empty-rules">
+                <p>Aucune règle définie. Les événements déclencheront les jobs sans filtrage.</p>
+              </div>
+            } @else {
+              <div class="rules-list">
+                @for (rule of selectedTrigger()!.rules; track rule.id) {
+                  <div class="rule-card">
+                    <div class="rule-content">
+                      <span class="rule-name">{{ rule.name || 'Règle sans nom' }}</span>
+                      <div class="rule-conditions">
+                        @for (cond of rule.conditions.all || []; track $index) {
+                          <span class="condition">
+                            {{ cond.field }} {{ cond.operator }} {{ cond.value }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                    <div class="rule-actions">
+                      <p-button
+                        icon="pi pi-pencil"
+                        [text]="true"
+                        size="small"
+                        (onClick)="openEditRuleModal(rule)"
+                      />
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        size="small"
+                        (onClick)="deleteRule(rule)"
+                      />
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </p-tabpanel>
+
+        <!-- Jobs Tab -->
+        <p-tabpanel value="jobs">
+          <div class="jobs-section">
+            <div class="section-header">
+              <h3>Jobs déclenchés</h3>
+              <p-button
+                label="Lier un job"
+                icon="pi pi-link"
+                size="small"
+                (onClick)="openLinkJobModal()"
+              />
+            </div>
+
+            @if (selectedTrigger()!.jobs.length === 0) {
+              <div class="empty-jobs">
+                <p>Aucun job lié. Liez un job pour qu'il soit déclenché automatiquement.</p>
+              </div>
+            } @else {
+              <div class="jobs-list">
+                @for (jobLink of selectedTrigger()!.jobs; track jobLink.id) {
+                  <div class="job-card">
+                    <div class="job-info">
+                      <i class="pi pi-briefcase"></i>
+                      <span class="job-name">{{ jobLink.jobName }}</span>
+                      @if (!jobLink.active) {
+                        <p-tag value="Inactif" severity="secondary" />
+                      }
+                    </div>
+                    <div class="job-actions">
+                      <p-button
+                        icon="pi pi-times"
+                        severity="danger"
+                        [text]="true"
+                        size="small"
+                        pTooltip="Retirer"
+                        (onClick)="unlinkJob(jobLink)"
+                      />
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </p-tabpanel>
+
+        <!-- Executions Tab -->
+        <p-tabpanel value="history">
+          <div class="executions-section">
+            <h3>Dernières exécutions</h3>
+            @if (triggerExecutions().length === 0) {
+              <div class="empty-executions">
+                <p>Aucune exécution enregistrée.</p>
+              </div>
+            } @else {
+              <p-table [value]="triggerExecutions()" styleClass="p-datatable-sm">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>Date</th>
+                    <th>Statut</th>
+                    <th>Événements</th>
+                    <th>Jobs déclenchés</th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-exec>
+                  <tr>
+                    <td>{{ formatDate(exec.startedAt) }}</td>
+                    <td>
+                      <p-tag
+                        [value]="getExecutionStatusLabel(exec.status)"
+                        [severity]="getExecutionStatusSeverity(exec.status)"
+                      />
+                    </td>
+                    <td>{{ exec.eventCount }}</td>
+                    <td>{{ exec.jobsTriggered }}</td>
+                  </tr>
+                </ng-template>
+              </p-table>
+            }
+          </div>
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
+  </div>
+}
+
+<!-- Create/Edit Trigger Modal -->
+<p-dialog
+  [header]="isEditing() ? 'Modifier le trigger' : 'Nouveau trigger'"
+  [(visible)]="showCreateModal"
+  [modal]="true"
+  [style]="{ width: '700px' }"
+  [draggable]="false"
+  [resizable]="false"
+  (onHide)="closeCreateModal()"
+>
+  <!-- Steps -->
+  <div class="wizard-steps">
+    <div class="step" [class.active]="currentStep() === 0" [class.completed]="currentStep() > 0">
+      <span class="step-number">1</span>
+      <span class="step-label">Type</span>
+    </div>
+    <div class="step-connector" [class.completed]="currentStep() > 0"></div>
+    <div class="step" [class.active]="currentStep() === 1" [class.completed]="currentStep() > 1">
+      <span class="step-number">2</span>
+      <span class="step-label">Configuration</span>
+    </div>
+    <div class="step-connector" [class.completed]="currentStep() > 1"></div>
+    <div class="step" [class.active]="currentStep() === 2" [class.completed]="currentStep() > 2">
+      <span class="step-number">3</span>
+      <span class="step-label">Jobs</span>
+    </div>
+    <div class="step-connector" [class.completed]="currentStep() > 2"></div>
+    <div class="step" [class.active]="currentStep() === 3">
+      <span class="step-number">4</span>
+      <span class="step-label">Résumé</span>
+    </div>
+  </div>
+
+  <div class="wizard-content">
+    <!-- Step 0: Basic Info & Type -->
+    @if (currentStep() === 0) {
+      <form [formGroup]="triggerForm">
+        <div class="form-field">
+          <label for="name">Nom du trigger <span class="required">*</span></label>
+          <input
+            id="name"
+            type="text"
+            pInputText
+            formControlName="name"
+            placeholder="Mon trigger"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="description">Description</label>
+          <textarea
+            id="description"
+            pInputText
+            formControlName="description"
+            placeholder="Description du trigger..."
+            rows="2"
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label>Type de trigger <span class="required">*</span></label>
+          <div class="trigger-type-options">
+            @for (opt of triggerTypes; track opt.value) {
+              <div
+                class="type-option"
+                [class.selected]="triggerForm.get('type')?.value === opt.value"
+                (click)="triggerForm.patchValue({ type: opt.value })"
+              >
+                <div class="type-radio">
+                  @if (triggerForm.get('type')?.value === opt.value) {
+                    <i class="pi pi-check-circle"></i>
+                  } @else {
+                    <i class="pi pi-circle"></i>
+                  }
+                </div>
+                <i [class]="opt.icon"></i>
+                <div class="type-info">
+                  <span class="type-label">{{ opt.label }}</span>
+                  <span class="type-desc">{{ opt.description }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="pollingInterval">Intervalle de polling (secondes)</label>
+          <p-inputNumber
+            inputId="pollingInterval"
+            formControlName="pollingInterval"
+            [min]="10"
+            [max]="86400"
+            [showButtons]="true"
+          />
+        </div>
+      </form>
+    }
+
+    <!-- Step 1: Configuration -->
+    @if (currentStep() === 1) {
+      @if (triggerForm.get('type')?.value === 'database') {
+        <!-- Database Configuration -->
+        <div class="config-forms">
+          <div class="form-field">
+            <label>Connexion base de données <span class="required">*</span></label>
+            @if (dbConnections().length === 0) {
+              <div class="no-connections-hint">
+                <i class="pi pi-info-circle"></i>
+                <span>Aucune connexion configurée. Ajoutez-en une dans <strong>Paramètres > Connexions DB</strong>.</span>
+              </div>
+            } @else {
+              <p-select
+                [options]="dbConnections()"
+                [ngModel]="selectedDbConnection()"
+                (ngModelChange)="onDbConnectionSelect($event)"
+                optionLabel="databaseName"
+                placeholder="Sélectionner une connexion"
+                [filter]="true"
+                filterBy="databaseName,host"
+              >
+                <ng-template let-db pTemplate="selectedItem">
+                  @if (db) {
+                    <div class="db-connection-option">
+                      <i class="pi pi-database"></i>
+                      <span>{{ db.databaseName }}</span>
+                      <span class="db-connection-host">{{ db.host }}:{{ db.port }}</span>
+                      <span class="db-connection-type">{{ db.databaseType }}</span>
+                    </div>
+                  }
+                </ng-template>
+                <ng-template let-db pTemplate="item">
+                  <div class="db-connection-option">
+                    <i class="pi pi-database"></i>
+                    <span>{{ db.databaseName }}</span>
+                    <span class="db-connection-host">{{ db.host }}:{{ db.port }}</span>
+                    <span class="db-connection-type">{{ db.databaseType }}</span>
+                  </div>
+                </ng-template>
+              </p-select>
+            }
+          </div>
+
+          @if (selectedDbConnection()) {
+            <h3>Table à surveiller</h3>
+            <form [formGroup]="tableForm">
+              <div class="form-row">
+                <div class="form-field">
+                  <label>Table</label>
+                  <p-select
+                    [options]="availableTables()"
+                    formControlName="tableName"
+                    optionLabel="name"
+                    optionValue="name"
+                    [filter]="true"
+                    filterBy="name"
+                    placeholder="Sélectionner une table"
+                    [loading]="isLoadingTables()"
+                    (onChange)="onTableSelect($event)"
+                  />
+                </div>
+                <div class="form-field">
+                  <label>Colonne watermark</label>
+                  <p-select
+                    [options]="availableColumns()"
+                    formControlName="watermarkColumn"
+                    optionLabel="name"
+                    optionValue="name"
+                    placeholder="Sélectionner une colonne"
+                    [loading]="isLoadingColumns()"
+                  >
+                    <ng-template let-col pTemplate="item">
+                      <div class="column-option">
+                        <span>{{ col.name }}</span>
+                        <span class="column-type">{{ col.dataType }}</span>
+                        @if (col.isPrimary) {
+                          <i class="pi pi-key" pTooltip="Clé primaire"></i>
+                        }
+                      </div>
+                    </ng-template>
+                  </p-select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label>Type de watermark</label>
+                  <p-select
+                    [options]="watermarkTypes"
+                    formControlName="watermarkType"
+                    optionLabel="label"
+                    optionValue="value"
+                  />
+                </div>
+                <div class="form-field">
+                  <label>Taille du batch</label>
+                  <p-inputNumber
+                    formControlName="batchSize"
+                    [min]="1"
+                    [max]="1000"
+                    [showButtons]="true"
+                  />
+                </div>
+              </div>
+            </form>
+          }
+        </div>
+      } @else if (triggerForm.get('type')?.value === 'email') {
+        <div class="coming-soon">
+          <i class="pi pi-envelope"></i>
+          <h3>Configuration email</h3>
+          <p>La configuration des triggers email sera disponible prochainement.</p>
+        </div>
+      } @else {
+        <div class="coming-soon">
+          <i class="pi pi-globe"></i>
+          <h3>Configuration webhook</h3>
+          <p>La configuration des triggers webhook sera disponible prochainement.</p>
+        </div>
+      }
+    }
+
+    <!-- Step 2: Link Jobs -->
+    @if (currentStep() === 2) {
+      <div class="wizard-jobs-section">
+        <h3>Lier des jobs au trigger</h3>
+        <p class="wizard-jobs-hint">Sélectionnez les jobs qui seront déclenchés automatiquement par ce trigger. Vous pourrez en ajouter ou retirer plus tard.</p>
+
+        @if (availableJobs().length === 0) {
+          <div class="empty-jobs-wizard">
+            <i class="pi pi-briefcase"></i>
+            <p>Aucun job disponible. Vous pourrez lier des jobs après la création du trigger.</p>
+          </div>
+        } @else {
+          <div class="wizard-jobs-list">
+            @for (job of availableJobs(); track job.id) {
+              <div
+                class="wizard-job-item"
+                [class.selected]="isJobSelectedForLink(job.id)"
+                (click)="toggleJobForLink(job)"
+              >
+                <div class="wizard-job-check">
+                  @if (isJobSelectedForLink(job.id)) {
+                    <i class="pi pi-check-square"></i>
+                  } @else {
+                    <i class="pi pi-stop"></i>
+                  }
+                </div>
+                <i class="pi pi-briefcase"></i>
+                <div class="wizard-job-info">
+                  <span class="wizard-job-name">{{ job.name }}</span>
+                  <span class="wizard-job-desc">{{ job.description || job.filePath }}</span>
+                </div>
+              </div>
+            }
+          </div>
+          @if (selectedJobsForLink().length > 0) {
+            <div class="wizard-jobs-summary">
+              <i class="pi pi-link"></i>
+              <span>{{ selectedJobsForLink().length }} job(s) sélectionné(s)</span>
+            </div>
+          }
+        }
+      </div>
+    }
+
+    <!-- Step 3: Summary -->
+    @if (currentStep() === 3) {
+      <div class="summary">
+        <h3>Récapitulatif</h3>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <label>Nom</label>
+            <span>{{ triggerForm.get('name')?.value }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Type</label>
+            <span>{{ getTypeLabel(triggerForm.get('type')?.value) }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Intervalle</label>
+            <span>{{ triggerForm.get('pollingInterval')?.value }} secondes</span>
+          </div>
+          @if (triggerForm.get('type')?.value === 'database') {
+            <div class="summary-item">
+              <label>Connexion</label>
+              <span>{{ selectedDbConnection()?.databaseName }} ({{ selectedDbConnection()?.host }}:{{ selectedDbConnection()?.port }})</span>
+            </div>
+            <div class="summary-item">
+              <label>Table</label>
+              <span>{{ tableForm.get('tableName')?.value }}</span>
+            </div>
+            <div class="summary-item">
+              <label>Watermark</label>
+              <span>{{ tableForm.get('watermarkColumn')?.value }} ({{ tableForm.get('watermarkType')?.value }})</span>
+            </div>
+          }
+          <div class="summary-item">
+            <label>Jobs liés</label>
+            @if (selectedJobsForLink().length > 0) {
+              <div class="summary-jobs-chips">
+                @for (job of selectedJobsForLink(); track job.id) {
+                  <p-chip [label]="job.name" icon="pi pi-briefcase" />
+                }
+              </div>
+            } @else {
+              <span class="summary-no-jobs">Aucun job lié</span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="wizard-footer">
+      <p-button
+        label="Annuler"
+        severity="secondary"
+        (onClick)="closeCreateModal()"
+      />
+      <div class="wizard-nav">
+        @if (currentStep() > 0) {
+          <p-button
+            label="Précédent"
+            icon="pi pi-arrow-left"
+            severity="secondary"
+            (onClick)="prevStep()"
+          />
+        }
+        @if (currentStep() < 3) {
+          <p-button
+            label="Suivant"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            [disabled]="!canProceedToNextStep()"
+            (onClick)="nextStep()"
+          />
+        } @else {
+          <p-button
+            [label]="isEditing() ? 'Mettre à jour' : 'Créer'"
+            icon="pi pi-check"
+            [loading]="isSubmitting()"
+            [disabled]="!canProceedToNextStep()"
+            (onClick)="saveTrigger()"
+          />
+        }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Rule Modal -->
+<p-dialog
+  [header]="editingRule() ? 'Modifier la règle' : 'Ajouter une règle'"
+  [(visible)]="showRuleModal"
+  [modal]="true"
+  [style]="{ width: '500px' }"
+>
+  <form [formGroup]="ruleForm">
+    <div class="form-field">
+      <label>Nom de la règle</label>
+      <input pInputText formControlName="name" placeholder="Nom optionnel" />
+    </div>
+    <div class="form-field">
+      <label>Champ <span class="required">*</span></label>
+      <input pInputText formControlName="field" placeholder="ex: status, amount" />
+    </div>
+    <div class="form-field">
+      <label>Opérateur</label>
+      <p-select
+        [options]="conditionOperators"
+        formControlName="operator"
+        optionLabel="label"
+        optionValue="value"
+      />
+    </div>
+    <div class="form-field">
+      <label>Valeur</label>
+      <input pInputText formControlName="value" placeholder="Valeur à comparer" />
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Annuler" severity="secondary" (onClick)="closeRuleModal()" />
+    <p-button
+      [label]="editingRule() ? 'Mettre à jour' : 'Ajouter'"
+      icon="pi pi-check"
+      [disabled]="ruleForm.invalid"
+      (onClick)="saveRule()"
+    />
+  </ng-template>
+</p-dialog>
+
+<!-- Link Job Modal -->
+<p-dialog
+  header="Lier un job"
+  [(visible)]="showLinkJobModal"
+  [modal]="true"
+  [style]="{ width: '500px' }"
+>
+  <div class="link-job-content">
+    <p>Sélectionnez un job à déclencher automatiquement :</p>
+    <div class="jobs-select-list">
+      @for (job of getAvailableJobsToLink(); track job.id) {
+        <div
+          class="job-select-item"
+          [class.selected]="selectedJobToLink()?.id === job.id"
+          (click)="selectedJobToLink.set(job)"
+        >
+          <i class="pi pi-briefcase"></i>
+          <div class="job-select-info">
+            <span class="job-select-name">{{ job.name }}</span>
+            <span class="job-select-desc">{{ job.description || job.filePath }}</span>
+          </div>
+        </div>
+      } @empty {
+        <div class="no-jobs">
+          <p>Tous les jobs sont déjà liés à ce trigger.</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Annuler" severity="secondary" (onClick)="closeLinkJobModal()" />
+    <p-button
+      label="Lier"
+      icon="pi pi-link"
+      [disabled]="!selectedJobToLink()"
+      (onClick)="linkJob()"
+    />
+  </ng-template>
+</p-dialog>

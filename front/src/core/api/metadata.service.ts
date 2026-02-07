@@ -8,7 +8,8 @@ import {
   SftpMetadata,
   CreateSftpMetadataRequest,
   UpdateSftpMetadataRequest,
-  DeleteResponse
+  DeleteResponse,
+  TestConnectionResult,
 } from './metadata.type';
 
 @Injectable({ providedIn: 'root' })
@@ -77,6 +78,20 @@ export class MetadataService {
     );
   }
 
+
+  /**
+   * Test a database connection using metadata form values
+   */
+  testDbConnection(
+    onSuccess?: (data: TestConnectionResult) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<TestConnectionResult, CreateDbMetadataRequest> {
+    return this.api.post<TestConnectionResult, CreateDbMetadataRequest>(
+      `${this.dbPath}/test-connection`,
+      onSuccess,
+      onError
+    );
+  }
 
   /**
    * Get all SFTP metadata entries

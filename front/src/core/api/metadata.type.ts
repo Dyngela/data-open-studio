@@ -90,6 +90,13 @@ export interface UpdateSftpMetadataRequest {
 
 // ============ Common ============
 
+// Response: Test connection result
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  version?: string;
+}
+
 // Response: Delete operation
 export interface DeleteResponse {
   id: number;

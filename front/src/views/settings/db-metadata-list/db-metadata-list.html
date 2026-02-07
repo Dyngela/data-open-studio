@@ -178,6 +178,32 @@
           </div>
         </div>
 
+        <div class="connection-test-section">
+          <button
+            type="button"
+            class="btn secondary"
+            [disabled]="form.invalid || isTestingConnection()"
+            (click)="testConnection()"
+          >
+            @if (isTestingConnection()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-check-circle"></i>
+            }
+            Tester la connexion
+          </button>
+
+          @if (connectionTestResult()) {
+            <div class="test-result" [class.success]="connectionTestResult()!.success" [class.error]="!connectionTestResult()!.success">
+              <i [class]="connectionTestResult()!.success ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+              <span>{{ connectionTestResult()!.message }}</span>
+              @if (connectionTestResult()!.version) {
+                <span class="test-version">{{ connectionTestResult()!.version }}</span>
+              }
+            </div>
+          }
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn secondary" (click)="closeModal()">Annuler</button>
           <button type="submit" class="btn primary" [disabled]="isSubmitting()">

@@ -6,6 +6,7 @@ import (
 	"api/internal/api/handler/middleware"
 	"api/internal/api/handler/request"
 	"api/internal/api/handler/response"
+	"api/internal/api/models"
 	"api/internal/api/service"
 	"api/pkg"
 	"net/http"
@@ -63,6 +64,7 @@ func DbMetadataHandler(router *graceful.Graceful) {
 		db.POST("", dbHandler.create)
 		db.PUT("/:id", dbHandler.update)
 		db.DELETE("/:id", dbHandler.delete)
+		db.POST("/test-connection", dbHandler.testConnection)
 	}
 
 	sftp := routes.Group("/sftp")
@@ -166,6 +168,29 @@ func (slf *dbMetadataHandler) delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"id": id, "deleted": true})
+}
+
+// testConnection tests a database connection from metadata form values
+func (slf *dbMetadataHandler) testConnection(c *gin.Context) {
+	var req request.CreateMetadata
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to parse test connection request")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	cfg := models.DBConnectionConfig{
+		Type:     models.DBType(req.DbType),
+		Host:     req.Host,
+		Port:     req.Port,
+		Database: req.DatabaseName,
+		Username: req.User,
+		Password: req.Password,
+		SSLMode:  req.SSLMode,
+	}
+
+	result := service.TestDatabaseConnection(cfg)
+	c.JSON(http.StatusOK, result)
 }
 
 // getAll returns all SFTP metadata entries
