@@ -1,4 +1,4 @@
-import {Component, inject, computed, effect, OnInit, AfterViewInit, HostListener, signal} from '@angular/core';
+import {Component, inject, computed, effect, OnInit, AfterViewInit, HostListener, signal, untracked} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../core/api/auth.service';
@@ -25,7 +25,7 @@ export class App implements AfterViewInit {
   constructor() {
     effect(() => {
       if (this.authService.isAuthenticated()){
-        this.localMetadata.initialize()
+        untracked(() => this.localMetadata.initialize())
       }
     });
   }

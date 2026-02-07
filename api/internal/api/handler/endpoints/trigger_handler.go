@@ -61,11 +61,6 @@ func TriggerHandler(router *graceful.Graceful) {
 
 		// Execution history
 		routes.GET("/:id/executions", h.getExecutions)
-
-		// Database introspection (for UI wizard)
-		routes.POST("/introspect/test-connection", h.testConnection)
-		routes.POST("/introspect/tables", h.getTables)
-		routes.POST("/introspect/columns", h.getColumns)
 	}
 }
 
@@ -507,58 +502,4 @@ func (slf *triggerHandler) getExecutions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, slf.triggerMapper.ToTriggerExecutionResponses(executions))
-}
-
-// testConnection tests a database connection
-func (slf *triggerHandler) testConnection(c *gin.Context) {
-	var req request.TestDatabaseConnection
-	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		slf.logger.Error().Err(err).Msg("Failed to parse test connection request")
-		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
-		return
-	}
-
-	result := service.TestDatabaseConnection(req.Connection)
-	c.JSON(http.StatusOK, result)
-}
-
-// getTables returns tables from a database for introspection
-func (slf *triggerHandler) getTables(c *gin.Context) {
-	var req request.IntrospectDatabase
-	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		slf.logger.Error().Err(err).Msg("Failed to parse introspect request")
-		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
-		return
-	}
-
-	tables, err := service.IntrospectTables(req.MetadataDatabaseID, req.Connection)
-	if err != nil {
-		slf.logger.Error().Err(err).Msg("Failed to introspect tables")
-		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, response.DatabaseIntrospection{Tables: tables})
-}
-
-// getColumns returns columns for a specific table
-func (slf *triggerHandler) getColumns(c *gin.Context) {
-	var req struct {
-		request.IntrospectDatabase
-		TableName string `json:"tableName" validate:"required"`
-	}
-	if err := pkg.ParseAndValidate(c, &req); err != nil {
-		slf.logger.Error().Err(err).Msg("Failed to parse introspect columns request")
-		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
-		return
-	}
-
-	columns, err := service.IntrospectColumns(req.MetadataDatabaseID, req.Connection, req.TableName)
-	if err != nil {
-		slf.logger.Error().Err(err).Msg("Failed to introspect columns")
-		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, response.DatabaseIntrospection{Columns: columns})
 }

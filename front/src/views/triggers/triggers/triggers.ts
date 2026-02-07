@@ -16,6 +16,7 @@ import { Toast } from 'primeng/toast';
 import { Chip } from 'primeng/chip';
 
 import { TriggerService } from '../../../core/api/trigger.service';
+import { SqlService } from '../../../core/api/sql.service';
 import { JobService } from '../../../core/api/job.service';
 import { MetadataService } from '../../../core/api/metadata.service';
 import { DbMetadata } from '../../../core/api/metadata.type';
@@ -27,14 +28,13 @@ import {
   CreateTriggerRequest,
   UpdateTriggerRequest,
   TriggerConfig,
-  DatabaseTable,
-  DatabaseColumn,
   TriggerRule,
   TriggerJobLink,
   TriggerExecution,
   RuleConditions,
   ConditionOperator,
 } from '../../../core/api/trigger.type';
+import { DatabaseTable, DatabaseColumn } from '../../../core/api/sql.type';
 import { Job } from '../../../core/api/job.type';
 
 interface TriggerTypeOption {
@@ -70,6 +70,7 @@ interface TriggerTypeOption {
 })
 export class Triggers {
   private triggerService = inject(TriggerService);
+  private sqlService = inject(SqlService);
   private jobService = inject(JobService);
   private metadataService = inject(MetadataService);
   private fb = inject(FormBuilder);
@@ -385,7 +386,7 @@ export class Triggers {
 
     this.isLoadingTables.set(true);
 
-    const mutation = this.triggerService.getTables(
+    const mutation = this.sqlService.getTables(
       (result) => {
         this.isLoadingTables.set(false);
         this.availableTables.set(result.tables || []);
@@ -406,7 +407,7 @@ export class Triggers {
 
     this.isLoadingColumns.set(true);
 
-    const mutation = this.triggerService.getColumns(
+    const mutation = this.sqlService.getColumns(
       (result) => {
         this.isLoadingColumns.set(false);
         this.availableColumns.set(result.columns || []);

@@ -13,10 +13,6 @@ import {
   LinkJobRequest,
   DeleteResponse,
   UnlinkJobResponse,
-  TestConnectionRequest,
-  TestConnectionResult,
-  IntrospectDatabaseRequest,
-  DatabaseIntrospection,
   TriggerJobLink,
 } from './trigger.type';
 
@@ -201,45 +197,4 @@ export class TriggerService {
     );
   }
 
-  /**
-   * Test a database connection
-   */
-  testConnection(
-    onSuccess?: (data: TestConnectionResult) => void,
-    onError?: (error: any) => void
-  ): ApiMutation<TestConnectionResult, TestConnectionRequest> {
-    return this.api.post<TestConnectionResult, TestConnectionRequest>(
-      `${this.basePath}/introspect/test-connection`,
-      onSuccess,
-      onError
-    );
-  }
-
-  /**
-   * Get tables from a database
-   */
-  getTables(
-    onSuccess?: (data: DatabaseIntrospection) => void,
-    onError?: (error: any) => void
-  ): ApiMutation<DatabaseIntrospection, IntrospectDatabaseRequest> {
-    return this.api.post<DatabaseIntrospection, IntrospectDatabaseRequest>(
-      `${this.basePath}/introspect/tables`,
-      onSuccess,
-      onError
-    );
-  }
-
-  /**
-   * Get columns from a table
-   */
-  getColumns(
-    onSuccess?: (data: DatabaseIntrospection) => void,
-    onError?: (error: any) => void
-  ): ApiMutation<DatabaseIntrospection, IntrospectDatabaseRequest> {
-    return this.api.post<DatabaseIntrospection, IntrospectDatabaseRequest>(
-      `${this.basePath}/introspect/columns`,
-      onSuccess,
-      onError
-    );
-  }
 }

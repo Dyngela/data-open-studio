@@ -133,30 +133,6 @@ export interface TriggerExecution {
   eventSample?: string;
 }
 
-// Database introspection types
-export interface DatabaseTable {
-  schema: string;
-  name: string;
-}
-
-export interface DatabaseColumn {
-  name: string;
-  dataType: string;
-  isNullable: boolean;
-  isPrimary: boolean;
-}
-
-export interface DatabaseIntrospection {
-  tables?: DatabaseTable[];
-  columns?: DatabaseColumn[];
-}
-
-export interface TestConnectionResult {
-  success: boolean;
-  message: string;
-  version?: string;
-}
-
 // Request types
 export interface CreateTriggerRequest {
   name: string;
@@ -187,16 +163,6 @@ export interface LinkJobRequest {
   jobId: number;
   priority?: number;
   passEventData?: boolean;
-}
-
-export interface TestConnectionRequest {
-  connection: DBConnectionConfig;
-}
-
-export interface IntrospectDatabaseRequest {
-  metadataDatabaseId?: number;
-  connection?: DBConnectionConfig;
-  tableName?: string; // For column introspection
 }
 
 // Response types

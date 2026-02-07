@@ -5,7 +5,11 @@ import {
   GuessQueryRequest,
   GuessQueryResponse,
   OptimizeQueryRequest,
-  OptimizeQueryResponse
+  OptimizeQueryResponse,
+  TestConnectionRequest,
+  TestConnectionResult,
+  IntrospectDatabaseRequest,
+  DatabaseIntrospection,
 } from './sql.type';
 
 @Injectable({
@@ -31,6 +35,39 @@ export class SqlService {
   ): ApiMutation<OptimizeQueryResponse, OptimizeQueryRequest> {
     return this.api.post<OptimizeQueryResponse, OptimizeQueryRequest>(
       '/sql/optimize-query',
+      onSuccess,
+      onError
+    );
+  }
+
+  testConnection(
+    onSuccess?: (data: TestConnectionResult) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<TestConnectionResult, TestConnectionRequest> {
+    return this.api.post<TestConnectionResult, TestConnectionRequest>(
+      '/sql/introspect/test-connection',
+      onSuccess,
+      onError
+    );
+  }
+
+  getTables(
+    onSuccess?: (data: DatabaseIntrospection) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<DatabaseIntrospection, IntrospectDatabaseRequest> {
+    return this.api.post<DatabaseIntrospection, IntrospectDatabaseRequest>(
+      '/sql/introspect/tables',
+      onSuccess,
+      onError
+    );
+  }
+
+  getColumns(
+    onSuccess?: (data: DatabaseIntrospection) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<DatabaseIntrospection, IntrospectDatabaseRequest> {
+    return this.api.post<DatabaseIntrospection, IntrospectDatabaseRequest>(
+      '/sql/introspect/columns',
       onSuccess,
       onError
     );
