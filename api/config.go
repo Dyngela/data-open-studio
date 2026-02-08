@@ -49,6 +49,14 @@ type AppConfig struct {
 		Password string
 		DB       int
 	}
+	SmtpConfig struct {
+		Host     string
+		Port     int
+		Username string
+		Password string
+		UseTLS   bool
+		From     string
+	}
 }
 
 var config AppConfig
@@ -104,6 +112,21 @@ func InitConfig(envfile string) {
 			Port:     GetEnv("REDIS_PORT", "6379"),
 			Password: GetEnv("REDIS_PASSWORD", ""),
 			DB:       getIntEnvOrDefault("REDIS_DB", 0),
+		},
+		SmtpConfig: struct {
+			Host     string
+			Port     int
+			Username string
+			Password string
+			UseTLS   bool
+			From     string
+		}{
+			Host:     GetEnv("SMTP_HOST", ""),
+			Port:     getIntEnvOrDefault("SMTP_PORT", 587),
+			Username: GetEnv("SMTP_USERNAME", ""),
+			Password: GetEnv("SMTP_PASSWORD", ""),
+			UseTLS:   GetEnv("SMTP_USE_TLS", "true") == "true",
+			From:     GetEnv("SMTP_FROM", ""),
 		},
 	}
 

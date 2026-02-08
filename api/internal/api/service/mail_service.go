@@ -36,6 +36,82 @@ func NewMailService() *MailService {
 	}
 }
 
+// SendInternal sends an email using application-level SMTP config from .env.
+// It uses SMTP_FROM as the sender address (falls back to SMTP_USERNAME).
+func (s *MailService) SendInternal(msg EmailMessage) error {
+	cfg := api.GetConfig().SmtpConfig
+	if cfg.Host == "" || cfg.Username == "" {
+		return fmt.Errorf("internal SMTP not configured (SMTP_HOST / SMTP_USERNAME missing)")
+	}
+	if len(msg.To) == 0 {
+		return fmt.Errorf("no recipients specified")
+	}
+
+	from := cfg.From
+	if from == "" {
+		from = cfg.Username
+	}
+
+	m := gomail.NewMsg()
+	if err := m.From(from); err != nil {
+		return fmt.Errorf("failed to set from: %w", err)
+	}
+	if err := m.To(msg.To...); err != nil {
+		return fmt.Errorf("failed to set to: %w", err)
+	}
+	if len(msg.CC) > 0 {
+		if err := m.Cc(msg.CC...); err != nil {
+			return fmt.Errorf("failed to set cc: %w", err)
+		}
+	}
+	if len(msg.BCC) > 0 {
+		if err := m.Bcc(msg.BCC...); err != nil {
+			return fmt.Errorf("failed to set bcc: %w", err)
+		}
+	}
+
+	m.Subject(msg.Subject)
+	if msg.IsHTML {
+		m.SetBodyString(gomail.TypeTextHTML, msg.Body)
+	} else {
+		m.SetBodyString(gomail.TypeTextPlain, msg.Body)
+	}
+
+	tlsPolicy := gomail.TLSOpportunistic
+	if cfg.UseTLS {
+		tlsPolicy = gomail.TLSMandatory
+	}
+
+	opts := []gomail.Option{
+		gomail.WithPort(cfg.Port),
+		gomail.WithTLSPolicy(tlsPolicy),
+	}
+	if cfg.Password != "" {
+		opts = append(opts,
+			gomail.WithSMTPAuth(gomail.SMTPAuthPlain),
+			gomail.WithUsername(cfg.Username),
+			gomail.WithPassword(cfg.Password),
+		)
+	}
+	client, err := gomail.NewClient(cfg.Host, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to create SMTP client: %w", err)
+	}
+
+	if err := client.DialAndSend(m); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	s.logger.Info().Strs("to", msg.To).Str("subject", msg.Subject).Msg("Internal email sent")
+	return nil
+}
+
+// IsInternalSmtpConfigured returns true when the app-level SMTP settings are filled in
+func (s *MailService) IsInternalSmtpConfigured() bool {
+	cfg := api.GetConfig().SmtpConfig
+	return cfg.Host != "" && cfg.Username != ""
+}
+
 // SendWithMetadata loads MetadataEmail by ID and sends an email via SMTP
 func (s *MailService) SendWithMetadata(metadataID uint, msg EmailMessage) error {
 	var meta models.MetadataEmail
