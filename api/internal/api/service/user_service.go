@@ -56,7 +56,7 @@ func (slf *UserService) Register(registerDTO request.RegisterDTO) (*response.Aut
 		Actif:    true,
 	}
 
-	if err = slf.userRepo.Create(user); err != nil {
+	if err = slf.userRepo.Create(&user); err != nil {
 		slf.logger.Error().Err(err).Msg("Error creating user")
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (slf *UserService) Register(registerDTO request.RegisterDTO) (*response.Aut
 	}
 
 	user.RefreshToken = refreshToken
-	if err = slf.userRepo.Update(user); err != nil {
+	if err = slf.userRepo.Update(&user); err != nil {
 		slf.logger.Error().Err(err).Msg("Error updating user with refresh token")
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (slf *UserService) Login(loginDTO request.LoginDTO) (*response.AuthResponse
 	}
 
 	user.RefreshToken = refreshToken
-	if err = slf.userRepo.Update(user); err != nil {
+	if err = slf.userRepo.Update(&user); err != nil {
 		slf.logger.Error().Err(err).Msg("Error updating user with refresh token")
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (slf *UserService) RefreshToken(refreshToken string) (response.AuthResponse
 	}
 
 	user.RefreshToken = newRefreshToken
-	if err = slf.userRepo.Update(user); err != nil {
+	if err = slf.userRepo.Update(&user); err != nil {
 		slf.logger.Error().Err(err).Msg("Error updating user with refresh token")
 		return response.AuthResponseDTO{}, err
 	}

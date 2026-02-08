@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS metadata_database (
     id SERIAL PRIMARY KEY,
     host VARCHAR(255) NOT NULL,
-    port VARCHAR(10) NOT NULL,
+    port int NOT NULL,
     "user" VARCHAR(100) NOT NULL,
     password VARCHAR(255) NOT NULL,
     database_name VARCHAR(100) NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS metadata_database (
 CREATE TABLE IF NOT EXISTS metadata_sftp (
     id SERIAL PRIMARY KEY,
     host VARCHAR(255) NOT NULL,
-    port VARCHAR(10) NOT NULL DEFAULT '22',
+    port int NOT NULL DEFAULT 22,
     "user" VARCHAR(100) NOT NULL,
     password VARCHAR(255) DEFAULT '',
     private_key TEXT DEFAULT '',

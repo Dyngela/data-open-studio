@@ -155,14 +155,15 @@ export class BaseApiService {
             }),
             finalize(() => isLoading.set(false))
           )
-          .subscribe(async res => {
+          .subscribe(res => {
             if (res !== null) {
               data.set(res);
-              success.set({ data: res, timestamp: Date.now() });
 
               if (onSuccess) {
-                await onSuccess(res);
+                onSuccess(res);
               }
+
+              success.set({ data: res, timestamp: Date.now() });
 
               if (options.showSuccessMessage) {
                 this.handleSuccess(method, options.successMessage);

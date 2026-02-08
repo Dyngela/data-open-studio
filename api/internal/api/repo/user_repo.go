@@ -27,11 +27,11 @@ func (slf *UserRepository) FindByID(id uint) (models.User, error) {
 	return user, err
 }
 
-func (slf *UserRepository) Create(user models.User) error {
+func (slf *UserRepository) Create(user *models.User) error {
 	return slf.Db.Create(user).Error
 }
 
-func (slf *UserRepository) Update(user models.User) error {
+func (slf *UserRepository) Update(user *models.User) error {
 	return slf.Db.Save(user).Error
 }
 
