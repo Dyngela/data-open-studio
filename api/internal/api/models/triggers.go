@@ -128,7 +128,10 @@ const (
 
 // EmailTriggerConfig holds configuration for email polling triggers
 type EmailTriggerConfig struct {
-	// IMAP server settings
+	// Reference to MetadataEmail (alternative to inline credentials)
+	MetadataEmailID *uint `json:"metadataEmailId,omitempty"`
+
+	// IMAP server settings (inline, used if MetadataEmailID is nil)
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
 	Username string `json:"username"`

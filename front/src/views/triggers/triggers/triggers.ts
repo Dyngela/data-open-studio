@@ -19,7 +19,7 @@ import { TriggerService } from '../../../core/api/trigger.service';
 import { SqlService } from '../../../core/api/sql.service';
 import { JobService } from '../../../core/api/job.service';
 import { MetadataService } from '../../../core/api/metadata.service';
-import { DbMetadata } from '../../../core/api/metadata.type';
+import { DbMetadata, EmailMetadata } from '../../../core/api/metadata.type';
 import {
   Trigger,
   TriggerWithDetails,
@@ -89,6 +89,11 @@ export class Triggers {
   dbMetadataResult = this.metadataService.getAllDb();
   dbConnections = computed(() => this.dbMetadataResult.data() ?? []);
   selectedDbConnection = signal<DbMetadata | null>(null);
+
+  // Metadata Email connections
+  emailMetadataResult = this.metadataService.getAllEmail();
+  emailConnections = computed(() => this.emailMetadataResult.data() ?? []);
+  selectedEmailConnection = signal<EmailMetadata | null>(null);
 
   // Selected trigger for details view
   selectedTrigger = signal<TriggerWithDetails | null>(null);
@@ -171,6 +176,7 @@ export class Triggers {
   // Forms
   triggerForm: FormGroup;
   tableForm: FormGroup;
+  emailForm: FormGroup;
 
   constructor() {
     // Main trigger form
@@ -187,6 +193,15 @@ export class Triggers {
       watermarkColumn: ['', Validators.required],
       watermarkType: ['int', Validators.required],
       batchSize: [100, [Validators.min(1), Validators.max(1000)]],
+    });
+
+    // Email form
+    this.emailForm = this.fb.group({
+      folder: ['INBOX'],
+      fromAddress: [''],
+      toAddress: [''],
+      subjectPattern: [''],
+      markAsRead: [false],
     });
 
     // Rule form
@@ -308,6 +323,23 @@ export class Triggers {
       });
     }
 
+    if (trigger.type === 'email' && trigger.config.email) {
+      const emailConfig = trigger.config.email;
+      if (emailConfig.metadataEmailId) {
+        const match = this.emailConnections().find(c => c.id === emailConfig.metadataEmailId);
+        if (match) {
+          this.selectedEmailConnection.set(match);
+        }
+      }
+      this.emailForm.patchValue({
+        folder: emailConfig.folder || 'INBOX',
+        fromAddress: emailConfig.fromAddress || '',
+        toAddress: emailConfig.toAddress || '',
+        subjectPattern: emailConfig.subjectPattern || '',
+        markAsRead: emailConfig.markAsRead || false,
+      });
+    }
+
     this.showCreateModal.set(true);
   }
 
@@ -329,7 +361,15 @@ export class Triggers {
       watermarkType: 'int',
       batchSize: 100,
     });
+    this.emailForm.reset({
+      folder: 'INBOX',
+      fromAddress: '',
+      toAddress: '',
+      subjectPattern: '',
+      markAsRead: false,
+    });
     this.selectedDbConnection.set(null);
+    this.selectedEmailConnection.set(null);
     this.availableTables.set([]);
     this.availableColumns.set([]);
     this.selectedJobsForLink.set([]);
@@ -357,6 +397,9 @@ export class Triggers {
       const type = this.triggerForm.get('type')?.value;
       if (type === 'database') {
         return !!this.selectedDbConnection() && this.tableForm.valid;
+      }
+      if (type === 'email') {
+        return !!this.selectedEmailConnection();
       }
       return true;
     }
@@ -543,6 +586,22 @@ export class Triggers {
           watermarkColumn: table.watermarkColumn,
           watermarkType: table.watermarkType,
           batchSize: table.batchSize,
+        },
+      };
+    }
+
+    if (type === 'email') {
+      const email = this.selectedEmailConnection();
+      const emailValues = this.emailForm.value;
+
+      return {
+        email: {
+          metadataEmailId: email?.id,
+          folder: emailValues.folder || 'INBOX',
+          fromAddress: emailValues.fromAddress || undefined,
+          toAddress: emailValues.toAddress || undefined,
+          subjectPattern: emailValues.subjectPattern || undefined,
+          markAsRead: emailValues.markAsRead || false,
         },
       };
     }
@@ -821,6 +880,15 @@ export class Triggers {
   getDbConnectionName(metadataId: number): string {
     const db = this.dbConnections().find(c => c.id === metadataId);
     return db ? `${db.databaseName} (${db.host}:${db.port})` : `Connexion #${metadataId}`;
+  }
+
+  getEmailConnectionLabel(email: EmailMetadata): string {
+    return `${email.name || email.username} (${email.imapHost}:${email.imapPort})`;
+  }
+
+  getEmailConnectionName(metadataId: number): string {
+    const email = this.emailConnections().find(c => c.id === metadataId);
+    return email ? `${email.name || email.username} (${email.imapHost}:${email.imapPort})` : `Connexion #${metadataId}`;
   }
 
   formatDate(dateStr: string | undefined): string {

@@ -4,10 +4,13 @@ import (
 	"api"
 	"api/internal/api/models"
 	"api/internal/api/repo"
+	"bytes"
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,6 +18,10 @@ import (
 	"time"
 
 	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/emersion/go-imap/v2"
+	"github.com/emersion/go-imap/v2/imapclient"
+	gomessage "github.com/emersion/go-message"
+	gomail "github.com/emersion/go-message/mail"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
@@ -100,7 +107,6 @@ func (slf *TriggerPollerService) dispatchWork() {
 	}
 
 	if len(triggers) == 0 {
-		slf.logger.Debug().Msg("No active triggers found")
 		return
 	}
 
@@ -343,10 +349,294 @@ func (slf *TriggerPollerService) pollEmail(trigger models.Trigger) ([]map[string
 		return nil, fmt.Errorf("no email configuration")
 	}
 
-	// TODO: Implement IMAP polling
-	// This requires an IMAP client library like github.com/emersion/go-imap
-	// For now, return a placeholder error
-	return nil, fmt.Errorf("email polling not yet implemented")
+	// Resolve credentials
+	host, port, username, password, useTLS, err := slf.resolveEmailCredentials(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Connect to IMAP server
+	addr := fmt.Sprintf("%s:%d", host, port)
+	var client *imapclient.Client
+	if useTLS {
+		client, err = imapclient.DialTLS(addr, &imapclient.Options{
+			TLSConfig: &tls.Config{ServerName: host},
+		})
+	} else {
+		client, err = imapclient.DialInsecure(addr, nil)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to IMAP: %w", err)
+	}
+	defer client.Close()
+
+	// Login
+	if err := client.Login(username, password).Wait(); err != nil {
+		return nil, fmt.Errorf("IMAP login failed: %w", err)
+	}
+
+	// Select folder
+	folder := cfg.Folder
+	if folder == "" {
+		folder = "INBOX"
+	}
+	if _, err := client.Select(folder, nil).Wait(); err != nil {
+		return nil, fmt.Errorf("failed to select folder: %w", err)
+	}
+
+	// Search for messages with UID > LastUID
+	searchCriteria := &imap.SearchCriteria{
+		UID: []imap.UIDSet{{imap.UIDRange{
+			Start: imap.UID(cfg.LastUID + 1),
+			Stop:  0, // 0 means * (all remaining)
+		}}},
+	}
+
+	searchData, err := client.UIDSearch(searchCriteria, nil).Wait()
+	if err != nil {
+		return nil, fmt.Errorf("IMAP search failed: %w", err)
+	}
+
+	uids := searchData.AllUIDs()
+	if len(uids) == 0 {
+		return nil, nil // No new messages
+	}
+
+	// Build UID set from search results
+	uidSet := imap.UIDSetNum(uids...)
+
+	// Fetch messages
+	fetchOptions := &imap.FetchOptions{
+		Envelope:    true,
+		UID:         true,
+		BodySection: []*imap.FetchItemBodySection{{}}, // Fetch full body
+	}
+
+	fetchCmd := client.Fetch(uidSet, fetchOptions)
+	defer fetchCmd.Close()
+
+	var events []map[string]interface{}
+	var maxUID uint32
+
+	for {
+		msg := fetchCmd.Next()
+		if msg == nil {
+			break
+		}
+
+		// Collect all data from the message
+		buf, err := msg.Collect()
+		if err != nil {
+			slf.logger.Warn().Err(err).Msg("Failed to collect IMAP message data")
+			continue
+		}
+
+		// Track max UID
+		if uint32(buf.UID) > maxUID {
+			maxUID = uint32(buf.UID)
+		}
+
+		envelope := buf.Envelope
+		if envelope == nil {
+			continue
+		}
+
+		// Get body data from body sections
+		var bodyData []byte
+		if len(buf.BodySection) > 0 {
+			bodyData = buf.BodySection[0].Bytes
+		}
+
+		// Parse body for attachment detection and text extraction
+		hasAttachment, bodyText := slf.parseMessageBody(bodyData)
+
+		// Apply filter chain
+		if !slf.emailMatchesFilters(envelope, hasAttachment, bodyText, cfg) {
+			continue
+		}
+
+		// Build event map
+		event := map[string]interface{}{
+			"uid":           uint32(buf.UID),
+			"subject":       envelope.Subject,
+			"date":          envelope.Date.Format(time.RFC3339),
+			"messageId":     envelope.MessageID,
+			"body":          bodyText,
+			"hasAttachment": hasAttachment,
+		}
+
+		// From
+		if len(envelope.From) > 0 {
+			event["from"] = envelope.From[0].Addr()
+			event["fromName"] = envelope.From[0].Name
+		}
+
+		// To
+		if len(envelope.To) > 0 {
+			toAddrs := make([]string, len(envelope.To))
+			for i, addr := range envelope.To {
+				toAddrs[i] = addr.Addr()
+			}
+			event["to"] = strings.Join(toAddrs, ", ")
+		}
+
+		// CC
+		if len(envelope.Cc) > 0 {
+			ccAddrs := make([]string, len(envelope.Cc))
+			for i, addr := range envelope.Cc {
+				ccAddrs[i] = addr.Addr()
+			}
+			event["cc"] = strings.Join(ccAddrs, ", ")
+		}
+
+		events = append(events, event)
+	}
+
+	// Mark as read if configured
+	if cfg.MarkAsRead && len(events) > 0 {
+		storeFlags := imap.StoreFlags{
+			Op:    imap.StoreFlagsAdd,
+			Flags: []imap.Flag{imap.FlagSeen},
+		}
+		_ = client.Store(uidSet, &storeFlags, nil).Close()
+	}
+
+	// Update LastUID
+	if maxUID > cfg.LastUID {
+		_ = slf.triggerRepo.UpdateEmailUID(trigger.ID, maxUID)
+	}
+
+	return events, nil
+}
+
+// resolveEmailCredentials resolves IMAP credentials from MetadataEmailID or inline config
+func (slf *TriggerPollerService) resolveEmailCredentials(cfg *models.EmailTriggerConfig) (host string, port int, username, password string, useTLS bool, err error) {
+	if cfg.MetadataEmailID != nil {
+		var meta models.MetadataEmail
+		if err := slf.triggerRepo.Db.First(&meta, *cfg.MetadataEmailID).Error; err != nil {
+			return "", 0, "", "", false, fmt.Errorf("failed to load email metadata: %w", err)
+		}
+		return meta.ImapHost, meta.ImapPort, meta.Username, meta.Password, meta.UseTLS, nil
+	}
+	return cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.UseTLS, nil
+}
+
+// emailMatchesFilters checks if a message matches the trigger's filter criteria
+func (slf *TriggerPollerService) emailMatchesFilters(envelope *imap.Envelope, hasAttachment bool, bodyText string, cfg *models.EmailTriggerConfig) bool {
+	// From filter
+	if cfg.FromAddress != "" {
+		matched := false
+		for _, addr := range envelope.From {
+			if strings.EqualFold(addr.Addr(), cfg.FromAddress) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	// To filter
+	if cfg.ToAddress != "" {
+		matched := false
+		for _, addr := range envelope.To {
+			if strings.EqualFold(addr.Addr(), cfg.ToAddress) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	// Subject pattern (regex)
+	if cfg.SubjectPattern != "" {
+		re, err := regexp.Compile(cfg.SubjectPattern)
+		if err != nil {
+			slf.logger.Warn().Str("pattern", cfg.SubjectPattern).Msg("Invalid subject regex pattern")
+			return false
+		}
+		if !re.MatchString(envelope.Subject) {
+			return false
+		}
+	}
+
+	// CC filter
+	if len(cfg.CCAddresses) > 0 {
+		ccSet := make(map[string]bool)
+		for _, addr := range envelope.Cc {
+			ccSet[strings.ToLower(addr.Addr())] = true
+		}
+		matched := false
+		for _, required := range cfg.CCAddresses {
+			if ccSet[strings.ToLower(required)] {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	// Attachment filter
+	if cfg.HasAttachment != nil {
+		if *cfg.HasAttachment != hasAttachment {
+			return false
+		}
+	}
+
+	return true
+}
+
+// parseMessageBody parses a MIME message body to extract text and detect attachments
+func (slf *TriggerPollerService) parseMessageBody(bodyData []byte) (hasAttachment bool, bodyText string) {
+	if len(bodyData) == 0 {
+		return false, ""
+	}
+
+	// Register the charset decoder to avoid unknown charset errors
+	gomessage.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
+		return input, nil // Pass-through for unknown charsets
+	}
+
+	reader, err := gomail.CreateReader(bytes.NewReader(bodyData))
+	if err != nil {
+		// If we can't parse as MIME, treat raw body as text
+		return false, string(bodyData)
+	}
+	defer reader.Close()
+
+	var textParts []string
+
+	for {
+		part, err := reader.NextPart()
+		if err != nil {
+			break
+		}
+
+		switch h := part.Header.(type) {
+		case *gomail.InlineHeader:
+			ct, _, _ := h.ContentType()
+			if strings.HasPrefix(ct, "text/") {
+				data, err := io.ReadAll(part.Body)
+				if err == nil {
+					textParts = append(textParts, string(data))
+				}
+			}
+		case *gomail.AttachmentHeader:
+			hasAttachment = true
+			_ = h
+		}
+	}
+
+	if len(textParts) > 0 {
+		bodyText = strings.Join(textParts, "\n")
+	}
+
+	return hasAttachment, bodyText
 }
 
 // filterEventsByRules filters events based on trigger rules

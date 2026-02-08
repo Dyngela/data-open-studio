@@ -12,5 +12,6 @@ export class Settings {
   tabs = [
     { label: 'Connexions DB', path: 'db', icon: 'pi pi-database' },
     { label: 'Connexions SFTP', path: 'sftp', icon: 'pi pi-cloud' },
+    { label: 'Connexions Email', path: 'email', icon: 'pi pi-envelope' },
   ];
 }

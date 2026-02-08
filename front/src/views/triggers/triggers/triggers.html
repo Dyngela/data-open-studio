@@ -206,6 +206,48 @@
                 </div>
               </div>
             }
+
+            @if (selectedTrigger()!.type === 'email' && selectedTrigger()!.config.email) {
+              <h3>Configuration email</h3>
+              <div class="config-grid">
+                @if (selectedTrigger()!.config.email!.metadataEmailId) {
+                  <div class="config-item">
+                    <label>Connexion</label>
+                    <span>{{ getEmailConnectionName(selectedTrigger()!.config.email!.metadataEmailId!) }}</span>
+                  </div>
+                }
+                <div class="config-item">
+                  <label>Dossier</label>
+                  <span>{{ selectedTrigger()!.config.email!.folder || 'INBOX' }}</span>
+                </div>
+                @if (selectedTrigger()!.config.email!.fromAddress) {
+                  <div class="config-item">
+                    <label>Filtre expéditeur</label>
+                    <span>{{ selectedTrigger()!.config.email!.fromAddress }}</span>
+                  </div>
+                }
+                @if (selectedTrigger()!.config.email!.toAddress) {
+                  <div class="config-item">
+                    <label>Filtre destinataire</label>
+                    <span>{{ selectedTrigger()!.config.email!.toAddress }}</span>
+                  </div>
+                }
+                @if (selectedTrigger()!.config.email!.subjectPattern) {
+                  <div class="config-item">
+                    <label>Motif du sujet</label>
+                    <span>{{ selectedTrigger()!.config.email!.subjectPattern }}</span>
+                  </div>
+                }
+                <div class="config-item">
+                  <label>Marquer comme lu</label>
+                  <span>{{ selectedTrigger()!.config.email!.markAsRead ? 'Oui' : 'Non' }}</span>
+                </div>
+                <div class="config-item">
+                  <label>Dernier UID</label>
+                  <span>{{ selectedTrigger()!.config.email!.lastUid || '-' }}</span>
+                </div>
+              </div>
+            }
           </div>
         </p-tabpanel>
 
@@ -554,10 +596,77 @@
           }
         </div>
       } @else if (triggerForm.get('type')?.value === 'email') {
-        <div class="coming-soon">
-          <i class="pi pi-envelope"></i>
-          <h3>Configuration email</h3>
-          <p>La configuration des triggers email sera disponible prochainement.</p>
+        <!-- Email Configuration -->
+        <div class="config-forms">
+          <div class="form-field">
+            <label>Connexion email <span class="required">*</span></label>
+            @if (emailConnections().length === 0) {
+              <div class="no-connections-hint">
+                <i class="pi pi-info-circle"></i>
+                <span>Aucune connexion configurée. Ajoutez-en une dans <strong>Paramètres > Connexions Email</strong>.</span>
+              </div>
+            } @else {
+              <p-select
+                [options]="emailConnections()"
+                [ngModel]="selectedEmailConnection()"
+                (ngModelChange)="selectedEmailConnection.set($event)"
+                optionLabel="name"
+                placeholder="Sélectionner une connexion"
+                [filter]="true"
+                filterBy="name,username,imapHost"
+              >
+                <ng-template let-email pTemplate="selectedItem">
+                  @if (email) {
+                    <div class="db-connection-option">
+                      <i class="pi pi-envelope"></i>
+                      <span>{{ email.name || email.username }}</span>
+                      <span class="db-connection-host">{{ email.imapHost }}:{{ email.imapPort }}</span>
+                    </div>
+                  }
+                </ng-template>
+                <ng-template let-email pTemplate="item">
+                  <div class="db-connection-option">
+                    <i class="pi pi-envelope"></i>
+                    <span>{{ email.name || email.username }}</span>
+                    <span class="db-connection-host">{{ email.imapHost }}:{{ email.imapPort }}</span>
+                  </div>
+                </ng-template>
+              </p-select>
+            }
+          </div>
+
+          @if (selectedEmailConnection()) {
+            <h3>Filtres email</h3>
+            <form [formGroup]="emailForm">
+              <div class="form-field">
+                <label>Dossier IMAP</label>
+                <input pInputText formControlName="folder" placeholder="INBOX" />
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label>Expéditeur (from)</label>
+                  <input pInputText formControlName="fromAddress" placeholder="sender@example.com" />
+                </div>
+                <div class="form-field">
+                  <label>Destinataire (to)</label>
+                  <input pInputText formControlName="toAddress" placeholder="recipient@example.com" />
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label>Motif du sujet</label>
+                <input pInputText formControlName="subjectPattern" placeholder="ex: [ALERT]*" />
+              </div>
+
+              <div class="form-field checkbox-field">
+                <label class="checkbox-label">
+                  <input type="checkbox" formControlName="markAsRead" />
+                  <span>Marquer comme lu après traitement</span>
+                </label>
+              </div>
+            </form>
+          }
         </div>
       } @else {
         <div class="coming-soon">
@@ -641,6 +750,32 @@
             <div class="summary-item">
               <label>Watermark</label>
               <span>{{ tableForm.get('watermarkColumn')?.value }} ({{ tableForm.get('watermarkType')?.value }})</span>
+            </div>
+          }
+          @if (triggerForm.get('type')?.value === 'email') {
+            <div class="summary-item">
+              <label>Connexion</label>
+              <span>{{ getEmailConnectionLabel(selectedEmailConnection()!) }}</span>
+            </div>
+            <div class="summary-item">
+              <label>Dossier</label>
+              <span>{{ emailForm.get('folder')?.value || 'INBOX' }}</span>
+            </div>
+            @if (emailForm.get('fromAddress')?.value) {
+              <div class="summary-item">
+                <label>Filtre expéditeur</label>
+                <span>{{ emailForm.get('fromAddress')?.value }}</span>
+              </div>
+            }
+            @if (emailForm.get('subjectPattern')?.value) {
+              <div class="summary-item">
+                <label>Motif du sujet</label>
+                <span>{{ emailForm.get('subjectPattern')?.value }}</span>
+              </div>
+            }
+            <div class="summary-item">
+              <label>Marquer comme lu</label>
+              <span>{{ emailForm.get('markAsRead')?.value ? 'Oui' : 'Non' }}</span>
             </div>
           }
           <div class="summary-item">

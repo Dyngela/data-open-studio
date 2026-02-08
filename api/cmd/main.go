@@ -28,6 +28,7 @@ func main() {
 			&models.Port{},
 			&models.MetadataDatabase{},
 			&models.MetadataSftp{},
+			&models.MetadataEmail{},
 			&models.JobUserAccess{},
 			// Trigger system models
 			&models.Trigger{},

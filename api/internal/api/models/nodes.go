@@ -56,11 +56,12 @@ func (n *NodeData) UnmarshalJSON(data []byte) error {
 type NodeType string
 
 const (
-	NodeTypeStart    NodeType = "start"
-	NodeTypeDBInput  NodeType = "db_input"
-	NodeTypeDBOutput NodeType = "db_output"
-	NodeTypeMap      NodeType = "map"
-	NodeTypeLog      NodeType = "log"
+	NodeTypeStart       NodeType = "start"
+	NodeTypeDBInput     NodeType = "db_input"
+	NodeTypeDBOutput    NodeType = "db_output"
+	NodeTypeMap         NodeType = "map"
+	NodeTypeLog         NodeType = "log"
+	NodeTypeEmailOutput NodeType = "email_output"
 )
 
 type Node struct {
@@ -94,6 +95,10 @@ func (slf *Node) SetData(data any) error {
 	case NodeTypeMap:
 		if _, ok := data.(MapConfig); !ok {
 			return errors.New("invalid data type for map node")
+		}
+	case NodeTypeEmailOutput:
+		if _, ok := data.(EmailOutputConfig); !ok {
+			return errors.New("invalid data type for email_output node")
 		}
 	case NodeTypeLog:
 		return errors.New("Log has no data, it just logs messages")
@@ -147,6 +152,13 @@ func (slf Node) GetLogConfig() (NodeLogConfig, error) {
 		return NodeLogConfig{}, errors.New("node is not a log type")
 	}
 	return GetTypedData[NodeLogConfig](slf)
+}
+
+func (slf Node) GetEmailOutputConfig() (EmailOutputConfig, error) {
+	if slf.Type != NodeTypeEmailOutput {
+		return EmailOutputConfig{}, errors.New("node is not an email_output type")
+	}
+	return GetTypedData[EmailOutputConfig](slf)
 }
 
 func (slf Node) GetNextFlowNodeIDs() []int {

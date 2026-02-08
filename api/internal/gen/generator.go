@@ -119,4 +119,5 @@ func init() {
 	RegisterGenerator(&DBOutputGenerator{})
 	RegisterGenerator(&MapGenerator{})
 	RegisterGenerator(&LogGenerator{})
+	RegisterGenerator(&EmailOutputGenerator{})
 }

@@ -44,6 +44,32 @@ type UpdateSftpMetadata struct {
 	Extra      *string `json:"extra,omitempty"`
 }
 
+// Email Metadata DTOs
+
+type CreateEmailMetadata struct {
+	Name     string `json:"name"`
+	ImapHost string `json:"imapHost"`
+	ImapPort int    `json:"imapPort"`
+	SmtpHost string `json:"smtpHost"`
+	SmtpPort int    `json:"smtpPort"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+	UseTLS   *bool  `json:"useTls"`
+	Extra    string `json:"extra"`
+}
+
+type UpdateEmailMetadata struct {
+	Name     *string `json:"name,omitempty"`
+	ImapHost *string `json:"imapHost,omitempty"`
+	ImapPort *int    `json:"imapPort,omitempty"`
+	SmtpHost *string `json:"smtpHost,omitempty"`
+	SmtpPort *int    `json:"smtpPort,omitempty"`
+	Username *string `json:"username,omitempty"`
+	Password *string `json:"password,omitempty"`
+	UseTLS   *bool   `json:"useTls,omitempty"`
+	Extra    *string `json:"extra,omitempty"`
+}
+
 // DB Node DTOs
 
 type GuessSchemaRequest struct {

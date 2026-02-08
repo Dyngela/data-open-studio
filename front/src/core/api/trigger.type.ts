@@ -35,11 +35,12 @@ export interface DatabaseTriggerConfig {
 
 // Email trigger configuration
 export interface EmailTriggerConfig {
-  host: string;
-  port: number;
-  username: string;
-  password: string;
-  useTls: boolean;
+  metadataEmailId?: number;
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  useTls?: boolean;
   folder?: string;
   fromAddress?: string;
   toAddress?: string;

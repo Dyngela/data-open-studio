@@ -23,4 +23,11 @@ type MetadataMapper interface {
 	CreateSftpMetadata(req request.CreateSftpMetadata) models.MetadataSftp
 	// patch
 	PatchSftpMetadata(req request.UpdateSftpMetadata) map[string]any
+
+	// Email metadata
+	ToEmailMetadataResponses(entities []models.MetadataEmail) []response.EmailMetadata
+	ToEmailMetadataResponse(m models.MetadataEmail) response.EmailMetadata
+	CreateEmailMetadata(req request.CreateEmailMetadata) models.MetadataEmail
+	// patch
+	PatchEmailMetadata(req request.UpdateEmailMetadata) map[string]any
 }

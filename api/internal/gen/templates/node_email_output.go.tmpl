@@ -1,0 +1,98 @@
+func {{ .FuncName }}(ctx context.Context, in <-chan *{{ .InputType }}, progress lib.ProgressFunc) error {
+	var totalRows int64
+	var errorCount int64
+
+	// Report start
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting email output"))
+	}
+
+	// Email templates
+	subjectTmpl, err := template.New("subject").Parse({{ printf "%q" .Subject }})
+	if err != nil {
+		return fmt.Errorf("invalid subject template: %w", err)
+	}
+	bodyTmpl, err := template.New("body").Parse({{ printf "%q" .Body }})
+	if err != nil {
+		return fmt.Errorf("invalid body template: %w", err)
+	}
+
+	for row := range in {
+		totalRows++
+
+		// Render subject
+		var subjectBuf bytes.Buffer
+		if err := subjectTmpl.Execute(&subjectBuf, row); err != nil {
+			errorCount++
+			if progress != nil {
+				progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("subject template error: %v", err)))
+			}
+			continue
+		}
+
+		// Render body
+		var bodyBuf bytes.Buffer
+		if err := bodyTmpl.Execute(&bodyBuf, row); err != nil {
+			errorCount++
+			if progress != nil {
+				progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("body template error: %v", err)))
+			}
+			continue
+		}
+
+		// Create and send email
+		m := mail.NewMsg()
+		_ = m.From({{ printf "%q" .Username }})
+		_ = m.To({{ printf "%q" .To }})
+		{{- if .CC }}
+		_ = m.Cc({{ printf "%q" .CC }})
+		{{- end }}
+		{{- if .BCC }}
+		_ = m.Bcc({{ printf "%q" .BCC }})
+		{{- end }}
+		m.Subject(subjectBuf.String())
+		{{- if .IsHTML }}
+		m.SetBodyString(mail.TypeTextHTML, bodyBuf.String())
+		{{- else }}
+		m.SetBodyString(mail.TypeTextPlain, bodyBuf.String())
+		{{- end }}
+
+		client, err := mail.NewClient({{ printf "%q" .SmtpHost }},
+			mail.WithPort({{ .SmtpPort }}),
+			mail.WithSMTPAuth(mail.SMTPAuthPlain),
+			mail.WithUsername({{ printf "%q" .Username }}),
+			mail.WithPassword({{ printf "%q" .Password }}),
+			{{- if .UseTLS }}
+			mail.WithTLSPolicy(mail.TLSMandatory),
+			{{- else }}
+			mail.WithTLSPolicy(mail.TLSOpportunistic),
+			{{- end }}
+		)
+		if err != nil {
+			errorCount++
+			if progress != nil {
+				progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("smtp client error: %v", err)))
+			}
+			continue
+		}
+
+		if err := client.DialAndSend(m); err != nil {
+			errorCount++
+			if progress != nil {
+				progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("send error: %v", err)))
+			}
+			continue
+		}
+
+		if progress != nil {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("sent email %d: %s", totalRows, subjectBuf.String())))
+		}
+	}
+
+	// Report completion
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, totalRows, fmt.Sprintf("completed - sent: %d, errors: %d", totalRows-errorCount, errorCount)))
+	}
+
+	return nil
+}

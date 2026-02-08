@@ -88,6 +88,56 @@ export interface UpdateSftpMetadataRequest {
   extra?: string;
 }
 
+// ============ Email Metadata ============
+
+// Response: Email Metadata
+export interface EmailMetadata {
+  id: number;
+  name: string;
+  imapHost: string;
+  imapPort: number;
+  smtpHost: string;
+  smtpPort: number;
+  username: string;
+  password: string;
+  useTls: boolean;
+  extra: string;
+}
+
+// Request: Create Email Metadata
+export interface CreateEmailMetadataRequest {
+  name?: string;
+  imapHost: string;
+  imapPort?: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  username: string;
+  password: string;
+  useTls?: boolean;
+  extra?: string;
+}
+
+// Request: Update Email Metadata
+export interface UpdateEmailMetadataRequest {
+  name?: string;
+  imapHost?: string;
+  imapPort?: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  username?: string;
+  password?: string;
+  useTls?: boolean;
+  extra?: string;
+}
+
+// Response: Test email connection result
+export interface TestEmailConnectionResult {
+  imapSuccess: boolean;
+  imapMessage: string;
+  smtpSuccess: boolean;
+  smtpMessage: string;
+}
+
 // ============ Common ============
 
 // Response: Test connection result
