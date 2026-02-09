@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../core/api/auth.service';
 import {MetadataLocalService} from '../core/services/metadata.local.service';
+import {TokenRefreshSchedulerService} from '../core/services/token-refresh-scheduler.service';
 import {Toast} from 'primeng/toast';
 import {Button} from 'primeng/button';
 import {NodePanel} from '../views/graph/node-panel/node-panel';
@@ -16,7 +17,8 @@ import {NodePanel} from '../views/graph/node-panel/node-panel';
 })
 export class App implements AfterViewInit {
   private authService = inject(AuthService);
-  private localMetadata = inject(MetadataLocalService)
+  private localMetadata = inject(MetadataLocalService);
+  private tokenRefreshScheduler = inject(TokenRefreshSchedulerService);
   private router = inject(Router);
 
   currentUser = this.authService.currentUser;
@@ -32,6 +34,7 @@ export class App implements AfterViewInit {
 
   ngAfterViewInit() {
     this.authService.initializeAuth();
+    this.tokenRefreshScheduler.startRefreshScheduler();
   }
 
   userInitials = computed(() => {

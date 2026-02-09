@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
@@ -16,7 +16,9 @@ export class Register {
   private router = inject(Router);
   private fb = inject(FormBuilder);
 
-  readonly registerMutation = this.authService.register();
+  readonly registerMutation = this.authService.register(() => {
+    this.router.navigate(['/']);
+  });
 
   form = this.fb.group({
     prenom: ['', [Validators.required, Validators.maxLength(50)]],
@@ -27,11 +29,6 @@ export class Register {
   }, { validators: this.passwordMatchValidator });
 
   constructor() {
-    effect(() => {
-      if (this.registerMutation.success()) {
-        this.router.navigate(['/']);
-      }
-    });
   }
 
   passwordMatchValidator(control: AbstractControl): ValidationErrors | null {

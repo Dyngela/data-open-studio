@@ -24,20 +24,26 @@ export class AuthService {
   /**
    * Register new user
    */
-  register(): ApiMutation<AuthResponse, RegisterDto> {
+  register(onSuccess?: () => void): ApiMutation<AuthResponse, RegisterDto> {
     return this.api.post<AuthResponse, RegisterDto>(
       '/auth/register',
-      (response) => this.setSession(response),
+      (response) => {
+        this.setSession(response);
+        onSuccess?.();
+      },
     );
   }
 
   /**
    * Login user
    */
-  login(): ApiMutation<AuthResponse, LoginDto> {
+  login(onSuccess?: () => void): ApiMutation<AuthResponse, LoginDto> {
     return this.api.post(
       '/auth/login',
-      (response) => this.setSession(response),
+      (response) => {
+        this.setSession(response);
+        onSuccess?.();
+      },
       undefined,
       { showSuccessMessage: true, successMessage: "OK" }
     );
@@ -69,9 +75,9 @@ export class AuthService {
   /**
    * Set session data
    */
-  private async setSession(authResponse: AuthResponse): Promise<void> {
-    this.cookieService.set('access_token', authResponse.token);
-    this.cookieService.set('refresh_token', authResponse.refreshToken);
+  private setSession(authResponse: AuthResponse): void {
+    this.cookieService.set('access_token', authResponse.token, undefined, '/');
+    this.cookieService.set('refresh_token', authResponse.refreshToken, undefined, '/');
     this.currentUserSignal.set(authResponse.user);
     this.authenticatedSignal.set(true);
   }
@@ -80,8 +86,8 @@ export class AuthService {
    * Clear session data
    */
   private clearSession(): void {
-    this.cookieService.delete('access_token');
-    this.cookieService.delete('refresh_token');
+    this.cookieService.delete('access_token', '/');
+    this.cookieService.delete('refresh_token', '/');
     this.currentUserSignal.set(null);
     this.authenticatedSignal.set(false);
   }

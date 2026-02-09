@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -17,8 +17,11 @@ export class Login {
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
 
-  readonly loginMutation = this.authService.login();
   private returnUrl: string = '/';
+
+  readonly loginMutation = this.authService.login(() => {
+    this.router.navigateByUrl(decodeURIComponent(this.returnUrl));
+  });
 
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -26,17 +29,8 @@ export class Login {
   });
 
   constructor() {
-    // Get return URL from query params
     this.route.queryParams.subscribe(params => {
       this.returnUrl = params['returnUrl'] || '/';
-    });
-
-    // Navigate on successful login
-    effect(() => {
-      if (this.loginMutation.success()) {
-        console.log("Login successful, navigating to:", this.returnUrl);
-        this.router.navigateByUrl(this.returnUrl).then(r => console.log("ok login navigation")).catch(err => console.log("cant nav from login: ", err));
-      }
     });
   }
 
