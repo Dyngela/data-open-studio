@@ -6,7 +6,7 @@ import "api/internal/api/models"
 type CreateTrigger struct {
 	Name            string                 `json:"name" validate:"required"`
 	Description     string                 `json:"description"`
-	Type            models.TriggerType     `json:"type" validate:"required,oneof=database email webhook"`
+	Type            models.TriggerType     `json:"type" validate:"required,oneof=database email webhook cron"`
 	PollingInterval int                    `json:"pollingInterval"` // seconds, default 60
 	Config          models.TriggerConfig   `json:"config" validate:"required"`
 }

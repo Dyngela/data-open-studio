@@ -454,6 +454,42 @@ func (slf *TriggerService) validateTriggerConfig(trigger *models.Trigger) error 
 			trigger.Config.Webhook = &models.WebhookTriggerConfig{}
 		}
 
+	case models.TriggerTypeCron:
+		if trigger.Config.Cron == nil {
+			return errors.New("cron trigger requires cron configuration")
+		}
+		cfg := trigger.Config.Cron
+		switch cfg.Mode {
+		case models.CronModeInterval:
+			if cfg.IntervalValue <= 0 {
+				return errors.New("interval value must be greater than 0")
+			}
+			switch cfg.IntervalUnit {
+			case models.IntervalUnitMinutes, models.IntervalUnitHours, models.IntervalUnitDays:
+				// valid
+			default:
+				return errors.New("interval unit must be minutes, hours, or days")
+			}
+		case models.CronModeSchedule:
+			switch cfg.ScheduleFrequency {
+			case models.ScheduleFrequencyDaily, models.ScheduleFrequencyWeekly, models.ScheduleFrequencyMonthly:
+				// valid
+			default:
+				return errors.New("schedule frequency must be daily, weekly, or monthly")
+			}
+			if cfg.ScheduleTime == "" {
+				return errors.New("schedule time is required (HH:MM format)")
+			}
+			if cfg.ScheduleFrequency == models.ScheduleFrequencyWeekly && cfg.ScheduleDayOfWeek == nil {
+				return errors.New("day of week is required for weekly schedule")
+			}
+			if cfg.ScheduleFrequency == models.ScheduleFrequencyMonthly && cfg.ScheduleDayOfMonth == nil {
+				return errors.New("day of month is required for monthly schedule")
+			}
+		default:
+			return errors.New("cron mode must be interval or schedule")
+		}
+
 	default:
 		return errors.New("invalid trigger type")
 	}

@@ -135,10 +135,105 @@ func (slf *TriggerPollerService) dispatchWork() {
 // isDueForPolling checks if a trigger should be polled now
 func (slf *TriggerPollerService) isDueForPolling(trigger models.Trigger, now time.Time) bool {
 	if trigger.LastPolledAt == nil {
+		// For schedule-based cron triggers, only fire if the scheduled time has passed today
+		if trigger.Type == models.TriggerTypeCron && trigger.Config.Cron != nil && trigger.Config.Cron.Mode == models.CronModeSchedule {
+			nextFire := slf.computeNextScheduledTime(time.Time{}, trigger.Config.Cron, now)
+			return !nextFire.IsZero() && now.After(nextFire)
+		}
 		return true
 	}
+
+	// For cron triggers, compute interval or schedule-based next fire time
+	if trigger.Type == models.TriggerTypeCron && trigger.Config.Cron != nil {
+		cfg := trigger.Config.Cron
+		if cfg.Mode == models.CronModeInterval {
+			interval := slf.cronIntervalDuration(cfg)
+			return now.After(trigger.LastPolledAt.Add(interval))
+		}
+		if cfg.Mode == models.CronModeSchedule {
+			nextFire := slf.computeNextScheduledTime(*trigger.LastPolledAt, cfg, now)
+			return !nextFire.IsZero() && now.After(nextFire)
+		}
+	}
+
 	nextPoll := trigger.LastPolledAt.Add(time.Duration(trigger.PollingInterval) * time.Second)
 	return now.After(nextPoll)
+}
+
+// cronIntervalDuration returns the duration for an interval-based cron trigger
+func (slf *TriggerPollerService) cronIntervalDuration(cfg *models.CronTriggerConfig) time.Duration {
+	switch cfg.IntervalUnit {
+	case models.IntervalUnitMinutes:
+		return time.Duration(cfg.IntervalValue) * time.Minute
+	case models.IntervalUnitHours:
+		return time.Duration(cfg.IntervalValue) * time.Hour
+	case models.IntervalUnitDays:
+		return time.Duration(cfg.IntervalValue) * 24 * time.Hour
+	default:
+		return time.Duration(cfg.IntervalValue) * time.Minute
+	}
+}
+
+// computeNextScheduledTime returns the next fire time for a schedule-based cron trigger
+func (slf *TriggerPollerService) computeNextScheduledTime(lastPolled time.Time, cfg *models.CronTriggerConfig, now time.Time) time.Time {
+	hour, minute := slf.parseScheduleTime(cfg.ScheduleTime)
+	loc := now.Location()
+
+	switch cfg.ScheduleFrequency {
+	case models.ScheduleFrequencyDaily:
+		// Next fire: today at ScheduleTime if not yet fired today, otherwise tomorrow
+		candidate := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, loc)
+		if !lastPolled.IsZero() && lastPolled.After(candidate.Add(-1*time.Minute)) {
+			// Already fired today, next is tomorrow
+			candidate = candidate.AddDate(0, 0, 1)
+		}
+		return candidate
+
+	case models.ScheduleFrequencyWeekly:
+		if cfg.ScheduleDayOfWeek == nil {
+			return time.Time{}
+		}
+		targetDay := time.Weekday(*cfg.ScheduleDayOfWeek)
+		candidate := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, loc)
+		// Move to the target day of the week
+		daysUntil := int(targetDay) - int(candidate.Weekday())
+		if daysUntil < 0 {
+			daysUntil += 7
+		}
+		candidate = candidate.AddDate(0, 0, daysUntil)
+		if !lastPolled.IsZero() && lastPolled.After(candidate.Add(-1*time.Minute)) {
+			// Already fired this week, next is next week
+			candidate = candidate.AddDate(0, 0, 7)
+		}
+		return candidate
+
+	case models.ScheduleFrequencyMonthly:
+		if cfg.ScheduleDayOfMonth == nil {
+			return time.Time{}
+		}
+		day := *cfg.ScheduleDayOfMonth
+		candidate := time.Date(now.Year(), now.Month(), day, hour, minute, 0, 0, loc)
+		// If the day overflows (e.g., Feb 31), time.Date handles it by rolling forward
+		// Clamp to last day of month if needed
+		if candidate.Month() != now.Month() && candidate.Before(now) {
+			// Day overflowed, skip this month
+			candidate = time.Date(now.Year(), now.Month()+1, day, hour, minute, 0, 0, loc)
+		}
+		if !lastPolled.IsZero() && lastPolled.After(candidate.Add(-1*time.Minute)) {
+			// Already fired this month, next is next month
+			candidate = time.Date(now.Year(), now.Month()+1, day, hour, minute, 0, 0, loc)
+		}
+		return candidate
+	}
+
+	return time.Time{}
+}
+
+// parseScheduleTime parses "HH:MM" into hour and minute
+func (slf *TriggerPollerService) parseScheduleTime(scheduleTime string) (int, int) {
+	var hour, minute int
+	fmt.Sscanf(scheduleTime, "%d:%d", &hour, &minute)
+	return hour, minute
 }
 
 // pollTrigger executes polling for a single trigger
@@ -168,6 +263,8 @@ func (slf *TriggerPollerService) pollTrigger(trigger models.Trigger) {
 		events, err = slf.pollDatabase(trigger)
 	case models.TriggerTypeEmail:
 		events, err = slf.pollEmail(trigger)
+	case models.TriggerTypeCron:
+		events, err = slf.pollCron(trigger)
 	default:
 		err = fmt.Errorf("unsupported trigger type: %s", trigger.Type)
 	}
@@ -507,6 +604,32 @@ func (slf *TriggerPollerService) pollEmail(trigger models.Trigger) ([]map[string
 	}
 
 	return events, nil
+}
+
+// pollCron generates a synthetic event for cron triggers
+func (slf *TriggerPollerService) pollCron(trigger models.Trigger) ([]map[string]interface{}, error) {
+	cfg := trigger.Config.Cron
+	if cfg == nil {
+		return nil, fmt.Errorf("no cron configuration")
+	}
+
+	now := time.Now()
+	event := map[string]interface{}{
+		"type":      "cron",
+		"mode":      string(cfg.Mode),
+		"timestamp": now.Format(time.RFC3339),
+		"triggerId": trigger.ID,
+	}
+
+	if cfg.Mode == models.CronModeInterval {
+		event["intervalValue"] = cfg.IntervalValue
+		event["intervalUnit"] = string(cfg.IntervalUnit)
+	} else {
+		event["scheduleFrequency"] = string(cfg.ScheduleFrequency)
+		event["scheduleTime"] = cfg.ScheduleTime
+	}
+
+	return []map[string]interface{}{event}, nil
 }
 
 // resolveEmailCredentials resolves IMAP credentials from MetadataEmailID or inline config

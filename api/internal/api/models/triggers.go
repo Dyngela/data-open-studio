@@ -16,6 +16,7 @@ const (
 	TriggerTypeDatabase TriggerType = "database"
 	TriggerTypeEmail    TriggerType = "email"
 	TriggerTypeWebhook  TriggerType = "webhook"
+	TriggerTypeCron     TriggerType = "cron"
 )
 
 // TriggerStatus represents the status of a trigger
@@ -68,6 +69,8 @@ type TriggerConfig struct {
 	Email *EmailTriggerConfig `json:"email,omitempty"`
 	// Webhook trigger config
 	Webhook *WebhookTriggerConfig `json:"webhook,omitempty"`
+	// Cron trigger config
+	Cron *CronTriggerConfig `json:"cron,omitempty"`
 }
 
 // Value implements driver.Valuer for GORM
@@ -162,6 +165,48 @@ type WebhookTriggerConfig struct {
 
 	// Expected headers (for validation)
 	RequiredHeaders map[string]string `json:"requiredHeaders,omitempty"`
+}
+
+// CronMode represents the scheduling mode for a cron trigger
+type CronMode string
+
+const (
+	CronModeInterval CronMode = "interval"
+	CronModeSchedule CronMode = "schedule"
+)
+
+// IntervalUnit represents the time unit for interval-based cron triggers
+type IntervalUnit string
+
+const (
+	IntervalUnitMinutes IntervalUnit = "minutes"
+	IntervalUnitHours   IntervalUnit = "hours"
+	IntervalUnitDays    IntervalUnit = "days"
+)
+
+// ScheduleFrequency represents how often a scheduled cron trigger fires
+type ScheduleFrequency string
+
+const (
+	ScheduleFrequencyDaily   ScheduleFrequency = "daily"
+	ScheduleFrequencyWeekly  ScheduleFrequency = "weekly"
+	ScheduleFrequencyMonthly ScheduleFrequency = "monthly"
+)
+
+// CronTriggerConfig holds configuration for cron-based triggers
+type CronTriggerConfig struct {
+	// Mode: "interval" (every X minutes/hours/days) or "schedule" (at specific time)
+	Mode CronMode `json:"mode"`
+
+	// Interval mode fields
+	IntervalValue int          `json:"intervalValue,omitempty"` // e.g., 30
+	IntervalUnit  IntervalUnit `json:"intervalUnit,omitempty"`  // "minutes", "hours", "days"
+
+	// Schedule mode fields
+	ScheduleFrequency ScheduleFrequency `json:"scheduleFrequency,omitempty"` // "daily", "weekly", "monthly"
+	ScheduleTime      string            `json:"scheduleTime,omitempty"`      // "HH:MM" format
+	ScheduleDayOfWeek *int              `json:"scheduleDayOfWeek,omitempty"` // 0=Sunday..6=Saturday (for weekly)
+	ScheduleDayOfMonth *int             `json:"scheduleDayOfMonth,omitempty"` // 1-31 (for monthly)
 }
 
 // TriggerRule defines conditions that must be met for a trigger to fire
