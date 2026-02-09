@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MetadataService } from '../../../core/api/metadata.service';
-import { DbMetadata, CreateDbMetadataRequest, UpdateDbMetadataRequest } from '../../../core/api/metadata.type';
+import { DbMetadata, CreateDbMetadataRequest, UpdateDbMetadataRequest, TestConnectionResult } from '../../../core/api/metadata.type';
 
 @Component({
   selector: 'app-db-metadata-list',
@@ -25,6 +25,10 @@ export class DbMetadataList {
   editingItem = signal<DbMetadata | null>(null);
   isSubmitting = signal(false);
 
+  // Test connection
+  isTestingConnection = signal(false);
+  connectionTestResult = signal<TestConnectionResult | null>(null);
+
   // Form
   form: FormGroup = this.fb.group({
     host: ['', [
@@ -32,9 +36,8 @@ export class DbMetadataList {
       Validators.maxLength(255),
       Validators.pattern(/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/)
     ]],
-    port: ['', [
+    port: [5432, [
       Validators.required,
-      Validators.pattern(/^\d+$/),
       Validators.min(1),
       Validators.max(65535)
     ]],
@@ -52,23 +55,27 @@ export class DbMetadataList {
       Validators.pattern(/^[a-zA-Z_][a-zA-Z0-9_-]*$/)
     ]],
     sslMode: ['disable', Validators.required],
+    databaseType: ['postgres', Validators.required],
   });
 
   openCreateModal() {
     this.editingItem.set(null);
+    this.connectionTestResult.set(null);
     this.form.reset({
       host: '',
-      port: '5432',
+      port: 5432,
       user: '',
       password: '',
       databaseName: '',
       sslMode: 'disable',
+      databaseType: 'postgres',
     });
     this.showModal.set(true);
   }
 
   openEditModal(item: DbMetadata) {
     this.editingItem.set(item);
+    this.connectionTestResult.set(null);
     this.form.patchValue({
       host: item.host,
       port: item.port,
@@ -76,6 +83,7 @@ export class DbMetadataList {
       password: item.password,
       databaseName: item.databaseName,
       sslMode: item.sslMode || 'disable',
+      databaseType: item.databaseType || 'postgres',
     });
     this.showModal.set(true);
   }
@@ -93,7 +101,7 @@ export class DbMetadataList {
     }
 
     this.isSubmitting.set(true);
-    const formValue = this.form.value;
+    const formValue = { ...this.form.value, port: Number(this.form.value.port) };
     const editing = this.editingItem();
 
     if (editing) {
@@ -134,6 +142,26 @@ export class DbMetadataList {
       }
     );
     mutation.execute();
+  }
+
+  testConnection() {
+    if (this.form.invalid || this.isTestingConnection()) return;
+
+    this.isTestingConnection.set(true);
+    this.connectionTestResult.set(null);
+
+    const formValue = { ...this.form.value, port: Number(this.form.value.port) };
+    const mutation = this.metadataService.testDbConnection(
+      (result) => {
+        this.isTestingConnection.set(false);
+        this.connectionTestResult.set(result);
+      },
+      () => {
+        this.isTestingConnection.set(false);
+        this.connectionTestResult.set({ success: false, message: 'Erreur de connexion' });
+      }
+    );
+    mutation.execute(formValue as CreateDbMetadataRequest);
   }
 
   // Helper methods for template

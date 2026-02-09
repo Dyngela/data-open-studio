@@ -51,6 +51,7 @@ func (mapper *MetadataMapperImpl) CreateDbMetadata(req request.CreateMetadata) m
 	result.Password = req.Password
 	result.DatabaseName = req.DatabaseName
 	result.SSLMode = req.SSLMode
+	result.DbType = models.DBType(req.DbType)
 	return result
 
 }
@@ -75,6 +76,9 @@ func (mapper *MetadataMapperImpl) UpdateDbMetadata(req request.UpdateMetadata, m
 	if req.SSLMode != nil {
 		m.SSLMode = *req.SSLMode
 	}
+	if req.DbType != nil {
+		m.DbType = models.DBType(*req.DbType)
+	}
 
 }
 
@@ -98,6 +102,9 @@ func (mapper *MetadataMapperImpl) PatchDbMetadata(req request.UpdateMetadata) ma
 	}
 	if req.SSLMode != nil {
 		result["ssl_mode"] = *req.SSLMode
+	}
+	if req.DbType != nil {
+		result["db_type"] = *req.DbType
 	}
 	return result
 
@@ -162,6 +169,87 @@ func (mapper *MetadataMapperImpl) PatchSftpMetadata(req request.UpdateSftpMetada
 	}
 	if req.BasePath != nil {
 		result["base_path"] = *req.BasePath
+	}
+	if req.Extra != nil {
+		result["extra"] = *req.Extra
+	}
+	return result
+
+}
+
+// ToEmailMetadataResponses  Email metadata
+func (mapper *MetadataMapperImpl) ToEmailMetadataResponses(entities []models.MetadataEmail) []response.EmailMetadata {
+	result := make([]response.EmailMetadata, len(entities))
+	for i, item := range entities {
+		result[i] = mapper.ToEmailMetadataResponse(item)
+	}
+	return result
+
+}
+
+// ToEmailMetadataResponse
+func (mapper *MetadataMapperImpl) ToEmailMetadataResponse(m models.MetadataEmail) response.EmailMetadata {
+	var result response.EmailMetadata
+	result.ID = m.ID
+	result.Name = m.Name
+	result.ImapHost = m.ImapHost
+	result.ImapPort = m.ImapPort
+	result.SmtpHost = m.SmtpHost
+	result.SmtpPort = m.SmtpPort
+	result.Username = m.Username
+	result.Password = m.Password
+	result.UseTLS = m.UseTLS
+	result.Extra = m.Extra
+	return result
+
+}
+
+// CreateEmailMetadata
+func (mapper *MetadataMapperImpl) CreateEmailMetadata(req request.CreateEmailMetadata) models.MetadataEmail {
+	var result models.MetadataEmail
+	result.Name = req.Name
+	result.ImapHost = req.ImapHost
+	result.ImapPort = req.ImapPort
+	result.SmtpHost = req.SmtpHost
+	result.SmtpPort = req.SmtpPort
+	result.Username = req.Username
+	result.Password = req.Password
+	if req.UseTLS != nil {
+		result.UseTLS = *req.UseTLS
+	} else {
+		result.UseTLS = true
+	}
+	result.Extra = req.Extra
+	return result
+
+}
+
+// PatchEmailMetadata  patch
+func (mapper *MetadataMapperImpl) PatchEmailMetadata(req request.UpdateEmailMetadata) map[string]any {
+	result := make(map[string]any)
+	if req.Name != nil {
+		result["name"] = *req.Name
+	}
+	if req.ImapHost != nil {
+		result["imap_host"] = *req.ImapHost
+	}
+	if req.ImapPort != nil {
+		result["imap_port"] = *req.ImapPort
+	}
+	if req.SmtpHost != nil {
+		result["smtp_host"] = *req.SmtpHost
+	}
+	if req.SmtpPort != nil {
+		result["smtp_port"] = *req.SmtpPort
+	}
+	if req.Username != nil {
+		result["username"] = *req.Username
+	}
+	if req.Password != nil {
+		result["password"] = *req.Password
+	}
+	if req.UseTLS != nil {
+		result["use_tls"] = *req.UseTLS
 	}
 	if req.Extra != nil {
 		result["extra"] = *req.Extra

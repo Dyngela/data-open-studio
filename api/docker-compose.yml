@@ -81,7 +81,37 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis cache
+  redis:
+    image: redis:8.4-alpine
+    container_name: data-open-studio-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # Mailpit – local SMTP catch-all with web UI (http://localhost:8025)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: data-open-studio-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v1/info"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
   postgres_test_data:
   sqlserver_data:
+  redis_data:

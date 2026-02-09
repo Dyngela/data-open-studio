@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,9 +22,11 @@ import (
 )
 
 type AppConfig struct {
-	Mode      string
-	ApiPort   string
-	LogConfig struct {
+	Mode               string
+	ApiPort            string
+	OllamaHost         string
+	OllamaMessageLimit int
+	LogConfig          struct {
 		Enabled   bool
 		QueueName string
 	}
@@ -39,6 +43,20 @@ type AppConfig struct {
 		Expiration        int // in minutes
 		RefreshExpiration int // in days
 	}
+	RedisConfig struct {
+		Host     string
+		Port     string
+		Password string
+		DB       int
+	}
+	SmtpConfig struct {
+		Host     string
+		Port     int
+		Username string
+		Password string
+		UseTLS   bool
+		From     string
+	}
 }
 
 var config AppConfig
@@ -47,12 +65,12 @@ func InitConfig(envfile string) {
 	err := godotenv.Load(envfile)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Error loading %s file: %s", envfile, err))
-	} else {
-		log.Println("Loaded .env file successfully")
 	}
 	config = AppConfig{
-		Mode:    getEnvOrPanic("RUN_MODE"),
-		ApiPort: getEnvOrPanic("API_PORT"),
+		Mode:               getEnvOrPanic("RUN_MODE"),
+		ApiPort:            getEnvOrPanic("API_PORT"),
+		OllamaHost:         getEnvOrPanic("OLLAMA_HOST"),
+		OllamaMessageLimit: getIntEnvOrPanic("OLLAMA_MESSAGE_LIMIT"),
 		MainDatabase: struct {
 			Host         string
 			Port         string
@@ -84,10 +102,37 @@ func InitConfig(envfile string) {
 			Expiration:        getIntEnvOrPanic("JWT_EXPIRATION_MINUTES"),
 			RefreshExpiration: getIntEnvOrPanic("JWT_REFRESH_EXPIRATION_DAYS"),
 		},
+		RedisConfig: struct {
+			Host     string
+			Port     string
+			Password string
+			DB       int
+		}{
+			Host:     GetEnv("REDIS_HOST", "localhost"),
+			Port:     GetEnv("REDIS_PORT", "6379"),
+			Password: GetEnv("REDIS_PASSWORD", ""),
+			DB:       getIntEnvOrDefault("REDIS_DB", 0),
+		},
+		SmtpConfig: struct {
+			Host     string
+			Port     int
+			Username string
+			Password string
+			UseTLS   bool
+			From     string
+		}{
+			Host:     GetEnv("SMTP_HOST", ""),
+			Port:     getIntEnvOrDefault("SMTP_PORT", 587),
+			Username: GetEnv("SMTP_USERNAME", ""),
+			Password: GetEnv("SMTP_PASSWORD", ""),
+			UseTLS:   GetEnv("SMTP_USE_TLS", "true") == "true",
+			From:     GetEnv("SMTP_FROM", ""),
+		},
 	}
 
 	DB = connectToPostgres(config.MainDatabase.Host, config.MainDatabase.User, config.MainDatabase.Password, config.MainDatabase.DatabaseName, config.MainDatabase.Port, config.MainDatabase.SSLMode)
 	Logger = initLogger()
+	Redis = connectToRedis(config.RedisConfig.Host, config.RedisConfig.Port, config.RedisConfig.Password, config.RedisConfig.DB)
 }
 
 func GetConfig() AppConfig {
@@ -114,6 +159,18 @@ func getIntEnvOrPanic(key string) int {
 	value, err := strconv.Atoi(os.Getenv(key))
 	if err != nil {
 		log.Fatalf("%s must be an integer", key)
+	}
+	return value
+}
+
+func getIntEnvOrDefault(key string, defaultValue int) int {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return defaultValue
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return defaultValue
 	}
 	return value
 }
@@ -178,4 +235,21 @@ func initLogger() zerolog.Logger {
 	}
 
 	return zerolog.New(output).With().Timestamp().Caller().Logger()
+}
+
+func connectToRedis(host string, port string, password string, db int) *redis.Client {
+	client := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", host, port),
+		Password: password,
+		DB:       db,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		panic(fmt.Sprintf("Failed to connect to Redis: %v", err))
+	}
+
+	return client
 }

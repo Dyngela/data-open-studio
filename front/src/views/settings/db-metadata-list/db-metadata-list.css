@@ -285,3 +285,42 @@
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
+
+/* Test Connection */
+.connection-test-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.connection-test-section .btn {
+  align-self: flex-start;
+}
+
+.test-result {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.test-result.success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.test-result.error {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.test-result .test-version {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-left: 0.25rem;
+}

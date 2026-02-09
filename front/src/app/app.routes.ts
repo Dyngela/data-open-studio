@@ -37,6 +37,10 @@ export const routes: Routes = [
       {
         path: 'sftp',
         loadComponent: () => import('../views/settings/sftp-metadata-list/sftp-metadata-list').then(m => m.SftpMetadataList)
+      },
+      {
+        path: 'email',
+        loadComponent: () => import('../views/settings/email-metadata-list/email-metadata-list').then(m => m.EmailMetadataList)
       }
     ]
   },

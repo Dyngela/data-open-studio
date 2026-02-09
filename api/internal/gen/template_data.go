@@ -127,3 +127,23 @@ type DBOutputInsertTemplateData struct {
 	FieldAccessors []string
 	BatchSize      int
 }
+
+// EmailOutputTemplateData holds data for email_output template
+type EmailOutputTemplateData struct {
+	FuncName        string
+	NodeID          int
+	NodeName        string
+	InputType       string
+	MetadataEmailID *uint
+	SmtpHost        string
+	SmtpPort        int
+	Username        string
+	Password        string
+	UseTLS          bool
+	To              string
+	CC              string
+	BCC             string
+	Subject         string
+	Body            string
+	IsHTML          bool
+}

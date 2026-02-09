@@ -1,0 +1,234 @@
+<div class="metadata-list">
+  <div class="list-header">
+    <div class="header-info">
+      <h2>Connexions Email</h2>
+      <p>Gérez vos connexions IMAP/SMTP</p>
+    </div>
+    <button class="btn primary" (click)="openCreateModal()">
+      <i class="pi pi-plus"></i>
+      Nouvelle connexion
+    </button>
+  </div>
+
+  @if (isLoading()) {
+    <div class="loading-state">
+      <i class="pi pi-spin pi-spinner"></i>
+      <span>Chargement...</span>
+    </div>
+  } @else if (metadata().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-envelope"></i>
+      <h3>Aucune connexion</h3>
+      <p>Créez votre première connexion email (IMAP/SMTP)</p>
+      <button class="btn primary" (click)="openCreateModal()">
+        <i class="pi pi-plus"></i>
+        Créer une connexion
+      </button>
+    </div>
+  } @else {
+    <div class="metadata-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>IMAP Host</th>
+            <th>SMTP Host</th>
+            <th>Utilisateur</th>
+            <th>TLS</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of metadata(); track item.id) {
+            <tr>
+              <td class="email-name">
+                <i class="pi pi-envelope"></i>
+                {{ item.name || item.username }}
+              </td>
+              <td>{{ item.imapHost }}:{{ item.imapPort }}</td>
+              <td>{{ item.smtpHost ? item.smtpHost + ':' + item.smtpPort : '—' }}</td>
+              <td>{{ item.username }}</td>
+              <td>
+                <span class="tls-badge" [class.enabled]="item.useTls">
+                  {{ item.useTls ? 'Activé' : 'Désactivé' }}
+                </span>
+              </td>
+              <td class="actions-col">
+                <button class="btn-icon" title="Modifier" (click)="openEditModal(item)">
+                  <i class="pi pi-pencil"></i>
+                </button>
+                <button class="btn-icon danger" title="Supprimer" (click)="onDelete(item)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Modal -->
+@if (showModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingItem() ? 'Modifier la connexion' : 'Nouvelle connexion' }}</h3>
+        <button class="btn-icon" type="button" (click)="closeModal()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+
+      <form class="modal-body" [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="field">
+          <label class="field-label" for="name">Nom</label>
+          <input
+            id="name"
+            type="text"
+            formControlName="name"
+            placeholder="Ma connexion email"
+            [class.invalid]="isFieldInvalid('name')"
+          />
+          @if (isFieldInvalid('name')) {
+            <span class="field-error">{{ getFieldError('name') }}</span>
+          }
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="imapHost">IMAP Host <span class="required">*</span></label>
+            <input
+              id="imapHost"
+              type="text"
+              formControlName="imapHost"
+              placeholder="imap.example.com"
+              [class.invalid]="isFieldInvalid('imapHost')"
+            />
+            @if (isFieldInvalid('imapHost')) {
+              <span class="field-error">{{ getFieldError('imapHost') }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="imapPort">IMAP Port <span class="required">*</span></label>
+            <input
+              id="imapPort"
+              type="number"
+              formControlName="imapPort"
+              placeholder="993"
+              [class.invalid]="isFieldInvalid('imapPort')"
+            />
+            @if (isFieldInvalid('imapPort')) {
+              <span class="field-error">{{ getFieldError('imapPort') }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="smtpHost">SMTP Host</label>
+            <input
+              id="smtpHost"
+              type="text"
+              formControlName="smtpHost"
+              placeholder="smtp.example.com"
+              [class.invalid]="isFieldInvalid('smtpHost')"
+            />
+            @if (isFieldInvalid('smtpHost')) {
+              <span class="field-error">{{ getFieldError('smtpHost') }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="smtpPort">SMTP Port</label>
+            <input
+              id="smtpPort"
+              type="number"
+              formControlName="smtpPort"
+              placeholder="587"
+              [class.invalid]="isFieldInvalid('smtpPort')"
+            />
+            @if (isFieldInvalid('smtpPort')) {
+              <span class="field-error">{{ getFieldError('smtpPort') }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="username">Utilisateur <span class="required">*</span></label>
+            <input
+              id="username"
+              type="text"
+              formControlName="username"
+              placeholder="user@example.com"
+              [class.invalid]="isFieldInvalid('username')"
+            />
+            @if (isFieldInvalid('username')) {
+              <span class="field-error">{{ getFieldError('username') }}</span>
+            }
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="password">Mot de passe <span class="required">*</span></label>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              placeholder="••••••"
+              [class.invalid]="isFieldInvalid('password')"
+            />
+            @if (isFieldInvalid('password')) {
+              <span class="field-error">{{ getFieldError('password') }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="field checkbox-field">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="useTls" />
+            <span>Utiliser TLS</span>
+          </label>
+        </div>
+
+        <div class="connection-test-section">
+          <button
+            type="button"
+            class="btn secondary"
+            [disabled]="form.invalid || isTestingConnection()"
+            (click)="testConnection()"
+          >
+            @if (isTestingConnection()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-check-circle"></i>
+            }
+            Tester la connexion
+          </button>
+
+          @if (connectionTestResult()) {
+            <div class="test-result" [class.success]="connectionTestResult()!.imapSuccess" [class.error]="!connectionTestResult()!.imapSuccess">
+              <i [class]="connectionTestResult()!.imapSuccess ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+              <span>IMAP: {{ connectionTestResult()!.imapMessage }}</span>
+            </div>
+            <div class="test-result" [class.success]="connectionTestResult()!.smtpSuccess" [class.error]="!connectionTestResult()!.smtpSuccess">
+              <i [class]="connectionTestResult()!.smtpSuccess ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+              <span>SMTP: {{ connectionTestResult()!.smtpMessage }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" (click)="closeModal()">Annuler</button>
+          <button type="submit" class="btn primary" [disabled]="isSubmitting()">
+            @if (isSubmitting()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            }
+            {{ editingItem() ? 'Enregistrer' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

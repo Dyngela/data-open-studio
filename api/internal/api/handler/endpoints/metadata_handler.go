@@ -6,6 +6,7 @@ import (
 	"api/internal/api/handler/middleware"
 	"api/internal/api/handler/request"
 	"api/internal/api/handler/response"
+	"api/internal/api/models"
 	"api/internal/api/service"
 	"api/pkg"
 	"net/http"
@@ -30,6 +31,14 @@ type sftpMetadataHandler struct {
 	metadataMapper mapper.MetadataMapper
 }
 
+type emailMetadataHandler struct {
+	emailService   *service.EmailMetadataService
+	mailService    *service.MailService
+	logger         zerolog.Logger
+	config         api.AppConfig
+	metadataMapper mapper.MetadataMapper
+}
+
 func newDbMetadataHandler() *dbMetadataHandler {
 	return &dbMetadataHandler{
 		metadataService: service.NewMetadataService(),
@@ -48,10 +57,21 @@ func newSftpMetadataHandler() *sftpMetadataHandler {
 	}
 }
 
+func newEmailMetadataHandler() *emailMetadataHandler {
+	return &emailMetadataHandler{
+		emailService:   service.NewEmailMetadataService(),
+		mailService:    service.NewMailService(),
+		logger:         api.Logger,
+		config:         api.GetConfig(),
+		metadataMapper: mapper.NewMetadataMapper(),
+	}
+}
+
 // DbMetadataHandler sets up DB metadata routes
 func DbMetadataHandler(router *graceful.Graceful) {
 	dbHandler := newDbMetadataHandler()
 	sftpHandler := newSftpMetadataHandler()
+	emailHandler := newEmailMetadataHandler()
 
 	routes := router.Group("/api/v1/metadata")
 	routes.Use(middleware.AuthMiddleware(dbHandler.config))
@@ -63,6 +83,7 @@ func DbMetadataHandler(router *graceful.Graceful) {
 		db.POST("", dbHandler.create)
 		db.PUT("/:id", dbHandler.update)
 		db.DELETE("/:id", dbHandler.delete)
+		db.POST("/test-connection", dbHandler.testConnection)
 	}
 
 	sftp := routes.Group("/sftp")
@@ -72,6 +93,16 @@ func DbMetadataHandler(router *graceful.Graceful) {
 		sftp.POST("", sftpHandler.create)
 		sftp.PUT("/:id", sftpHandler.update)
 		sftp.DELETE("/:id", sftpHandler.delete)
+	}
+
+	email := routes.Group("/email")
+	{
+		email.GET("", emailHandler.getAll)
+		email.GET("/:id", emailHandler.getByID)
+		email.POST("", emailHandler.create)
+		email.PUT("/:id", emailHandler.update)
+		email.DELETE("/:id", emailHandler.delete)
+		email.POST("/test-connection", emailHandler.testConnection)
 	}
 }
 
@@ -168,6 +199,29 @@ func (slf *dbMetadataHandler) delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": id, "deleted": true})
 }
 
+// testConnection tests a database connection from metadata form values
+func (slf *dbMetadataHandler) testConnection(c *gin.Context) {
+	var req request.CreateMetadata
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to parse test connection request")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	cfg := models.DBConnectionConfig{
+		Type:     models.DBType(req.DbType),
+		Host:     req.Host,
+		Port:     req.Port,
+		Database: req.DatabaseName,
+		Username: req.User,
+		Password: req.Password,
+		SSLMode:  req.SSLMode,
+	}
+
+	result := service.TestDatabaseConnection(cfg)
+	c.JSON(http.StatusOK, result)
+}
+
 // getAll returns all SFTP metadata entries
 func (slf *sftpMetadataHandler) getAll(c *gin.Context) {
 	metadataList, err := slf.sftpService.FindAll()
@@ -259,4 +313,140 @@ func (slf *sftpMetadataHandler) delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"id": id, "deleted": true})
+}
+
+// Email metadata handlers
+
+func (slf *emailMetadataHandler) getAll(c *gin.Context) {
+	metadataList, err := slf.emailService.FindAll()
+	if err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to get all email metadata")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to retrieve metadata"})
+		return
+	}
+
+	c.JSON(http.StatusOK, slf.metadataMapper.ToEmailMetadataResponses(metadataList))
+}
+
+func (slf *emailMetadataHandler) getByID(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	metadata, err := slf.emailService.FindByID(uint(id))
+	if err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to get email metadata")
+		c.JSON(http.StatusNotFound, response.APIError{Message: "Metadata not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, slf.metadataMapper.ToEmailMetadataResponse(*metadata))
+}
+
+func (slf *emailMetadataHandler) create(c *gin.Context) {
+	var req request.CreateEmailMetadata
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to parse create email metadata request")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	metadata := slf.metadataMapper.CreateEmailMetadata(req)
+	created, err := slf.emailService.Create(metadata)
+	if err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to create email metadata")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to create metadata"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, slf.metadataMapper.ToEmailMetadataResponse(*created))
+}
+
+func (slf *emailMetadataHandler) update(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	var req request.UpdateEmailMetadata
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to parse update email metadata request")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	patch := slf.metadataMapper.PatchEmailMetadata(req)
+	updated, err := slf.emailService.Update(uint(id), patch)
+	if err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to update email metadata")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to update metadata"})
+		return
+	}
+
+	c.JSON(http.StatusOK, slf.metadataMapper.ToEmailMetadataResponse(*updated))
+}
+
+func (slf *emailMetadataHandler) delete(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	if err := slf.emailService.Delete(uint(id)); err != nil {
+		slf.logger.Error().Err(err).Uint64("id", id).Msg("Failed to delete email metadata")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to delete metadata"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"id": id, "deleted": true})
+}
+
+func (slf *emailMetadataHandler) testConnection(c *gin.Context) {
+	var req request.CreateEmailMetadata
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		slf.logger.Error().Err(err).Msg("Failed to parse test connection request")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	useTLS := true
+	if req.UseTLS != nil {
+		useTLS = *req.UseTLS
+	}
+
+	result := response.TestEmailConnectionResult{}
+
+	// Test IMAP
+	if req.ImapHost != "" {
+		imapPort := req.ImapPort
+		if imapPort == 0 {
+			imapPort = 993
+		}
+		if err := slf.mailService.TestIMAPConnection(req.ImapHost, imapPort, req.Username, req.Password, useTLS); err != nil {
+			result.ImapMessage = err.Error()
+		} else {
+			result.ImapSuccess = true
+			result.ImapMessage = "IMAP connection successful"
+		}
+	}
+
+	// Test SMTP
+	if req.SmtpHost != "" {
+		smtpPort := req.SmtpPort
+		if smtpPort == 0 {
+			smtpPort = 587
+		}
+		if err := slf.mailService.TestSMTPConnection(req.SmtpHost, smtpPort, req.Username, req.Password, useTLS); err != nil {
+			result.SmtpMessage = err.Error()
+		} else {
+			result.SmtpSuccess = true
+			result.SmtpMessage = "SMTP connection successful"
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
 }

@@ -17,7 +17,7 @@ type JobMapper interface {
 	// patch
 	PatchJob(req request.UpdateJob) map[string]any
 
-	// Response mapping (simple, without nodes)
+	// Message mapping (simple, without nodes)
 	ToJobResponses(entities []models.Job) []response.Job
 	ToJobResponse(j models.Job) response.Job
 }

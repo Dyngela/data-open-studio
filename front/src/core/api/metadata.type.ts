@@ -38,16 +38,18 @@ export interface CreateDbMetadataRequest {
   password: string;
   databaseName: string;
   sslMode?: string;
+  databaseType: DbType;
 }
 
 // Request: Update DB Metadata
 export interface UpdateDbMetadataRequest {
   host?: string;
-  port?: string;
+  port?: number;
   user?: string;
   password?: string;
   databaseName?: string;
   sslMode?: string;
+  databaseType?: DbType;
 }
 
 // ============ SFTP Metadata ============
@@ -78,7 +80,7 @@ export interface CreateSftpMetadataRequest {
 // Request: Update SFTP Metadata
 export interface UpdateSftpMetadataRequest {
   host?: string;
-  port?: string;
+  port?: number;
   user?: string;
   password?: string;
   privateKey?: string;
@@ -86,7 +88,64 @@ export interface UpdateSftpMetadataRequest {
   extra?: string;
 }
 
+// ============ Email Metadata ============
+
+// Response: Email Metadata
+export interface EmailMetadata {
+  id: number;
+  name: string;
+  imapHost: string;
+  imapPort: number;
+  smtpHost: string;
+  smtpPort: number;
+  username: string;
+  password: string;
+  useTls: boolean;
+  extra: string;
+}
+
+// Request: Create Email Metadata
+export interface CreateEmailMetadataRequest {
+  name?: string;
+  imapHost: string;
+  imapPort?: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  username: string;
+  password: string;
+  useTls?: boolean;
+  extra?: string;
+}
+
+// Request: Update Email Metadata
+export interface UpdateEmailMetadataRequest {
+  name?: string;
+  imapHost?: string;
+  imapPort?: number;
+  smtpHost?: string;
+  smtpPort?: number;
+  username?: string;
+  password?: string;
+  useTls?: boolean;
+  extra?: string;
+}
+
+// Response: Test email connection result
+export interface TestEmailConnectionResult {
+  imapSuccess: boolean;
+  imapMessage: string;
+  smtpSuccess: boolean;
+  smtpMessage: string;
+}
+
 // ============ Common ============
+
+// Response: Test connection result
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  version?: string;
+}
 
 // Response: Delete operation
 export interface DeleteResponse {

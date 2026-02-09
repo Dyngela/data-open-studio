@@ -4,6 +4,7 @@ import (
 	"api"
 	"api/internal/api/handler/endpoints"
 	"api/internal/api/models"
+	"api/internal/api/service"
 	"context"
 	"errors"
 	"os/signal"
@@ -27,7 +28,13 @@ func main() {
 			&models.Port{},
 			&models.MetadataDatabase{},
 			&models.MetadataSftp{},
+			&models.MetadataEmail{},
 			&models.JobUserAccess{},
+			// Trigger system models
+			&models.Trigger{},
+			&models.TriggerRule{},
+			&models.TriggerJob{},
+			&models.TriggerExecution{},
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
@@ -54,6 +61,11 @@ func main() {
 
 	initAPI(router)
 
+	// Start the trigger polling service
+	pollerService := service.NewTriggerPollerService(10) // Max 10 concurrent workers
+	pollerService.Start()
+	defer pollerService.Stop()
+
 	api.Logger.Debug().Msgf("Starting CORE API on port %s", api.GetConfig().ApiPort)
 	if err = router.RunWithContext(ctx); err != nil && !errors.Is(err, context.Canceled) {
 		api.Logger.Fatal().Msg(err.Error())
@@ -67,4 +79,6 @@ func initAPI(router *graceful.Graceful) {
 	endpoints.DbMetadataHandler(router)
 	endpoints.DbNodeHandler(router)
 	endpoints.JobHandler(router)
+	endpoints.SqlHandler(router)
+	endpoints.TriggerHandler(router)
 }

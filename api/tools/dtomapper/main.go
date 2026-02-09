@@ -266,7 +266,7 @@ func parseStruct(name, pkg string, st *ast.StructType) *StructInfo {
 		}
 
 		fieldName := field.Names[0].Name
-		fieldType := exprToString(field.Type)
+		fieldType := qualifyType(exprToString(field.Type), pkg)
 
 		fieldInfo := FieldInfo{
 			Name: fieldName,
@@ -403,7 +403,7 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 	sourceType := method.Params[0].Type
 	targetType := method.Returns[0]
 
-	// Handle slice-to-slice mapping: ToResponses([]Entity) []Response
+	// Handle slice-to-slice mapping: ToResponses([]Entity) []Message
 	// Delegates to single-item mapper method
 	if strings.HasPrefix(sourceType, "[]") && strings.HasPrefix(targetType, "[]") {
 		return generateSliceMapperBody(method, structMap)
@@ -462,8 +462,9 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 				// Both pointers: direct assignment
 				buf.WriteString(fmt.Sprintf("\t\tresult.%s = %s.%s\n", targetField.Name, paramName, sourceField.Name))
 			} else if !targetField.IsPtr && sourceField.IsPtr {
-				// Source is pointer, target is not: dereference
-				buf.WriteString(fmt.Sprintf("\t\tresult.%s = *%s.%s\n", targetField.Name, paramName, sourceField.Name))
+				// Source is pointer, target is not: dereference (with cast if needed)
+				deref := fmt.Sprintf("*%s.%s", paramName, sourceField.Name)
+				buf.WriteString(fmt.Sprintf("\t\tresult.%s = %s\n", targetField.Name, castExpr(deref, sourceField.BaseType, targetField.BaseType)))
 			} else if targetField.IsPtr && !sourceField.IsPtr {
 				// Source is not pointer, target is: take address
 				buf.WriteString(fmt.Sprintf("\t\tval := %s.%s\n", paramName, sourceField.Name))
@@ -475,16 +476,19 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 			// For create methods or non-pointer fields, direct assignment
 			if targetField.IsPtr && !sourceField.IsPtr {
 				// Target is pointer, source is not
-				buf.WriteString(fmt.Sprintf("\tval%s := %s.%s\n", sourceField.Name, paramName, sourceField.Name))
+				valExpr := castExpr(fmt.Sprintf("%s.%s", paramName, sourceField.Name), sourceField.BaseType, targetField.BaseType)
+				buf.WriteString(fmt.Sprintf("\tval%s := %s\n", sourceField.Name, valExpr))
 				buf.WriteString(fmt.Sprintf("\tresult.%s = &val%s\n", targetField.Name, sourceField.Name))
 			} else if !targetField.IsPtr && sourceField.IsPtr {
 				// Target is not pointer, source is
 				buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", paramName, sourceField.Name))
-				buf.WriteString(fmt.Sprintf("\t\tresult.%s = *%s.%s\n", targetField.Name, paramName, sourceField.Name))
+				deref := fmt.Sprintf("*%s.%s", paramName, sourceField.Name)
+				buf.WriteString(fmt.Sprintf("\t\tresult.%s = %s\n", targetField.Name, castExpr(deref, sourceField.BaseType, targetField.BaseType)))
 				buf.WriteString("\t}\n")
 			} else {
 				// Both same pointer status
-				buf.WriteString(fmt.Sprintf("\tresult.%s = %s.%s\n", targetField.Name, paramName, sourceField.Name))
+				valExpr := castExpr(fmt.Sprintf("%s.%s", paramName, sourceField.Name), sourceField.BaseType, targetField.BaseType)
+				buf.WriteString(fmt.Sprintf("\tresult.%s = %s\n", targetField.Name, valExpr))
 			}
 		}
 	}
@@ -494,7 +498,7 @@ func generateMethodBody(method MethodInfo, structMap map[string]*StructInfo) str
 }
 
 // generateSliceMapperBody generates code for slice-to-slice mapping
-// Pattern: ToResponses(entities []models.Entity) []response.Response
+// Pattern: ToResponses(entities []models.Entity) []response.Message
 // It looks for a corresponding single-item mapper method to delegate to
 func generateSliceMapperBody(method MethodInfo, structMap map[string]*StructInfo) string {
 	sourceType := strings.TrimPrefix(method.Params[0].Type, "[]")
@@ -617,8 +621,9 @@ func generateUpdateMethodBody(method MethodInfo, structMap map[string]*StructInf
 				// Both pointers: direct assignment
 				buf.WriteString(fmt.Sprintf("\t\t%s.%s = %s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
 			} else if !targetField.IsPtr && sourceField.IsPtr {
-				// Source is pointer, target is not: dereference
-				buf.WriteString(fmt.Sprintf("\t\t%s.%s = *%s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+				// Source is pointer, target is not: dereference (with cast if needed)
+				deref := fmt.Sprintf("*%s.%s", reqParam, sourceField.Name)
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = %s\n", targetParam, targetField.Name, castExpr(deref, sourceField.BaseType, targetField.BaseType)))
 			} else if targetField.IsPtr && !sourceField.IsPtr {
 				// Source is not pointer, target is: take address
 				buf.WriteString(fmt.Sprintf("\t\tval := %s.%s\n", reqParam, sourceField.Name))
@@ -629,14 +634,17 @@ func generateUpdateMethodBody(method MethodInfo, structMap map[string]*StructInf
 		} else {
 			// Non-pointer source field: always assign
 			if targetField.IsPtr && !sourceField.IsPtr {
-				buf.WriteString(fmt.Sprintf("\tval%s := %s.%s\n", sourceField.Name, reqParam, sourceField.Name))
+				valExpr := castExpr(fmt.Sprintf("%s.%s", reqParam, sourceField.Name), sourceField.BaseType, targetField.BaseType)
+				buf.WriteString(fmt.Sprintf("\tval%s := %s\n", sourceField.Name, valExpr))
 				buf.WriteString(fmt.Sprintf("\t%s.%s = &val%s\n", targetParam, targetField.Name, sourceField.Name))
 			} else if !targetField.IsPtr && sourceField.IsPtr {
 				buf.WriteString(fmt.Sprintf("\tif %s.%s != nil {\n", reqParam, sourceField.Name))
-				buf.WriteString(fmt.Sprintf("\t\t%s.%s = *%s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+				deref := fmt.Sprintf("*%s.%s", reqParam, sourceField.Name)
+				buf.WriteString(fmt.Sprintf("\t\t%s.%s = %s\n", targetParam, targetField.Name, castExpr(deref, sourceField.BaseType, targetField.BaseType)))
 				buf.WriteString("\t}\n")
 			} else {
-				buf.WriteString(fmt.Sprintf("\t%s.%s = %s.%s\n", targetParam, targetField.Name, reqParam, sourceField.Name))
+				valExpr := castExpr(fmt.Sprintf("%s.%s", reqParam, sourceField.Name), sourceField.BaseType, targetField.BaseType)
+				buf.WriteString(fmt.Sprintf("\t%s.%s = %s\n", targetParam, targetField.Name, valExpr))
 			}
 		}
 	}
@@ -847,6 +855,7 @@ func generatePatchMethodBody(method MethodInfo, structMap map[string]*StructInfo
 			// Non-pointer field: always add to map
 			buf.WriteString(fmt.Sprintf("\tresult[\"%s\"] = %s.%s\n", snakeCaseName, reqParam, sourceField.Name))
 		}
+
 	}
 
 	buf.WriteString("\treturn result\n")
@@ -870,6 +879,73 @@ func toSnakeCase(s string) string {
 		result.WriteRune(r)
 	}
 	return strings.ToLower(result.String())
+}
+
+// isBuiltinType returns true if the given type name is a Go builtin type
+func isBuiltinType(t string) bool {
+	builtins := map[string]bool{
+		"bool": true, "string": true, "int": true, "int8": true, "int16": true,
+		"int32": true, "int64": true, "uint": true, "uint8": true, "uint16": true,
+		"uint32": true, "uint64": true, "uintptr": true, "byte": true, "rune": true,
+		"float32": true, "float64": true, "complex64": true, "complex128": true,
+		"any": true, "error": true,
+	}
+	return builtins[t]
+}
+
+// qualifyType prefixes non-builtin types with their package name
+// e.g. qualifyType("DBType", "models") → "models.DBType"
+// e.g. qualifyType("*DBType", "models") → "*models.DBType"
+// e.g. qualifyType("string", "models") → "string" (builtin, unchanged)
+func qualifyType(fieldType, pkg string) string {
+	prefix := ""
+	base := fieldType
+
+	if strings.HasPrefix(base, "*") {
+		prefix = "*"
+		base = strings.TrimPrefix(base, "*")
+	}
+
+	// Handle slice types
+	if strings.HasPrefix(base, "[]") {
+		elemType := strings.TrimPrefix(base, "[]")
+		if !isBuiltinType(elemType) && !strings.Contains(elemType, ".") {
+			return prefix + "[]" + pkg + "." + elemType
+		}
+		return fieldType
+	}
+
+	// Handle map types - don't qualify
+	if strings.HasPrefix(base, "map[") {
+		return fieldType
+	}
+
+	// Simple type: qualify if not builtin and not already qualified
+	if !isBuiltinType(base) && !strings.Contains(base, ".") {
+		return prefix + pkg + "." + base
+	}
+
+	return fieldType
+}
+
+// typesCompatible checks if two type strings refer to the same Go type
+// (possibly with different package qualification, e.g. "DBType" vs "models.DBType")
+func typesCompatible(type1, type2 string) bool {
+	if type1 == type2 {
+		return true
+	}
+	parts1 := strings.Split(type1, ".")
+	parts2 := strings.Split(type2, ".")
+	return parts1[len(parts1)-1] == parts2[len(parts2)-1]
+}
+
+// castExpr wraps expr in a type cast to targetType if source and target types differ.
+// e.g. castExpr("req.DbType", "string", "models.DBType") → "models.DBType(req.DbType)"
+func castExpr(expr, sourceBaseType, targetBaseType string) string {
+	if typesCompatible(sourceBaseType, targetBaseType) {
+		return expr
+	}
+	return fmt.Sprintf("%s(%s)", targetBaseType, expr)
 }
 
 func findStruct(typeName string, structMap map[string]*StructInfo) *StructInfo {

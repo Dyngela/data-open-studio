@@ -122,7 +122,7 @@ export class DbInputModal implements OnInit {
       query: this.form.value.query ?? '',
       connectionId: String(conn.id),
       connection: {
-        type: DbType.Postgres,
+        type: conn.databaseType || DbType.Postgres,
         host: conn.host,
         port: conn.port,
         database: conn.databaseName,

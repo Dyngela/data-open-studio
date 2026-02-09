@@ -9,7 +9,7 @@ type MetadataDatabase struct {
 	DatabaseName string `json:"databaseName"`
 	SSLMode      string `json:"sslMode"`
 	Extra        string `json:"extra"`
-	DbType       DBType `json:"dbName"`
+	DbType       DBType `json:"dbName" gorm:"column:db_type;type:varchar(20)"`
 }
 
 type MetadataSftp struct {

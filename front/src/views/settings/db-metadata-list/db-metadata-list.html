@@ -30,6 +30,7 @@
       <table>
         <thead>
           <tr>
+            <th>Type</th>
             <th>Host</th>
             <th>Port</th>
             <th>Base de données</th>
@@ -41,6 +42,7 @@
         <tbody>
           @for (item of metadata(); track item.id) {
             <tr>
+              <td class="db-type">{{ item.databaseType || '—' }}</td>
               <td>{{ item.host }}</td>
               <td>{{ item.port }}</td>
               <td class="db-name">
@@ -100,7 +102,7 @@
             <label class="field-label" for="port">Port <span class="required">*</span></label>
             <input
               id="port"
-              type="text"
+              type="number"
               formControlName="port"
               placeholder="5432"
               [class.invalid]="isFieldInvalid('port')"
@@ -155,14 +157,51 @@
           </div>
         </div>
 
-        <div class="field">
-          <label class="field-label" for="sslMode">Mode SSL</label>
-          <select id="sslMode" formControlName="sslMode">
-            <option value="disable">Désactivé</option>
-            <option value="require">Activé (require)</option>
-            <option value="verify-ca">Verify CA</option>
-            <option value="verify-full">Verify Full</option>
-          </select>
+        <div class="field-grid">
+          <div class="field">
+            <label class="field-label" for="databaseType">Type de base <span class="required">*</span></label>
+            <select id="databaseType" formControlName="databaseType">
+              <option value="postgres">PostgreSQL</option>
+              <option value="sqlserver">SQL Server</option>
+              <option value="mysql">MySQL</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="sslMode">Mode SSL</label>
+            <select id="sslMode" formControlName="sslMode">
+              <option value="disable">Désactivé</option>
+              <option value="require">Activé (require)</option>
+              <option value="verify-ca">Verify CA</option>
+              <option value="verify-full">Verify Full</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="connection-test-section">
+          <button
+            type="button"
+            class="btn secondary"
+            [disabled]="form.invalid || isTestingConnection()"
+            (click)="testConnection()"
+          >
+            @if (isTestingConnection()) {
+              <i class="pi pi-spin pi-spinner"></i>
+            } @else {
+              <i class="pi pi-check-circle"></i>
+            }
+            Tester la connexion
+          </button>
+
+          @if (connectionTestResult()) {
+            <div class="test-result" [class.success]="connectionTestResult()!.success" [class.error]="!connectionTestResult()!.success">
+              <i [class]="connectionTestResult()!.success ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
+              <span>{{ connectionTestResult()!.message }}</span>
+              @if (connectionTestResult()!.version) {
+                <span class="test-version">{{ connectionTestResult()!.version }}</span>
+              }
+            </div>
+          }
         </div>
 
         <div class="modal-footer">
