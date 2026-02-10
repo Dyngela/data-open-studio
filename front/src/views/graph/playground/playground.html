@@ -196,6 +196,7 @@
         @if (layoutService.IsBottomPanelOpen()) {
           <app-playground-bottom-bar
             #bottomBar
+            [job]="currentJob()"
             (onSave)="onJobSave()"
             (onExecute)="onJobExecute()"
             (onStop)="onJobStop()"

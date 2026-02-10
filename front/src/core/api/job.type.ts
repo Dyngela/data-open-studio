@@ -25,6 +25,14 @@ export interface SharedUser {
   role: OwningRole;
 }
 
+// NotificationContact - a user to notify on job failure
+export interface NotificationContact {
+  id: number;
+  email: string;
+  prenom: string;
+  nom: string;
+}
+
 // Job response without nodes (for listing)
 export interface Job {
   id: number;
@@ -38,6 +46,7 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   sharedUser: SharedUser[];
+  notificationContacts: NotificationContact[];
 }
 
 export interface PrintCode {
@@ -79,6 +88,11 @@ export interface UpdateJobRequest {
 export interface ShareJobRequest {
   userIds: number[];
   role?: OwningRole;
+}
+
+// Request: Add notification contact
+export interface AddNotificationContactRequest {
+  userId: number;
 }
 
 // Response: Delete operation

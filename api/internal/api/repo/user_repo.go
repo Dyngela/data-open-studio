@@ -50,3 +50,12 @@ func (slf *UserRepository) GetAll() ([]models.User, error) {
 	err := slf.Db.Find(&users).Error
 	return users, err
 }
+
+func (slf *UserRepository) SearchByQuery(query string) ([]models.User, error) {
+	var users []models.User
+	pattern := "%" + query + "%"
+	err := slf.Db.Where("email ILIKE ? OR prenom ILIKE ? OR nom ILIKE ?", pattern, pattern, pattern).
+		Limit(20).
+		Find(&users).Error
+	return users, err
+}

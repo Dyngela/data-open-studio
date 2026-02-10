@@ -16,12 +16,20 @@ type Step struct {
 	nodes []models.Node
 }
 
+// DockerStats holds peak resource usage captured during container execution
+type DockerStats struct {
+	CPUPercent string
+	MemUsage   string
+}
+
 // JobExecution represents a sequence of nodes to execute
 type JobExecution struct {
 	Job         *models.Job
 	Context     *ExecutionContext
 	Steps       []Step
 	FileBuilder *FileBuilder
+	Logs        string
+	Stats       DockerStats
 	logger      zerolog.Logger
 }
 
@@ -47,9 +55,9 @@ func (j *JobExecution) Run() error {
 		return err
 	}
 
-	//if j.isDebug() {
-	//	return j.outputToLocal()
-	//}
+	if j.isDebug() {
+		return j.outputToLocal()
+	}
 	return j.runInDocker()
 }
 
@@ -233,8 +241,15 @@ func (j *JobExecution) withStepsSetup() (*JobExecution, error) {
 	log.Printf("Total steps created: %d", len(j.Steps))
 
 	// Log unlinked nodes (not visited - these are orphaned/test nodes)
+	linked := make(map[int]bool)
+	for _, step := range j.Steps {
+		for _, node := range step.nodes {
+			linked[node.ID] = true
+		}
+	}
+
 	for _, node := range j.Job.Nodes {
-		if !visited[node.ID] {
+		if !linked[node.ID] {
 			log.Printf("Warning: Node %d (%s) is not reachable from any start node", node.ID, node.Name)
 		}
 	}

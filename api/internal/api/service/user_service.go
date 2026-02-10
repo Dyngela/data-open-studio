@@ -145,6 +145,20 @@ func (slf *UserService) GetByID(id uint) (response.UserResponseDTO, error) {
 	return slf.userMapper.EntityToUserResponse(user), nil
 }
 
+func (slf *UserService) SearchUsers(query string) ([]response.UserResponseDTO, error) {
+	users, err := slf.userRepo.SearchByQuery(query)
+	if err != nil {
+		slf.logger.Error().Err(err).Str("query", query).Msg("Error searching users")
+		return nil, err
+	}
+
+	result := make([]response.UserResponseDTO, len(users))
+	for i, u := range users {
+		result[i] = slf.userMapper.EntityToUserResponse(u)
+	}
+	return result, nil
+}
+
 func (slf *UserService) RefreshToken(refreshToken string) (response.AuthResponseDTO, error) {
 	claims, err := pkg.ValidateRefreshToken(refreshToken, slf.config.JWTConfig.Secret)
 	if err != nil {

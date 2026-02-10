@@ -27,12 +27,19 @@ func (g *MapGenerator) GenerateStructData(node *models.Node) (*StructData, error
 	output := config.Outputs[0]
 	structName := fmt.Sprintf("Node%dRow", node.ID)
 	fields := make([]FieldData, len(output.Columns))
+	isJoin := config.Join != nil
 
 	for i, col := range output.Columns {
+		fieldName := toPascalCase(col.Name)
+		tagName := col.Name
+		if isJoin && col.FuncType == models.FuncTypeDirect && col.InputRef != "" {
+			fieldName = joinFieldName(col.InputRef)
+			tagName = joinTagName(col.InputRef)
+		}
 		fields[i] = FieldData{
-			Name: toPascalCase(col.Name),
+			Name: fieldName,
 			Type: mapDataType(col.DataType),
-			Tag:  fmt.Sprintf(`json:"%s"`, col.Name),
+			Tag:  fmt.Sprintf(`json:"%s"`, tagName),
 		}
 	}
 
@@ -284,60 +291,6 @@ func (g *MapGenerator) generateUnionBody(node *models.Node, config *models.MapCo
 	return body
 }
 
-// SUPPRIMÉ: toutes les anciennes fonctions avec fmt.Sprintf
-func (g *MapGenerator) oldGenerateInnerJoinBody_DELETED(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
-	join := config.Join
-	leftKey := g.getJoinKey(join.LeftKey, join.LeftKeys)
-	rightKey := g.getJoinKey(join.RightKey, join.RightKeys)
-
-	transforms := g.buildJoinTransformCode(columns, join.LeftInput, join.RightInput, ctx)
-
-	return fmt.Sprintf(`	var rowCount int64
-
-	// Report start
-	if progress != nil {
-		progress(lib.NewProgress(%d, %q, lib.StatusRunning, 0, "starting inner join"))
-	}
-
-	// Build right index
-	rightIndex := make(map[string]*%s)
-	for r := range rightIn {
-		key := fmt.Sprintf("%%v", r.%s)
-		rightIndex[key] = r
-	}
-
-	// Process left stream, only emit matches
-	for left := range leftIn {
-		key := fmt.Sprintf("%%v", left.%s)
-		right, ok := rightIndex[key]
-		if !ok {
-			continue // Skip non-matching rows
-		}
-
-		out := &%s{}
-%s
-		rowCount++
-
-		// Report progress every 1000 rows
-		if progress != nil && rowCount %% 1000 == 0 {
-			progress(lib.NewProgress(%d, %q, lib.StatusRunning, rowCount, fmt.Sprintf("joined %%d rows", rowCount)))
-		}
-
-		select {
-		case outChan <- out:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-
-	// Report completion
-	if progress != nil {
-		progress(lib.NewProgress(%d, %q, lib.StatusCompleted, rowCount, "completed"))
-	}
-
-	return nil`, node.ID, node.Name, rightType, toPascalCase(rightKey), toPascalCase(leftKey), outputStructName, transforms, node.ID, node.Name, node.ID, node.Name)
-}
-
 // buildTransformCode builds transformation code for single input
 func (g *MapGenerator) buildTransformCode(columns []models.MapOutputCol, rowVar string, ctx *GeneratorContext) string {
 	var result strings.Builder
@@ -355,6 +308,9 @@ func (g *MapGenerator) buildJoinTransformCode(columns []models.MapOutputCol, lef
 	var result strings.Builder
 	for _, col := range columns {
 		fieldName := toPascalCase(col.Name)
+		if col.FuncType == models.FuncTypeDirect && col.InputRef != "" {
+			fieldName = joinFieldName(col.InputRef)
+		}
 		result.WriteString(fmt.Sprintf("\t\tout.%s = ", fieldName))
 		result.WriteString(g.buildColumnExpression(col, "", leftInput, rightInput, ctx))
 		result.WriteString("\n")
@@ -367,6 +323,9 @@ func (g *MapGenerator) buildTransformCodeWithPrefix(columns []models.MapOutputCo
 	var result strings.Builder
 	for _, col := range columns {
 		fieldName := toPascalCase(col.Name)
+		if col.FuncType == models.FuncTypeDirect && col.InputRef != "" {
+			fieldName = joinFieldName(col.InputRef)
+		}
 		result.WriteString(fmt.Sprintf("\t\tout.%s = ", fieldName))
 
 		// For union, try to match column from the specific input
@@ -551,18 +510,24 @@ func (g *MapGenerator) substituteJoinInputRefs(expr, inputName, rowVar string) s
 func (g *MapGenerator) findInputRowTypes(node *models.Node, config *models.MapConfig, ctx *GeneratorContext) map[string]string {
 	result := make(map[string]string)
 
-	for _, input := range config.Inputs {
-		// Find the port with matching ID
-		for _, port := range node.InputPort {
-			if port.Type == models.PortTypeInput && int(port.ID) == input.PortID {
-				// port.Node is the source node
-				sourceNode := &port.Node
-				if sourceNode.ID != 0 {
-					result[input.Name] = ctx.StructName(sourceNode)
-				}
-				break
-			}
+	// Collect input ports in order — their index maps to input name (A=0, B=1, ...)
+	inputIndex := 0
+	for _, port := range node.InputPort {
+		if port.Type != models.PortTypeInput {
+			continue
 		}
+
+		sourceNodeID := int(port.ConnectedNodeID)
+		if sourceNodeID == 0 {
+			inputIndex++
+			continue
+		}
+
+		inputName := string(rune('A' + inputIndex))
+		if structName, exists := ctx.NodeStructNames[sourceNodeID]; exists {
+			result[inputName] = structName
+		}
+		inputIndex++
 	}
 
 	return result
@@ -576,20 +541,41 @@ func (g *MapGenerator) getJoinKey(singleKey string, multiKeys []string) string {
 	return singleKey
 }
 
-// getZeroValue returns the zero value for a data type
+// getZeroValue returns the zero value for a data type (sql.Null* zero = {Valid: false})
 func (g *MapGenerator) getZeroValue(dataType string) string {
-	switch strings.ToLower(dataType) {
-	case "int", "integer", "int64", "bigint":
-		return "0"
-	case "float", "float64", "double":
-		return "0.0"
-	case "bool", "boolean":
-		return "false"
-	case "string", "varchar", "text":
-		return `""`
+	goType := mapDataType(dataType)
+	switch goType {
+	case "sql.NullInt64":
+		return "sql.NullInt64{}"
+	case "sql.NullFloat64":
+		return "sql.NullFloat64{}"
+	case "sql.NullBool":
+		return "sql.NullBool{}"
+	case "sql.NullString":
+		return "sql.NullString{}"
+	case "sql.NullTime":
+		return "sql.NullTime{}"
 	default:
 		return "nil"
 	}
+}
+
+// joinFieldName derives a prefixed struct field name from an InputRef like "A.id" → "AId"
+func joinFieldName(inputRef string) string {
+	inputName, fieldName := parseInputRef(inputRef)
+	if inputName == "" {
+		return toPascalCase(fieldName)
+	}
+	return toPascalCase(inputName) + toPascalCase(fieldName)
+}
+
+// joinTagName derives a prefixed JSON tag from an InputRef like "A.id" → "a_id"
+func joinTagName(inputRef string) string {
+	inputName, fieldName := parseInputRef(inputRef)
+	if inputName == "" {
+		return fieldName
+	}
+	return strings.ToLower(inputName) + "_" + fieldName
 }
 
 // Helper functions
@@ -605,23 +591,30 @@ func toPascalCase(s string) string {
 	return strings.Join(parts, "")
 }
 
-// mapDataType maps config data types to Go types
+// mapDataType maps config data types to sql.Null* Go types
 func mapDataType(dataType string) string {
 	switch strings.ToLower(dataType) {
-	case "int", "integer":
-		return "int"
-	case "int64", "bigint":
-		return "int64"
-	case "float", "float64", "double":
-		return "float64"
+	case "int", "integer", "int4", "int2", "smallint", "serial":
+		return "sql.NullInt64"
+	case "int64", "bigint", "int8", "bigserial":
+		return "sql.NullInt64"
+	case "float", "float64", "float8", "double", "double precision",
+		"numeric", "decimal", "real", "float4", "money":
+		return "sql.NullFloat64"
 	case "bool", "boolean":
-		return "bool"
-	case "string", "varchar", "text":
-		return "string"
-	case "time", "time.time", "timestamp", "datetime":
-		return "time.Time"
+		return "sql.NullBool"
+	case "string", "varchar", "text", "char", "character varying",
+		"character", "bpchar", "uuid", "json", "jsonb", "xml",
+		"name", "citext":
+		return "sql.NullString"
+	case "time", "time.time", "timestamp", "datetime",
+		"timestamptz", "timestamp with time zone",
+		"timestamp without time zone", "date":
+		return "sql.NullTime"
+	case "bytea", "[]byte":
+		return "[]byte"
 	default:
-		return "any"
+		return "sql.NullString"
 	}
 }
 

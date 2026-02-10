@@ -82,6 +82,25 @@ func (ctx *GeneratorContext) FuncName(node *models.Node) string {
 	return name
 }
 
+// uniqueFieldNames returns deduplicated Go field names for a list of DataModels.
+// If two columns have the same name (e.g. "id" from two joined tables),
+// the duplicates get a numeric suffix: Id, Id2, Id3, etc.
+func uniqueFieldNames(cols []models.DataModel) []string {
+	names := make([]string, len(cols))
+	seen := make(map[string]int)
+
+	for i, col := range cols {
+		name := col.GoFieldName()
+		seen[name]++
+		if seen[name] > 1 {
+			names[i] = fmt.Sprintf("%s%d", name, seen[name])
+		} else {
+			names[i] = name
+		}
+	}
+	return names
+}
+
 // Registry holds all registered generators
 type Registry struct {
 	generators map[models.NodeType]NodeGenerator

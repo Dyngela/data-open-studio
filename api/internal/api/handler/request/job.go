@@ -31,3 +31,8 @@ type ShareJob struct {
 	UserIDs []uint           `json:"userIds" validate:"required"`
 	Role    models.OwningJob `json:"role"` // viewer or editor (default: viewer)
 }
+
+// AddNotificationContact adds a user as a notification contact for a job
+type AddNotificationContact struct {
+	UserID uint `json:"userId" validate:"required"`
+}

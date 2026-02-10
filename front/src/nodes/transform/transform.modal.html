@@ -1,38 +1,156 @@
 <div class="modal-header">
   <div>
     <h3>Transformation</h3>
-    <p class="subtitle">Configure les colonnes de sortie en mappant les entrées</p>
+    <p class="subtitle">Configure les jointures et les colonnes de sortie</p>
   </div>
   <button class="icon-btn" type="button" (click)="onCancel()">×</button>
 </div>
 
 <div class="modal-body">
-  <div class="transform-layout">
-    <!-- Left: Upstream Inputs -->
-    <div class="panel inputs-panel">
-      <div class="panel-header">
-        <i class="pi pi-sign-in"></i>
-        <span>Entrées</span>
+
+  <!-- Join Section (only when 2+ inputs) -->
+  @if (hasMultipleInputs()) {
+    <div class="section join-section">
+      <div class="section-header">
+        <i class="pi pi-link"></i>
+        <span>Jointure</span>
       </div>
 
-      @if (upstreamInputs().length === 0) {
-        <div class="empty-state">
-          <i class="pi pi-info-circle"></i>
-          <span>Aucune entrée connectée</span>
-        </div>
-      }
+      <!-- Join type selector -->
+      <div class="join-type-bar">
+        <button
+          class="join-type-btn"
+          [class.active]="joinType() === 'inner'"
+          (click)="setJoinType('inner')"
+        >
+          <span class="join-type-icon">⊝</span>
+          INNER
+        </button>
+        <button
+          class="join-type-btn"
+          [class.active]="joinType() === 'left'"
+          (click)="setJoinType('left')"
+        >
+          <span class="join-type-icon">⊂</span>
+          LEFT
+        </button>
+        <button
+          class="join-type-btn"
+          [class.active]="joinType() === 'right'"
+          (click)="setJoinType('right')"
+        >
+          <span class="join-type-icon">⊃</span>
+          RIGHT
+        </button>
+      </div>
 
-      @for (input of upstreamInputs(); track input.name) {
-        <div class="input-group">
-          <div class="input-group-header">
-            <span class="input-name">{{ input.name }}</span>
-            <span class="col-count">{{ input.schema.length }} col.</span>
+      <!-- Two input panels side by side -->
+      <div class="join-inputs-layout">
+        <!-- Left input -->
+        @if (leftInput(); as left) {
+          <div class="join-input-panel">
+            <div class="join-input-header">
+              <span class="input-label">{{ left.name }}</span>
+              <span class="input-col-count">{{ left.schema.length }} col.</span>
+            </div>
+            <div class="join-column-list">
+              @for (col of left.schema; track col.name) {
+                <div
+                  class="join-column-item"
+                  [class.joined]="isJoinedCol(left.name, col.name)"
+                  [class.drop-target]="isDropTarget(left.name, col.name)"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, left.name, col)"
+                  (dragover)="onDragOver($event, left.name, col.name)"
+                  (dragleave)="onDragLeave()"
+                  (drop)="onDrop($event, left.name, col)"
+                  (dragend)="onDragEnd()"
+                >
+                  <i class="pi pi-arrows-alt drag-handle"></i>
+                  <span class="col-name">{{ col.name }}</span>
+                  <span class="col-type">{{ col.type }}</span>
+                </div>
+              }
+            </div>
           </div>
-          <div class="column-list">
-            @for (col of input.schema; track col.name) {
+        }
+
+        <!-- Join keys visualization -->
+        <div class="join-keys-column">
+          @if (joinKeys().length === 0) {
+            <div class="join-keys-hint">
+              <i class="pi pi-arrow-right-arrow-left"></i>
+              <span>Glissez une colonne vers l'autre table</span>
+            </div>
+          } @else {
+            @for (pair of joinKeys(); track $index; let i = $index) {
+              <div class="join-key-pair">
+                <span class="key-col left-key">{{ pair.leftCol }}</span>
+                <span class="key-eq">=</span>
+                <span class="key-col right-key">{{ pair.rightCol }}</span>
+                <button class="btn-sm btn-remove" (click)="removeJoinKey(i)" title="Retirer">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Right input -->
+        @if (rightInput(); as right) {
+          <div class="join-input-panel">
+            <div class="join-input-header">
+              <span class="input-label">{{ right.name }}</span>
+              <span class="input-col-count">{{ right.schema.length }} col.</span>
+            </div>
+            <div class="join-column-list">
+              @for (col of right.schema; track col.name) {
+                <div
+                  class="join-column-item"
+                  [class.joined]="isJoinedCol(right.name, col.name)"
+                  [class.drop-target]="isDropTarget(right.name, col.name)"
+                  draggable="true"
+                  (dragstart)="onDragStart($event, right.name, col)"
+                  (dragover)="onDragOver($event, right.name, col.name)"
+                  (dragleave)="onDragLeave()"
+                  (drop)="onDrop($event, right.name, col)"
+                  (dragend)="onDragEnd()"
+                >
+                  <i class="pi pi-arrows-alt drag-handle"></i>
+                  <span class="col-name">{{ col.name }}</span>
+                  <span class="col-type">{{ col.type }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Output Columns Section -->
+  <div class="section output-section">
+    <div class="section-header">
+      <i class="pi pi-sign-out"></i>
+      <span>Colonnes de sortie</span>
+      <span class="col-count-badge">{{ outputColumns().length }}</span>
+    </div>
+
+    <!-- Source inputs to pick from -->
+    <div class="source-inputs">
+      @for (inp of upstreamInputs(); track inp.name) {
+        <div class="source-input-group">
+          <div class="source-input-header">
+            <span class="input-label">{{ inp.name }}</span>
+            <button class="btn-add-all" (click)="addAllColumns(inp.name, inp.schema)" title="Tout ajouter">
+              <i class="pi pi-plus"></i> Tout
+            </button>
+          </div>
+          <div class="source-column-list">
+            @for (col of inp.schema; track col.name) {
               <div
-                class="column-item"
-                (click)="addColumn(input.name, col)"
+                class="source-column-item"
+                (click)="addColumn(inp.name, col)"
                 title="Cliquer pour ajouter"
               >
                 <span class="col-name">{{ col.name }}</span>
@@ -43,23 +161,22 @@
           </div>
         </div>
       }
-    </div>
 
-    <!-- Right: Output Columns -->
-    <div class="panel outputs-panel">
-      <div class="panel-header">
-        <i class="pi pi-sign-out"></i>
-        <span>Colonnes de sortie</span>
-        <span class="col-count-badge">{{ outputColumns().length }}</span>
-      </div>
-
-      @if (outputColumns().length === 0) {
+      @if (upstreamInputs().length === 0) {
         <div class="empty-state">
-          <i class="pi pi-arrow-left"></i>
-          <span>Cliquer sur une colonne à gauche pour l'ajouter</span>
+          <i class="pi pi-info-circle"></i>
+          <span>Aucune entrée connectée</span>
         </div>
       }
+    </div>
 
+    <!-- Output columns list -->
+    @if (outputColumns().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-arrow-up"></i>
+        <span>Cliquer sur une colonne ci-dessus pour l'ajouter</span>
+      </div>
+    } @else {
       <div class="output-list">
         @for (col of outputColumns(); track $index; let i = $index) {
           <div class="output-item">
@@ -84,7 +201,7 @@
           </div>
         }
       </div>
-    </div>
+    }
   </div>
 </div>
 

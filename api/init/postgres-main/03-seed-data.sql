@@ -64,6 +64,17 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM job_user_access LIMIT 1);
 
 -- ============================================================
+-- Job Notification Contacts (users to alert on job failure)
+-- ============================================================
+INSERT INTO job_notification_contact (job_id, user_id, created_at)
+SELECT * FROM (VALUES
+    -- Bob & Claire are notified when Customer ETL fails
+    (1::BIGINT, 2::BIGINT, now()::TIMESTAMPTZ),
+    (1::BIGINT, 3::BIGINT, now()::TIMESTAMPTZ)
+) AS seed(job_id, user_id, created_at)
+WHERE NOT EXISTS (SELECT 1 FROM job_notification_contact LIMIT 1);
+
+-- ============================================================
 -- Nodes for Job 1 (Customer ETL): start -> db_input -> map -> db_output
 -- ============================================================
 INSERT INTO node (id, type, name, xpos, ypos, data, job_id)
@@ -241,6 +252,7 @@ BEGIN
     RAISE NOTICE '  - users: %',        (SELECT count(*) FROM users);
     RAISE NOTICE '  - jobs: %',          (SELECT count(*) FROM job);
     RAISE NOTICE '  - job_user_access: %', (SELECT count(*) FROM job_user_access);
+    RAISE NOTICE '  - job_notification_contact: %', (SELECT count(*) FROM job_notification_contact);
     RAISE NOTICE '  - nodes: %',         (SELECT count(*) FROM node);
     RAISE NOTICE '  - ports: %',         (SELECT count(*) FROM port);
     RAISE NOTICE '  - triggers: %',      (SELECT count(*) FROM trigger);

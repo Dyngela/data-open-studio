@@ -96,7 +96,7 @@ func (slf *DBInputConfig) findDefaultSchema() string {
 }
 
 func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
-	// Exécute la requête avec LIMIT 0 pour ne récupérer que les métadonnées
+	// Execute query with LIMIT 0 to get only metadata
 	query := fmt.Sprintf("SELECT * FROM (%s) AS subquery LIMIT 0", slf.Query)
 
 	rows, err := conn.Query(query)
@@ -117,22 +117,6 @@ func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
 			Name:   col.Name(),
 			Type:   col.DatabaseTypeName(),
 			GoType: col.ScanType().String(),
-		}
-
-		// Récupère nullable si disponible
-		if nullable, ok := col.Nullable(); ok {
-			model.Nullable = nullable
-		}
-
-		// Récupère la longueur pour les types varchar, text, etc.
-		if length, ok := col.Length(); ok {
-			model.Length = length
-		}
-
-		// Récupère précision et scale pour les types numériques
-		if precision, scale, ok := col.DecimalSize(); ok {
-			model.Precision = precision
-			model.Scale = scale
 		}
 
 		slf.DataModels = append(slf.DataModels, model)
@@ -162,19 +146,6 @@ func (slf *DBInputConfig) findSqlServerDataModels(conn *sql.DB) error {
 			Name:   col.Name(),
 			Type:   col.DatabaseTypeName(),
 			GoType: col.ScanType().String(),
-		}
-
-		if nullable, ok := col.Nullable(); ok {
-			model.Nullable = nullable
-		}
-
-		if length, ok := col.Length(); ok {
-			model.Length = length
-		}
-
-		if precision, scale, ok := col.DecimalSize(); ok {
-			model.Precision = precision
-			model.Scale = scale
 		}
 
 		slf.DataModels = append(slf.DataModels, model)

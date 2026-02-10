@@ -133,6 +133,7 @@ export class DbInputModal implements OnInit {
       dataModels: this.guessedSchema(),
     };
     this.jobState.setNodeConfig(this.node().id, config);
+    this.layoutService.closeModal();
   }
 
   onCancel() {

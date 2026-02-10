@@ -32,6 +32,9 @@ type Job struct {
 
 	// Users who have access to this job (for private jobs)
 	SharedWith []User `gorm:"many2many:job_user_access;" json:"sharedWith,omitempty"`
+
+	// Users to notify on job failure
+	NotifyUsers []User `gorm:"many2many:job_notification_contact;" json:"notifyUsers,omitempty"`
 }
 
 // JobUserAccess is the junction table for job-user sharing
@@ -39,5 +42,12 @@ type JobUserAccess struct {
 	JobID     uint      `gorm:"primaryKey"`
 	UserID    uint      `gorm:"primaryKey"`
 	Role      OwningJob `gorm:"default:viewer"` // viewer, editor
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// JobNotificationContact is the junction table for job failure notification contacts
+type JobNotificationContact struct {
+	JobID     uint      `gorm:"primaryKey"`
+	UserID    uint      `gorm:"primaryKey"`
 	CreatedAt time.Time `json:"createdAt"`
 }

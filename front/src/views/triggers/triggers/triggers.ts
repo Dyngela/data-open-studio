@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Button } from 'primeng/button';
@@ -14,10 +14,12 @@ import { ConfirmDialog } from 'primeng/confirmdialog';
 import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
 import { Toast } from 'primeng/toast';
 import { Chip } from 'primeng/chip';
+import { AutoComplete } from 'primeng/autocomplete';
 
 import { TriggerService } from '../../../core/api/trigger.service';
 import { SqlService } from '../../../core/api/sql.service';
 import { JobService } from '../../../core/api/job.service';
+import { UserService } from '../../../core/api/user.service';
 import { MetadataService } from '../../../core/api/metadata.service';
 import { DbMetadata, EmailMetadata } from '../../../core/api/metadata.type';
 import {
@@ -33,9 +35,12 @@ import {
   TriggerExecution,
   RuleConditions,
   ConditionOperator,
+  CronMode,
+  IntervalUnit,
+  ScheduleFrequency,
 } from '../../../core/api/trigger.type';
 import { DatabaseTable, DatabaseColumn } from '../../../core/api/sql.type';
-import { Job } from '../../../core/api/job.type';
+import { Job, NotificationContact, User } from '../../../core/api/job.type';
 
 interface TriggerTypeOption {
   label: string;
@@ -63,6 +68,7 @@ interface TriggerTypeOption {
     ConfirmDialog,
     Toast,
     Chip,
+    AutoComplete,
   ],
   providers: [ConfirmationService, MessageService],
   templateUrl: './triggers.html',
@@ -72,6 +78,7 @@ export class Triggers {
   private triggerService = inject(TriggerService);
   private sqlService = inject(SqlService);
   private jobService = inject(JobService);
+  private userService = inject(UserService);
   private metadataService = inject(MetadataService);
   private fb = inject(FormBuilder);
   private confirmationService = inject(ConfirmationService);
@@ -122,6 +129,10 @@ export class Triggers {
   showLinkJobModal = signal(false);
   selectedJobToLink = signal<Job | null>(null);
 
+  // Notification contacts
+  notificationContacts = signal<Map<number, NotificationContact[]>>(new Map());
+  filteredUsers = signal<User[]>([]);
+
   // Wizard job selection (step 2)
   selectedJobsForLink = signal<Job[]>([]);
 
@@ -144,6 +155,12 @@ export class Triggers {
       value: 'webhook',
       icon: 'pi pi-globe',
       description: 'Expose un endpoint HTTP pour déclencher un job',
+    },
+    {
+      label: 'Cron',
+      value: 'cron',
+      icon: 'pi pi-clock',
+      description: 'Déclenche un job selon un intervalle ou un horaire planifié',
     },
   ];
 
@@ -173,10 +190,39 @@ export class Triggers {
     { label: 'Résumé' },
   ];
 
+  // Cron options
+  cronModes = [
+    { label: 'Intervalle', value: 'interval', description: 'Exécuter toutes les X minutes/heures/jours' },
+    { label: 'Planifié', value: 'schedule', description: 'Exécuter à un horaire précis' },
+  ];
+
+  intervalUnits = [
+    { label: 'Minutes', value: 'minutes' },
+    { label: 'Heures', value: 'hours' },
+    { label: 'Jours', value: 'days' },
+  ];
+
+  scheduleFrequencies = [
+    { label: 'Tous les jours', value: 'daily' },
+    { label: 'Toutes les semaines', value: 'weekly' },
+    { label: 'Tous les mois', value: 'monthly' },
+  ];
+
+  daysOfWeek = [
+    { label: 'Dimanche', value: 0 },
+    { label: 'Lundi', value: 1 },
+    { label: 'Mardi', value: 2 },
+    { label: 'Mercredi', value: 3 },
+    { label: 'Jeudi', value: 4 },
+    { label: 'Vendredi', value: 5 },
+    { label: 'Samedi', value: 6 },
+  ];
+
   // Forms
   triggerForm: FormGroup;
   tableForm: FormGroup;
   emailForm: FormGroup;
+  cronForm: FormGroup;
 
   constructor() {
     // Main trigger form
@@ -202,6 +248,17 @@ export class Triggers {
       toAddress: [''],
       subjectPattern: [''],
       markAsRead: [false],
+    });
+
+    // Cron form
+    this.cronForm = this.fb.group({
+      mode: ['interval' as CronMode, Validators.required],
+      intervalValue: [30, [Validators.required, Validators.min(1)]],
+      intervalUnit: ['minutes' as IntervalUnit, Validators.required],
+      scheduleFrequency: ['daily' as ScheduleFrequency],
+      scheduleTime: ['09:00'],
+      scheduleDayOfWeek: [1], // Monday
+      scheduleDayOfMonth: [1],
     });
 
     // Rule form
@@ -239,6 +296,7 @@ export class Triggers {
       database: 'pi pi-database',
       email: 'pi pi-envelope',
       webhook: 'pi pi-globe',
+      cron: 'pi pi-clock',
     };
     return icons[type];
   }
@@ -248,39 +306,32 @@ export class Triggers {
       database: 'Base de données',
       email: 'Email',
       webhook: 'Webhook',
+      cron: 'Cron',
     };
     return labels[type];
   }
 
   // Open trigger details
   viewTrigger(trigger: Trigger) {
-    const result = this.triggerService.getById(trigger.id);
-    this.selectedTriggerResult.set(result);
-
-    // Watch for data changes
-    effect(() => {
-      const data = result.data();
-      if (data) {
-        this.selectedTrigger.set(data);
-        this.loadExecutions(trigger.id);
-      }
+    const result = this.triggerService.getById(trigger.id, (data) => {
+      this.selectedTrigger.set(data);
+      this.loadExecutions(trigger.id);
+      this.loadNotificationContacts();
     });
+    this.selectedTriggerResult.set(result);
   }
 
   loadExecutions(triggerId: number) {
-    const result = this.triggerService.getExecutions(triggerId, 20);
-    effect(() => {
-      const data = result.data();
-      if (data) {
-        this.triggerExecutions.set(data);
-      }
-    }, { allowSignalWrites: true });
+    this.triggerService.getExecutions(triggerId, 20, (data) => {
+      this.triggerExecutions.set(data);
+    });
   }
 
   closeTriggerDetails() {
     this.selectedTrigger.set(null);
     this.selectedTriggerResult.set(null);
     this.triggerExecutions.set([]);
+    this.notificationContacts.set(new Map());
   }
 
   // Create/Edit modal
@@ -340,6 +391,19 @@ export class Triggers {
       });
     }
 
+    if (trigger.type === 'cron' && trigger.config.cron) {
+      const cronConfig = trigger.config.cron;
+      this.cronForm.patchValue({
+        mode: cronConfig.mode || 'interval',
+        intervalValue: cronConfig.intervalValue || 30,
+        intervalUnit: cronConfig.intervalUnit || 'minutes',
+        scheduleFrequency: cronConfig.scheduleFrequency || 'daily',
+        scheduleTime: cronConfig.scheduleTime || '09:00',
+        scheduleDayOfWeek: cronConfig.scheduleDayOfWeek ?? 1,
+        scheduleDayOfMonth: cronConfig.scheduleDayOfMonth ?? 1,
+      });
+    }
+
     this.showCreateModal.set(true);
   }
 
@@ -367,6 +431,15 @@ export class Triggers {
       toAddress: '',
       subjectPattern: '',
       markAsRead: false,
+    });
+    this.cronForm.reset({
+      mode: 'interval',
+      intervalValue: 30,
+      intervalUnit: 'minutes',
+      scheduleFrequency: 'daily',
+      scheduleTime: '09:00',
+      scheduleDayOfWeek: 1,
+      scheduleDayOfMonth: 1,
     });
     this.selectedDbConnection.set(null);
     this.selectedEmailConnection.set(null);
@@ -400,6 +473,16 @@ export class Triggers {
       }
       if (type === 'email') {
         return !!this.selectedEmailConnection();
+      }
+      if (type === 'cron') {
+        const mode = this.cronForm.get('mode')?.value;
+        if (mode === 'interval') {
+          return !!this.cronForm.get('intervalValue')?.value && !!this.cronForm.get('intervalUnit')?.value;
+        }
+        if (mode === 'schedule') {
+          return !!this.cronForm.get('scheduleFrequency')?.value && !!this.cronForm.get('scheduleTime')?.value;
+        }
+        return false;
       }
       return true;
     }
@@ -602,6 +685,28 @@ export class Triggers {
           toAddress: emailValues.toAddress || undefined,
           subjectPattern: emailValues.subjectPattern || undefined,
           markAsRead: emailValues.markAsRead || false,
+        },
+      };
+    }
+
+    if (type === 'cron') {
+      const cronValues = this.cronForm.value;
+      if (cronValues.mode === 'interval') {
+        return {
+          cron: {
+            mode: 'interval',
+            intervalValue: cronValues.intervalValue,
+            intervalUnit: cronValues.intervalUnit,
+          },
+        };
+      }
+      return {
+        cron: {
+          mode: 'schedule',
+          scheduleFrequency: cronValues.scheduleFrequency,
+          scheduleTime: cronValues.scheduleTime,
+          scheduleDayOfWeek: cronValues.scheduleFrequency === 'weekly' ? cronValues.scheduleDayOfWeek : undefined,
+          scheduleDayOfMonth: cronValues.scheduleFrequency === 'monthly' ? cronValues.scheduleDayOfMonth : undefined,
         },
       };
     }
@@ -914,5 +1019,112 @@ export class Triggers {
       no_events: 'Aucun événement',
     };
     return labels[status] || status;
+  }
+
+  getCronModeLabel(mode: string): string {
+    return mode === 'interval' ? 'Intervalle' : 'Planifié';
+  }
+
+  getIntervalUnitLabel(unit: string): string {
+    const labels: Record<string, string> = { minutes: 'minutes', hours: 'heures', days: 'jours' };
+    return labels[unit] || unit;
+  }
+
+  getScheduleFrequencyLabel(freq: string): string {
+    const labels: Record<string, string> = { daily: 'Tous les jours', weekly: 'Toutes les semaines', monthly: 'Tous les mois' };
+    return labels[freq] || freq;
+  }
+
+  getDayOfWeekLabel(day: number): string {
+    const labels = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    return labels[day] || '';
+  }
+
+  getCronSummary(): string {
+    const cronValues = this.cronForm.value;
+    if (cronValues.mode === 'interval') {
+      return `Toutes les ${cronValues.intervalValue} ${this.getIntervalUnitLabel(cronValues.intervalUnit)}`;
+    }
+    let summary = `${this.getScheduleFrequencyLabel(cronValues.scheduleFrequency)} à ${cronValues.scheduleTime}`;
+    if (cronValues.scheduleFrequency === 'weekly') {
+      summary += ` (${this.getDayOfWeekLabel(cronValues.scheduleDayOfWeek)})`;
+    }
+    if (cronValues.scheduleFrequency === 'monthly') {
+      summary += ` (le ${cronValues.scheduleDayOfMonth})`;
+    }
+    return summary;
+  }
+
+  // Notification contacts management
+  loadNotificationContacts() {
+    const trigger = this.selectedTrigger();
+    if (!trigger) return;
+
+    const contactsMap = new Map<number, NotificationContact[]>();
+    for (const jobLink of trigger.jobs) {
+      this.jobService.getById(jobLink.jobId, (data) => {
+        contactsMap.set(jobLink.jobId, data.notificationContacts || []);
+        this.notificationContacts.set(new Map(contactsMap));
+      });
+    }
+  }
+
+  getContactsForJob(jobId: number): NotificationContact[] {
+    return this.notificationContacts().get(jobId) || [];
+  }
+
+  searchUsers(event: { query: string }) {
+    this.userService.searchUsers(event.query, (users) => {
+      this.filteredUsers.set(users);
+    });
+  }
+
+  addNotificationContact(jobId: number, user: User) {
+    const mutation = this.jobService.addNotificationContact(
+      jobId,
+      (updatedJob) => {
+        const currentMap = this.notificationContacts();
+        currentMap.set(jobId, updatedJob.notificationContacts || []);
+        this.notificationContacts.set(new Map(currentMap));
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Succès',
+          detail: `${user.prenom} ${user.nom} ajouté aux alertes`,
+        });
+      },
+      () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Erreur',
+          detail: 'Impossible d\'ajouter le contact',
+        });
+      }
+    );
+    mutation.execute({ userId: user.id });
+  }
+
+  removeNotificationContact(jobId: number, contact: NotificationContact) {
+    const mutation = this.jobService.removeNotificationContact(
+      jobId,
+      contact.id,
+      (updatedJob) => {
+        const currentMap = this.notificationContacts();
+        currentMap.set(jobId, updatedJob.notificationContacts || []);
+        this.notificationContacts.set(new Map(currentMap));
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Succès',
+          detail: `${contact.prenom} ${contact.nom} retiré des alertes`,
+        });
+      },
+      () => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Erreur',
+          detail: 'Impossible de retirer le contact',
+        });
+      }
+    );
+    mutation.execute();
   }
 }

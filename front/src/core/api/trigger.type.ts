@@ -1,6 +1,6 @@
 // Trigger types matching backend models
 
-export type TriggerType = 'database' | 'email' | 'webhook';
+export type TriggerType = 'database' | 'email' | 'webhook' | 'cron';
 export type TriggerStatus = 'active' | 'paused' | 'error' | 'disabled';
 export type WatermarkType = 'int' | 'timestamp' | 'uuid';
 export type ExecutionStatus = 'running' | 'completed' | 'failed' | 'no_events';
@@ -57,11 +57,31 @@ export interface WebhookTriggerConfig {
   requiredHeaders?: Record<string, string>;
 }
 
+// Cron trigger types
+export type CronMode = 'interval' | 'schedule';
+export type IntervalUnit = 'minutes' | 'hours' | 'days';
+export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly';
+
+// Cron trigger configuration
+export interface CronTriggerConfig {
+  mode: CronMode;
+  // Interval mode
+  intervalValue?: number;
+  intervalUnit?: IntervalUnit;
+  pollingInterval?: number;
+  // Schedule mode
+  scheduleFrequency?: ScheduleFrequency;
+  scheduleTime?: string; // "HH:MM"
+  scheduleDayOfWeek?: number; // 0=Sunday..6=Saturday
+  scheduleDayOfMonth?: number; // 1-31
+}
+
 // Combined trigger config
 export interface TriggerConfig {
   database?: DatabaseTriggerConfig;
   email?: EmailTriggerConfig;
   webhook?: WebhookTriggerConfig;
+  cron?: CronTriggerConfig;
 }
 
 // Rule condition

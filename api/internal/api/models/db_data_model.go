@@ -46,24 +46,39 @@ func (d *DataModel) GoFieldName() string {
 	return string(runes)
 }
 
-// GoFieldType returns the Go type for struct field generation
-// Returns pointer types for nullable fields
+// GoFieldType returns the Go type for struct field generation.
+// All columns use sql.Null* types to handle NULL safely during Scan/Exec.
 func (d *DataModel) GoFieldType() string {
 	baseType := d.normalizeGoType()
-	if d.Nullable {
-		return "*" + baseType
-	}
-	return baseType
+	return d.sqlNullType(baseType)
 }
 
-// GoScanType returns the type to use when scanning from database
-// Always uses pointer for nullable fields to handle NULL values
-func (d *DataModel) GoScanType() string {
-	baseType := d.normalizeGoType()
-	if d.Nullable {
+// sqlNullType returns the sql.Null* wrapper for a base Go type
+func (d *DataModel) sqlNullType(baseType string) string {
+	switch baseType {
+	case "string":
+		return "sql.NullString"
+	case "int64":
+		return "sql.NullInt64"
+	case "int32":
+		return "sql.NullInt32"
+	case "int16":
+		return "sql.NullInt16"
+	case "int":
+		return "sql.NullInt64"
+	case "float64":
+		return "sql.NullFloat64"
+	case "float32":
+		return "sql.NullFloat64"
+	case "bool":
+		return "sql.NullBool"
+	case "time.Time":
+		return "sql.NullTime"
+	case "[]byte":
+		return "[]byte" // already nil-able
+	default:
 		return "*" + baseType
 	}
-	return baseType
 }
 
 // normalizeGoType converts the raw GoType from database driver to a clean Go type

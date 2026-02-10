@@ -68,6 +68,19 @@ func ToJobResponseWithNodes(j models.Job, accessList []models.JobUserAccess) res
 		}
 	}
 
+	// Map notification contacts
+	if len(j.NotifyUsers) > 0 {
+		resp.NotificationContacts = make([]response.NotificationContact, len(j.NotifyUsers))
+		for i, u := range j.NotifyUsers {
+			resp.NotificationContacts[i] = response.NotificationContact{
+				ID:     u.ID,
+				Email:  u.Email,
+				Prenom: u.Prenom,
+				Nom:    u.Nom,
+			}
+		}
+	}
+
 	// Map shared users with their roles
 	if len(j.SharedWith) > 0 {
 		resp.SharedUser = make([]response.SharedUser, len(j.SharedWith))

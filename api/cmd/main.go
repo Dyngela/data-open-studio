@@ -30,6 +30,7 @@ func main() {
 			&models.MetadataSftp{},
 			&models.MetadataEmail{},
 			&models.JobUserAccess{},
+			&models.JobNotificationContact{},
 			// Trigger system models
 			&models.Trigger{},
 			&models.TriggerRule{},

@@ -111,6 +111,18 @@ CREATE TABLE IF NOT EXISTS metadata_sftp (
 CREATE INDEX IF NOT EXISTS idx_metadata_sftp_host ON metadata_sftp(host);
 
 -- ============================================================
+-- Job Notification Contacts (users to notify on job failure)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS job_notification_contact (
+    job_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (job_id, user_id),
+    CONSTRAINT fk_jnc_job FOREIGN KEY (job_id) REFERENCES job(id) ON DELETE CASCADE,
+    CONSTRAINT fk_jnc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ============================================================
 -- Triggers
 -- ============================================================
 CREATE TABLE IF NOT EXISTS trigger (

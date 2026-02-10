@@ -99,6 +99,7 @@ func (m *TriggerMapperImpl) ToTriggerWithDetails(t models.Trigger) response.Trig
 		CreatorID:       t.CreatorID,
 		PollingInterval: t.PollingInterval,
 		LastPolledAt:    t.LastPolledAt,
+		IntervalUnit:    t.Config.Cron.IntervalUnit,
 		LastError:       t.LastError,
 		Config:          t.Config,
 		CreatedAt:       t.CreatedAt,

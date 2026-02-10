@@ -31,3 +31,121 @@
   color: #666;
   margin: 0;
 }
+
+/* Config content */
+.config-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-header i {
+  color: #4ec9b0;
+  font-size: 1rem;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-hint {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0;
+}
+
+/* Contacts list */
+.contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.contact-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.625rem;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.contact-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #ccc;
+}
+
+.contact-email {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.no-contacts {
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Add contact input */
+.add-contact {
+  margin-top: 0.25rem;
+}
+
+.add-contact p-autoComplete {
+  width: 100%;
+}
+
+.add-contact :deep(.p-autocomplete) {
+  width: 100%;
+}
+
+.add-contact :deep(.p-autocomplete-input) {
+  width: 100%;
+  background: #2d2d2d;
+  border-color: #3c3c3c;
+  color: #ccc;
+  font-size: 0.8rem;
+}
+
+/* Autocomplete dropdown items */
+.user-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0;
+}
+
+.user-item .user-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.user-item .user-email {
+  font-size: 0.8rem;
+  color: #888;
+}

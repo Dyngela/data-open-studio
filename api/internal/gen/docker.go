@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -126,11 +128,7 @@ func (j *JobExecution) dockerBuild(workDir, imageTag string) error {
 	return pkg.RunCommandLine(workDir, "docker", "build", "-t", imageTag, ".")
 }
 
-// dockerRun executes the job inside a Docker container.
-// In debug mode the container is kept alive so you can inspect it with:
-//
-//	docker logs <name>
-//	docker cp <name>:/app /tmp/inspect
+// dockerRun executes the job inside a Docker container and captures logs and stats.
 func (j *JobExecution) dockerRun(imageTag, containerName string) error {
 	j.logger.Info().Msgf("Running job container: %s", containerName)
 	args := []string{"run", "--network", "host", "--name", containerName}
@@ -138,7 +136,46 @@ func (j *JobExecution) dockerRun(imageTag, containerName string) error {
 		args = append(args, "--rm")
 	}
 	args = append(args, imageTag)
-	return pkg.RunCommandLine("", "docker", args...)
+
+	// Collect stats in a background goroutine
+	var wg sync.WaitGroup
+	stopStats := make(chan struct{})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		j.collectDockerStats(containerName, stopStats)
+	}()
+
+	stdout, stderr, err := pkg.RunCommandLineWithOutput("", "docker", args...)
+	close(stopStats)
+	wg.Wait()
+
+	j.Logs = stdout + stderr
+	return err
+}
+
+// collectDockerStats periodically samples docker stats and keeps peak values.
+func (j *JobExecution) collectDockerStats(containerName string, stop <-chan struct{}) {
+	// Wait briefly for the container to start
+	time.Sleep(2 * time.Second)
+
+	for {
+		select {
+		case <-stop:
+			return
+		default:
+			stdout, _, err := pkg.RunCommandLineWithOutput("", "docker", "stats", containerName,
+				"--no-stream", "--format", "{{.CPUPerc}}\t{{.MemUsage}}")
+			if err == nil && strings.TrimSpace(stdout) != "" {
+				parts := strings.SplitN(strings.TrimSpace(stdout), "\t", 2)
+				if len(parts) == 2 {
+					j.Stats.CPUPercent = parts[0]
+					j.Stats.MemUsage = parts[1]
+				}
+			}
+			time.Sleep(3 * time.Second)
+		}
+	}
 }
 
 // dockerCleanup removes the container and then the image after execution

@@ -45,6 +45,7 @@ func AuthHandler(router *graceful.Graceful) {
 	protected.Use(middleware.AuthMiddleware(h.config))
 	{
 		protected.GET("/me", h.getMe)
+		protected.GET("/users/search", h.searchUsers)
 	}
 
 	admin := router.Group("/api/v1/admin")
@@ -113,6 +114,23 @@ func (slf *authHandler) getMe(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user)
+}
+
+func (slf *authHandler) searchUsers(c *gin.Context) {
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Query parameter 'q' is required"})
+		return
+	}
+
+	users, err := slf.userService.SearchUsers(query)
+	if err != nil {
+		slf.logger.Error().Err(err).Str("query", query).Msg("Error searching users")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to search users"})
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
 }
 
 func (slf *authHandler) refreshToken(c *gin.Context) {

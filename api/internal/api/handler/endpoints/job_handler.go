@@ -52,6 +52,10 @@ func JobHandler(router *graceful.Graceful) {
 		routes.POST("/:id/execute", h.execute)
 		routes.POST("/:id/print-code", h.printCode)
 		routes.POST("/:id/stop", h.stop)
+
+		// Notification contacts
+		routes.POST("/:id/notification-contacts", h.addNotificationContact)
+		routes.DELETE("/:id/notification-contacts/:userId", h.removeNotificationContact)
 	}
 }
 
@@ -391,6 +395,82 @@ func (slf *jobHandler) stop(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Job stopped", "jobId": id})
+}
+
+func (slf *jobHandler) addNotificationContact(c *gin.Context) {
+	userID, ok := pkg.GetUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	// Editor access required
+	if !slf.checkAccess(c, uint(id), userID, models.Editor) {
+		return
+	}
+
+	var req request.AddNotificationContact
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	if err := slf.jobService.AddNotificationContact(uint(id), req.UserID); err != nil {
+		slf.logger.Error().Err(err).Uint64("jobID", id).Msg("Failed to add notification contact")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to add notification contact"})
+		return
+	}
+
+	// Return updated job
+	job, accessList, err := slf.jobService.FindByIDWithAccess(uint(id))
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Notification contact added"})
+		return
+	}
+	c.JSON(http.StatusOK, mapper.ToJobResponseWithNodes(*job, accessList))
+}
+
+func (slf *jobHandler) removeNotificationContact(c *gin.Context) {
+	userID, ok := pkg.GetUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid job ID"})
+		return
+	}
+
+	contactUserID, err := strconv.ParseUint(c.Param("userId"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid user ID"})
+		return
+	}
+
+	// Editor access required
+	if !slf.checkAccess(c, uint(id), userID, models.Editor) {
+		return
+	}
+
+	if err := slf.jobService.RemoveNotificationContact(uint(id), uint(contactUserID)); err != nil {
+		slf.logger.Error().Err(err).Uint64("jobID", id).Msg("Failed to remove notification contact")
+		c.JSON(http.StatusInternalServerError, response.APIError{Message: "Failed to remove notification contact"})
+		return
+	}
+
+	// Return updated job
+	job, accessList, err := slf.jobService.FindByIDWithAccess(uint(id))
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "Notification contact removed"})
+		return
+	}
+	c.JSON(http.StatusOK, mapper.ToJobResponseWithNodes(*job, accessList))
 }
 
 func (slf *jobHandler) printCode(ctx *gin.Context) {

@@ -20,11 +20,12 @@ func (g *DBInputGenerator) GenerateStructData(node *models.Node) (*StructData, e
 	}
 
 	structName := fmt.Sprintf("Node%dRow", node.ID)
+	fieldNames := uniqueFieldNames(config.DataModels)
 	fields := make([]FieldData, len(config.DataModels))
 
 	for i, col := range config.DataModels {
 		fields[i] = FieldData{
-			Name: col.GoFieldName(),
+			Name: fieldNames[i],
 			Type: col.GoFieldType(),
 			Tag:  fmt.Sprintf(`db:"%s"`, col.Name),
 		}
@@ -81,11 +82,8 @@ func (g *DBInputGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorCon
 	structName := ctx.StructName(node)
 	funcName := ctx.FuncName(node)
 
-	// Build scan fields list
-	scanFields := make([]string, len(config.DataModels))
-	for i, col := range config.DataModels {
-		scanFields[i] = col.GoFieldName()
-	}
+	// Build scan fields list (must match struct field names)
+	scanFields := uniqueFieldNames(config.DataModels)
 
 	// Use template engine
 	engine, err := NewTemplateEngine()

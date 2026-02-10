@@ -79,7 +79,9 @@
                 <i class="pi pi-exclamation-circle error-icon" [pTooltip]="trigger.lastError"></i>
               }
             </td>
-            <td>{{ trigger.pollingInterval }}s</td>
+            <td>
+                {{ trigger.pollingInterval }} {{ trigger.config?.cron?.intervalUnit }}
+            </td>
             <td>{{ formatDate(trigger.lastPolledAt) }}</td>
             <td>
               <p-chip [label]="trigger.jobCount + ' job(s)'" />
@@ -157,6 +159,7 @@
         <p-tab value="rules">Règles</p-tab>
         <p-tab value="jobs">Jobs liés</p-tab>
         <p-tab value="history">Historique</p-tab>
+        <p-tab value="alerts">Alertes</p-tab>
       </p-tablist>
 
       <p-tabpanels>
@@ -171,7 +174,7 @@
               </div>
               <div class="config-item">
                 <label>Intervalle de polling</label>
-                <span>{{ selectedTrigger()!.pollingInterval }} secondes</span>
+                <span>{{ selectedTrigger()!.pollingInterval }} {{ selectedTrigger()!.config?.cron?.intervalUnit }}</span>
               </div>
               <div class="config-item">
                 <label>Dernier poll</label>
@@ -246,6 +249,44 @@
                   <label>Dernier UID</label>
                   <span>{{ selectedTrigger()!.config.email!.lastUid || '-' }}</span>
                 </div>
+              </div>
+            }
+
+            @if (selectedTrigger()!.type === 'cron' && selectedTrigger()!.config.cron) {
+              <h3>Configuration cron</h3>
+              <div class="config-grid">
+                <div class="config-item">
+                  <label>Mode</label>
+                  <span>{{ getCronModeLabel(selectedTrigger()!.config.cron!.mode) }}</span>
+                </div>
+                @if (selectedTrigger()!.config.cron!.mode === 'interval') {
+                  <div class="config-item">
+                    <label>Intervalle</label>
+                    <span>{{ selectedTrigger()!.config.cron!.pollingInterval }} {{ getIntervalUnitLabel(selectedTrigger()!.config.cron!.intervalUnit!) }}</span>
+                  </div>
+                }
+                @if (selectedTrigger()!.config.cron!.mode === 'schedule') {
+                  <div class="config-item">
+                    <label>Fréquence</label>
+                    <span>{{ getScheduleFrequencyLabel(selectedTrigger()!.config.cron!.scheduleFrequency!) }}</span>
+                  </div>
+                  <div class="config-item">
+                    <label>Heure</label>
+                    <span>{{ selectedTrigger()!.config.cron!.scheduleTime }}</span>
+                  </div>
+                  @if (selectedTrigger()!.config.cron!.scheduleFrequency === 'weekly' && selectedTrigger()!.config.cron!.scheduleDayOfWeek !== undefined) {
+                    <div class="config-item">
+                      <label>Jour</label>
+                      <span>{{ getDayOfWeekLabel(selectedTrigger()!.config.cron!.scheduleDayOfWeek!) }}</span>
+                    </div>
+                  }
+                  @if (selectedTrigger()!.config.cron!.scheduleFrequency === 'monthly' && selectedTrigger()!.config.cron!.scheduleDayOfMonth !== undefined) {
+                    <div class="config-item">
+                      <label>Jour du mois</label>
+                      <span>{{ selectedTrigger()!.config.cron!.scheduleDayOfMonth }}</span>
+                    </div>
+                  }
+                }
               </div>
             }
           </div>
@@ -384,6 +425,73 @@
             }
           </div>
         </p-tabpanel>
+
+        <!-- Alerts Tab -->
+        <p-tabpanel value="alerts">
+          <div class="alerts-section">
+            <h3>Contacts d'alerte</h3>
+            <p class="alerts-hint">Ajoutez des utilisateurs à notifier par email en cas d'échec d'un job.</p>
+
+            @if (selectedTrigger()!.jobs.length === 0) {
+              <div class="empty-alerts">
+                <i class="pi pi-bell-slash"></i>
+                <p>Aucun job lié à ce trigger. Liez un job pour configurer les alertes.</p>
+              </div>
+            } @else {
+              @for (jobLink of selectedTrigger()!.jobs; track jobLink.id) {
+                <div class="alert-job-section">
+                  <div class="alert-job-header">
+                    <i class="pi pi-briefcase"></i>
+                    <span class="alert-job-name">{{ jobLink.jobName }}</span>
+                  </div>
+
+                  <div class="alert-contacts-list">
+                    @for (contact of getContactsForJob(jobLink.jobId); track contact.id) {
+                      <div class="alert-contact-chip">
+                        <span class="contact-name">{{ contact.prenom }} {{ contact.nom }}</span>
+                        <span class="contact-email">{{ contact.email }}</span>
+                        <p-button
+                          icon="pi pi-times"
+                          severity="danger"
+                          [text]="true"
+                          [rounded]="true"
+                          size="small"
+                          pTooltip="Retirer"
+                          (onClick)="removeNotificationContact(jobLink.jobId, contact)"
+                        />
+                      </div>
+                    } @empty {
+                      <div class="no-contacts-hint">
+                        <span>Aucun contact configuré</span>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="alert-add-contact">
+                    <p-autoComplete
+                      [suggestions]="filteredUsers()"
+                      (completeMethod)="searchUsers($event)"
+                      (onSelect)="addNotificationContact(jobLink.jobId, $event.value)"
+
+                      [optionLabel]="'email'"
+                      [optionValue]="'id'"
+
+                      placeholder="Rechercher un utilisateur..."
+                      [forceSelection]="true"
+                    >
+                      <ng-template let-user pTemplate="item">
+                        <div class="user-autocomplete-item">
+                          <span class="user-name">{{ user.prenom }} {{ user.nom }}</span>
+                          <span class="user-email">{{ user.email }}</span>
+                        </div>
+                      </ng-template>
+                    </p-autoComplete>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </p-tabpanel>
       </p-tabpanels>
     </p-tabs>
   </div>
@@ -474,16 +582,18 @@
           </div>
         </div>
 
-        <div class="form-field">
-          <label for="pollingInterval">Intervalle de polling (secondes)</label>
-          <p-inputNumber
-            inputId="pollingInterval"
-            formControlName="pollingInterval"
-            [min]="10"
-            [max]="86400"
-            [showButtons]="true"
-          />
-        </div>
+        @if (triggerForm.get('type')?.value !== 'cron') {
+          <div class="form-field">
+            <label for="pollingInterval">Intervalle de polling (secondes)</label>
+            <p-inputNumber
+              inputId="pollingInterval"
+              formControlName="pollingInterval"
+              [min]="10"
+              [max]="86400"
+              [showButtons]="true"
+            />
+          </div>
+        }
       </form>
     }
 
@@ -668,6 +778,111 @@
             </form>
           }
         </div>
+      } @else if (triggerForm.get('type')?.value === 'cron') {
+        <!-- Cron Configuration -->
+        <div class="config-forms">
+          <div class="form-field">
+            <label>Mode de planification <span class="required">*</span></label>
+            <div class="trigger-type-options">
+              @for (opt of cronModes; track opt.value) {
+                <div
+                  class="type-option"
+                  [class.selected]="cronForm.get('mode')?.value === opt.value"
+                  (click)="cronForm.patchValue({ mode: opt.value })"
+                >
+                  <div class="type-radio">
+                    @if (cronForm.get('mode')?.value === opt.value) {
+                      <i class="pi pi-check-circle"></i>
+                    } @else {
+                      <i class="pi pi-circle"></i>
+                    }
+                  </div>
+                  <i [class]="opt.value === 'interval' ? 'pi pi-sync' : 'pi pi-calendar'"></i>
+                  <div class="type-info">
+                    <span class="type-label">{{ opt.label }}</span>
+                    <span class="type-desc">{{ opt.description }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          @if (cronForm.get('mode')?.value === 'interval') {
+            <h3>Intervalle de répétition</h3>
+            <form [formGroup]="cronForm">
+              <div class="form-row">
+                <div class="form-field">
+                  <label>Valeur <span class="required">*</span></label>
+                  <p-inputNumber
+                    formControlName="intervalValue"
+                    [min]="1"
+                    [max]="1000"
+                    [showButtons]="true"
+                  />
+                </div>
+                <div class="form-field">
+                  <label>Unité <span class="required">*</span></label>
+                  <p-select
+                    [options]="intervalUnits"
+                    formControlName="intervalUnit"
+                    optionLabel="label"
+                    optionValue="value"
+                  />
+                </div>
+              </div>
+            </form>
+          }
+
+          @if (cronForm.get('mode')?.value === 'schedule') {
+            <h3>Planification</h3>
+            <form [formGroup]="cronForm">
+              <div class="form-field">
+                <label>Fréquence <span class="required">*</span></label>
+                <p-select
+                  [options]="scheduleFrequencies"
+                  formControlName="scheduleFrequency"
+                  optionLabel="label"
+                  optionValue="value"
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label>Heure d'exécution <span class="required">*</span></label>
+                  <input
+                    type="time"
+                    pInputText
+                    formControlName="scheduleTime"
+                  />
+                </div>
+
+                @if (cronForm.get('scheduleFrequency')?.value === 'weekly') {
+                  <div class="form-field">
+                    <label>Jour de la semaine <span class="required">*</span></label>
+                    <p-select
+                      [options]="daysOfWeek"
+                      formControlName="scheduleDayOfWeek"
+                      optionLabel="label"
+                      optionValue="value"
+                    />
+                  </div>
+                }
+
+                @if (cronForm.get('scheduleFrequency')?.value === 'monthly') {
+                  <div class="form-field">
+                    <label>Jour du mois <span class="required">*</span></label>
+                    <p-inputNumber
+                      formControlName="scheduleDayOfMonth"
+                      [min]="1"
+                      [max]="31"
+                      [showButtons]="true"
+                    />
+                  </div>
+                }
+              </div>
+            </form>
+          }
+        </div>
       } @else {
         <div class="coming-soon">
           <i class="pi pi-globe"></i>
@@ -734,10 +949,12 @@
             <label>Type</label>
             <span>{{ getTypeLabel(triggerForm.get('type')?.value) }}</span>
           </div>
-          <div class="summary-item">
-            <label>Intervalle</label>
-            <span>{{ triggerForm.get('pollingInterval')?.value }} secondes</span>
-          </div>
+          @if (triggerForm.get('type')?.value !== 'cron') {
+            <div class="summary-item">
+              <label>Intervalle</label>
+              <span>{{ triggerForm.get('pollingInterval')?.value }} secondes</span>
+            </div>
+          }
           @if (triggerForm.get('type')?.value === 'database') {
             <div class="summary-item">
               <label>Connexion</label>
@@ -776,6 +993,12 @@
             <div class="summary-item">
               <label>Marquer comme lu</label>
               <span>{{ emailForm.get('markAsRead')?.value ? 'Oui' : 'Non' }}</span>
+            </div>
+          }
+          @if (triggerForm.get('type')?.value === 'cron') {
+            <div class="summary-item">
+              <label>Planification</label>
+              <span>{{ getCronSummary() }}</span>
             </div>
           }
           <div class="summary-item">

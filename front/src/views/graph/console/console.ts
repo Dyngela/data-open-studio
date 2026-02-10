@@ -1,4 +1,15 @@
-import {Component, signal, ViewChild, ElementRef, HostListener, AfterViewChecked, OnDestroy, output, inject} from '@angular/core';
+import {
+  Component,
+  signal,
+  ViewChild,
+  ElementRef,
+  HostListener,
+  AfterViewChecked,
+  OnDestroy,
+  output,
+  inject,
+  input
+} from '@angular/core';
 import { CommonModule, DatePipe, UpperCasePipe } from '@angular/common';
 import {JobService} from '../../../core/api/job.service';
 import {JobRealtimeService} from '../../../core/services/base-ws.service';
@@ -21,6 +32,7 @@ export class Console implements AfterViewChecked, OnDestroy {
   private jobService = inject(JobService);
   private realtime = inject(JobRealtimeService);
   private unsubProgress: () => void;
+  jobId = input.required<number>();
 
   constructor() {
     this.unsubProgress = this.realtime.onProgress((progress) => {
@@ -127,8 +139,8 @@ export class Console implements AfterViewChecked, OnDestroy {
   }
 
   printCode() {
-    this.jobService.printCode(1,
-      (data) => { 
+    this.jobService.printCode(this.jobId(),
+      (data) => {
       console.log(data)
     }).execute()
   }

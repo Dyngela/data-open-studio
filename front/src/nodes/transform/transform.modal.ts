@@ -10,7 +10,15 @@ import {
   OutputFlow,
   isMapConfig,
 } from './definition';
-import {LayoutService} from '../../core/services/layout-service';
+import { LayoutService } from '../../core/services/layout-service';
+import { DataModel } from '../../core/api/metadata.type';
+
+interface JoinKeyPair {
+  leftCol: string;
+  rightCol: string;
+}
+
+type JoinType = 'inner' | 'left' | 'right';
 
 @Component({
   selector: 'app-transform-modal',
@@ -26,24 +34,119 @@ export class TransformModal {
 
   private jobState = inject(JobStateService);
 
-  /** Upstream inputs with their schemas */
   protected upstreamInputs = computed(() => {
-    const n = this.node();
-    return this.jobState.getUpstreamSchemas(n.id);
+    return this.jobState.getUpstreamSchemas(this.node().id);
   });
 
-  /** Output columns being configured */
+  protected hasMultipleInputs = computed(() => this.upstreamInputs().length >= 2);
+  protected leftInput = computed(() => this.upstreamInputs()[0] ?? null);
+  protected rightInput = computed(() => this.upstreamInputs()[1] ?? null);
+
   protected outputColumns = signal<MapOutputCol[]>([]);
+  protected joinType = signal<JoinType>('inner');
+  protected joinKeys = signal<JoinKeyPair[]>([]);
+
+  protected draggedColumn = signal<{ inputName: string; colName: string; colType: string } | null>(null);
+  protected dropTargetCol = signal<string | null>(null);
 
   ngOnInit() {
-    // Restore existing config if any
     const config = this.jobState.getNodeConfig(this.node().id);
-    if (isMapConfig(config) && config.outputs?.length) {
-      this.outputColumns.set([...config.outputs[0].columns]);
+    if (isMapConfig(config)) {
+      if (config.outputs?.length) {
+        this.outputColumns.set([...config.outputs[0].columns]);
+      }
+      if (config.join) {
+        this.joinType.set(config.join.type as JoinType);
+        const pairs: JoinKeyPair[] = config.join.leftKeys.map((lk, i) => ({
+          leftCol: lk,
+          rightCol: config.join!.rightKeys[i],
+        }));
+        this.joinKeys.set(pairs);
+      }
     }
   }
 
-  /** Add an upstream column as a direct mapping to the output */
+  // ── Drag & drop for join keys ──────────────────────────
+
+  onDragStart(event: DragEvent, inputName: string, col: DataModel) {
+    this.draggedColumn.set({ inputName, colName: col.name, colType: col.type });
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'link';
+      event.dataTransfer.setData('text/plain', `${inputName}.${col.name}`);
+    }
+  }
+
+  onDragOver(event: DragEvent, targetInputName: string, targetColName: string) {
+    const dragged = this.draggedColumn();
+    if (!dragged || dragged.inputName === targetInputName) return;
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'link';
+    }
+    this.dropTargetCol.set(`${targetInputName}.${targetColName}`);
+  }
+
+  onDragLeave() {
+    this.dropTargetCol.set(null);
+  }
+
+  onDrop(event: DragEvent, targetInputName: string, targetCol: DataModel) {
+    event.preventDefault();
+    const dragged = this.draggedColumn();
+    if (!dragged || dragged.inputName === targetInputName) return;
+
+    const left = this.leftInput();
+    const right = this.rightInput();
+    if (!left || !right) return;
+
+    let leftCol: string;
+    let rightCol: string;
+
+    if (dragged.inputName === left.name) {
+      leftCol = dragged.colName;
+      rightCol = targetCol.name;
+    } else {
+      leftCol = targetCol.name;
+      rightCol = dragged.colName;
+    }
+
+    const exists = this.joinKeys().some(k => k.leftCol === leftCol && k.rightCol === rightCol);
+    if (!exists) {
+      this.joinKeys.update(keys => [...keys, { leftCol, rightCol }]);
+    }
+
+    this.draggedColumn.set(null);
+    this.dropTargetCol.set(null);
+  }
+
+  onDragEnd() {
+    this.draggedColumn.set(null);
+    this.dropTargetCol.set(null);
+  }
+
+  removeJoinKey(index: number) {
+    this.joinKeys.update(keys => keys.filter((_, i) => i !== index));
+  }
+
+  setJoinType(type: JoinType) {
+    this.joinType.set(type);
+  }
+
+  isDropTarget(inputName: string, colName: string): boolean {
+    return this.dropTargetCol() === `${inputName}.${colName}`;
+  }
+
+  isJoinedCol(inputName: string, colName: string): boolean {
+    const left = this.leftInput();
+    if (!left) return false;
+    if (inputName === left.name) {
+      return this.joinKeys().some(k => k.leftCol === colName);
+    }
+    return this.joinKeys().some(k => k.rightCol === colName);
+  }
+
+  // ── Output columns ────────────────────────────────────
+
   addColumn(inputName: string, col: { name: string; type: string }) {
     const existing = this.outputColumns();
     const alreadyExists = existing.some(
@@ -62,12 +165,16 @@ export class TransformModal {
     ]);
   }
 
-  /** Remove an output column by index */
+  addAllColumns(inputName: string, schema: DataModel[]) {
+    for (const col of schema) {
+      this.addColumn(inputName, col);
+    }
+  }
+
   removeColumn(index: number) {
     this.outputColumns.update(cols => cols.filter((_, i) => i !== index));
   }
 
-  /** Move a column up in the output list */
   moveUp(index: number) {
     if (index <= 0) return;
     this.outputColumns.update(cols => {
@@ -77,7 +184,6 @@ export class TransformModal {
     });
   }
 
-  /** Move a column down in the output list */
   moveDown(index: number) {
     const cols = this.outputColumns();
     if (index >= cols.length - 1) return;
@@ -87,6 +193,8 @@ export class TransformModal {
       return next;
     });
   }
+
+  // ── Save / Cancel ─────────────────────────────────────
 
   onSave() {
     const inputs: InputFlow[] = this.upstreamInputs().map(up => ({
@@ -107,7 +215,20 @@ export class TransformModal {
       outputs: [outputFlow],
     };
 
+    if (this.hasMultipleInputs() && this.joinKeys().length > 0) {
+      const left = this.leftInput()!;
+      const right = this.rightInput()!;
+      config.join = {
+        type: this.joinType(),
+        leftInput: left.name,
+        rightInput: right.name,
+        leftKeys: this.joinKeys().map(k => k.leftCol),
+        rightKeys: this.joinKeys().map(k => k.rightCol),
+      };
+    }
+
     this.jobState.setNodeConfig(this.node().id, config);
+    this.layoutService.closeModal();
   }
 
   onCancel() {

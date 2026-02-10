@@ -769,3 +769,106 @@
   height: 16px;
   cursor: pointer;
 }
+
+/* Alerts Tab */
+.alerts-section h3 {
+  margin: 0 0 0.5rem;
+}
+
+.alerts-hint {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+}
+
+.empty-alerts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--text-color-secondary);
+  background: var(--surface-ground);
+  border-radius: 8px;
+}
+
+.empty-alerts i {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.alert-job-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+}
+
+.alert-job-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.alert-job-header i {
+  color: var(--primary-color);
+}
+
+.alert-contacts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.alert-contact-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-ground);
+  border-radius: 6px;
+}
+
+.alert-contact-chip .contact-name {
+  font-weight: 500;
+}
+
+.alert-contact-chip .contact-email {
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+  flex: 1;
+}
+
+.no-contacts-hint {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+  font-style: italic;
+}
+
+.alert-add-contact {
+  margin-top: 0.5rem;
+}
+
+.alert-add-contact p-autoComplete {
+  width: 100%;
+}
+
+.user-autocomplete-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 0;
+}
+
+.user-autocomplete-item .user-name {
+  font-weight: 500;
+}
+
+.user-autocomplete-item .user-email {
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+}

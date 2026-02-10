@@ -1,7 +1,65 @@
 <div class="job-config-container">
-  <div class="empty-state">
-    <i class="pi pi-cog"></i>
-    <span>Configuration du job</span>
-    <p class="hint">Les paramètres de configuration du job apparaîtront ici.</p>
-  </div>
+  <p-toast />
+
+  @if (!job()) {
+    <div class="empty-state">
+      <i class="pi pi-cog"></i>
+      <span>Configuration du job</span>
+      <p class="hint">Chargez un job pour voir sa configuration.</p>
+    </div>
+  } @else {
+    <div class="config-content">
+      <!-- Notification Contacts Section -->
+      <div class="section">
+        <div class="section-header">
+          <i class="pi pi-bell"></i>
+          <span class="section-title">Alertes en cas d'échec</span>
+        </div>
+        <p class="section-hint">Ces utilisateurs recevront un email si le job échoue.</p>
+
+        <div class="contacts-list">
+          @for (contact of contacts(); track contact.id) {
+            <div class="contact-chip">
+              <div class="contact-info">
+                <span class="contact-name">{{ contact.prenom }} {{ contact.nom }}</span>
+                <span class="contact-email">{{ contact.email }}</span>
+              </div>
+              <p-button
+                icon="pi pi-times"
+                severity="danger"
+                [text]="true"
+                [rounded]="true"
+                size="small"
+                pTooltip="Retirer"
+                (onClick)="removeContact(contact)"
+              />
+            </div>
+          } @empty {
+            <div class="no-contacts">
+              <span>Aucun contact configuré</span>
+            </div>
+          }
+        </div>
+
+        <div class="add-contact">
+          <p-autoComplete
+            [suggestions]="filteredUsers()"
+            (completeMethod)="searchUsers($event)"
+            (onSelect)="addContact($event.value)"
+            [optionLabel]="'email'"
+            [optionValue]="'id'"
+            placeholder="Rechercher un utilisateur..."
+            [forceSelection]="true"
+          >
+            <ng-template let-user pTemplate="item">
+              <div class="user-item">
+                <span class="user-name">{{ user.prenom }} {{ user.nom }}</span>
+                <span class="user-email">{{ user.email }}</span>
+              </div>
+            </ng-template>
+          </p-autoComplete>
+        </div>
+      </div>
+    </div>
+  }
 </div>

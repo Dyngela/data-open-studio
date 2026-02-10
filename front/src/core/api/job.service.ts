@@ -7,7 +7,9 @@ import {
   CreateJobRequest,
   UpdateJobRequest,
   ShareJobRequest,
-  DeleteResponse, PrintCode
+  DeleteResponse,
+  PrintCode,
+  AddNotificationContactRequest
 } from './job.type';
 import {ApiError} from './api-response.type';
 
@@ -30,8 +32,8 @@ export class JobService {
   /**
    * Get a single job by ID with its nodes and sharing info
    */
-  getById(id: number): ApiResult<JobWithNodes> {
-    return this.api.get<JobWithNodes>(`${this.basePath}/${id}`);
+  getById(id: number, onSuccess?: (data: JobWithNodes) => void, onError?: (error: any) => void): ApiResult<JobWithNodes> {
+    return this.api.get<JobWithNodes>(`${this.basePath}/${id}`, undefined, onSuccess, onError);
   }
 
   /**
@@ -103,6 +105,31 @@ export class JobService {
   ): ApiMutation<JobWithNodes, ShareJobRequest> {
     return this.api.delete<JobWithNodes, ShareJobRequest>(
       `${this.basePath}/${id}/share`,
+      onSuccess,
+      onError
+    );
+  }
+
+  addNotificationContact(
+    id: number,
+    onSuccess?: (data: JobWithNodes) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<JobWithNodes, AddNotificationContactRequest> {
+    return this.api.post<JobWithNodes, AddNotificationContactRequest>(
+      `${this.basePath}/${id}/notification-contacts`,
+      onSuccess,
+      onError
+    );
+  }
+
+  removeNotificationContact(
+    jobId: number,
+    userId: number,
+    onSuccess?: (data: JobWithNodes) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<JobWithNodes, void> {
+    return this.api.delete<JobWithNodes, void>(
+      `${this.basePath}/${jobId}/notification-contacts/${userId}`,
       onSuccess,
       onError
     );

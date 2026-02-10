@@ -37,7 +37,9 @@ export class BaseApiService {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     path: string,
     request$: () => Observable<T>,
-    options: ApiOptions
+    options: ApiOptions,
+    onSuccess?: (data: T) => void | Promise<void>,
+    onError?: (error: ApiError) => void | Promise<void>
   ): ApiResult<T> {
     const data = signal<T | null>(null);
     const error = signal<ApiError | null>(null);
@@ -56,7 +58,11 @@ export class BaseApiService {
 
             error.set(apiError);
 
-            if (options.showErrorMessage !== false) {
+            if (onError) {
+              onError(apiError);
+            }
+
+            if (options.showErrorMessage !== false && !onError) {
               this.handleError(apiError, path);
             }
 
@@ -67,6 +73,10 @@ export class BaseApiService {
         .subscribe(res => {
           if (res !== null) {
             data.set(res);
+
+            if (onSuccess) {
+              onSuccess(res);
+            }
 
             if (options.showSuccessMessage) {
               this.handleSuccess(method, options.successMessage);
@@ -83,6 +93,8 @@ export class BaseApiService {
   public get<T>(
     path: string,
     criteria?: SearchCriteria[],
+    onSuccess?: (data: T) => void | Promise<void>,
+    onError?: (error: ApiError) => void | Promise<void>,
     options: ApiOptions = {}
   ): ApiResult<T> {
     const params = new HttpParams({
@@ -95,7 +107,9 @@ export class BaseApiService {
       'GET',
       path,
       () => this.http.get<T>(`${environment.baseUrl}${path}`, { params }),
-      { ...this.defaultOptions.get, ...options }
+      { ...this.defaultOptions.get, ...options },
+      onSuccess,
+      onError
     );
   }
 

@@ -31,8 +31,8 @@ export class TriggerService {
   /**
    * Get a single trigger by ID with full details
    */
-  getById(id: number): ApiResult<TriggerWithDetails> {
-    return this.api.get<TriggerWithDetails>(`${this.basePath}/${id}`);
+  getById(id: number, onSuccess?: (data: TriggerWithDetails) => void, onError?: (error: any) => void): ApiResult<TriggerWithDetails> {
+    return this.api.get<TriggerWithDetails>(`${this.basePath}/${id}`, undefined, onSuccess, onError);
   }
 
   /**
@@ -190,10 +190,12 @@ export class TriggerService {
   /**
    * Get recent executions for a trigger
    */
-  getExecutions(triggerId: number, limit: number = 20): ApiResult<TriggerExecution[]> {
+  getExecutions(triggerId: number, limit: number = 20, onSuccess?: (data: TriggerExecution[]) => void, onError?: (error: any) => void): ApiResult<TriggerExecution[]> {
     return this.api.get<TriggerExecution[]>(
       `${this.basePath}/${triggerId}/executions`,
-      [{ name: 'limit', value: limit.toString() }]
+      [{ name: 'limit', value: limit.toString() }],
+      onSuccess,
+      onError
     );
   }
 

@@ -83,33 +83,42 @@ func (b *FileBuilder) SetProgressConfig(natsURL, tenantID string, jobID uint) {
 
 // Build generates all code for the job
 func (b *FileBuilder) Build() error {
-	// Collect data for all nodes
+	// Pass 1: Generate all structs first so NodeStructNames is fully populated
 	for i := range b.job.Nodes {
 		node := &b.job.Nodes[i]
 
-		// Skip nodes not in the pipeline (if filter is set)
 		if len(b.nodeIDs) > 0 && !b.nodeIDs[node.ID] {
 			continue
 		}
 
 		gen, ok := DefaultRegistry.Get(node.Type)
 		if !ok {
-			// Skip nodes without generators (like start nodes)
 			continue
 		}
 
-		// Generate struct data
 		structData, err := gen.GenerateStructData(node)
 		if err != nil {
 			return fmt.Errorf("failed to generate struct for node %d: %w", node.ID, err)
 		}
 		if structData != nil {
 			b.templateData.Structs = append(b.templateData.Structs, *structData)
-			// Register struct name in context for other nodes to reference
 			b.ctx.NodeStructNames[node.ID] = structData.Name
 		}
+	}
 
-		// Generate function data
+	// Pass 2: Generate all functions (now all struct names are available)
+	for i := range b.job.Nodes {
+		node := &b.job.Nodes[i]
+
+		if len(b.nodeIDs) > 0 && !b.nodeIDs[node.ID] {
+			continue
+		}
+
+		gen, ok := DefaultRegistry.Get(node.Type)
+		if !ok {
+			continue
+		}
+
 		funcData, err := gen.GenerateFuncData(node, b.ctx)
 		if err != nil {
 			return fmt.Errorf("failed to generate func for node %d: %w", node.ID, err)
@@ -279,6 +288,7 @@ func (b *FileBuilder) resolveStructImports() {
 	// Map of type substring → required import path
 	typeImports := map[string]string{
 		"time.": "time",
+		"sql.":  "database/sql",
 	}
 
 	for _, s := range b.templateData.Structs {

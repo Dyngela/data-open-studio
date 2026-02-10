@@ -1,9 +1,10 @@
-import {Component, signal, ViewChild, HostListener, output, model, inject} from '@angular/core';
+import {Component, signal, ViewChild, HostListener, output, model, inject, input} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TabsModule } from 'primeng/tabs';
 import { Console } from '../console/console';
 import { JobConfig } from '../job-config/job-config';
 import {LayoutService} from '../../../core/services/layout-service';
+import {JobWithNodes} from '../../../core/api/job.type';
 
 @Component({
   selector: 'app-playground-bottom-bar',
@@ -14,6 +15,8 @@ import {LayoutService} from '../../../core/services/layout-service';
 })
 export class PlaygroundBottomBar {
   protected layout = inject(LayoutService)
+
+  job = input<JobWithNodes>({} as JobWithNodes);
 
   @ViewChild('consoleComponent') consoleComponent?: Console;
 

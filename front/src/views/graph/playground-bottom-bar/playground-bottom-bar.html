@@ -24,11 +24,12 @@
           (onSave)="onConsoleSave()"
           (onExecute)="onConsoleExecute()"
           (onStop)="onConsoleStop()"
+          [jobId]="job().id"
         ></app-console>
       </p-tabpanel>
 
       <p-tabpanel value="config">
-        <app-job-config></app-job-config>
+        <app-job-config [job]="job()"></app-job-config>
       </p-tabpanel>
     </p-tabpanels>
   </p-tabs>
