@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
+	"strings"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )
@@ -93,4 +96,55 @@ func (r *ProgressReporter) ReportFunc() ProgressFunc {
 			log.Printf("progress publish error: %v", err)
 		}
 	}
+}
+
+func PrettyPrintStruct(s interface{}, sep string) string {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return "input is not a struct"
+	}
+
+	t := v.Type()
+	var parts []string
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldValue := v.Field(i)
+		fieldType := t.Field(i)
+
+		// Priority: 'db' tag -> Field Name
+		label := fieldType.Tag.Get("db")
+		if label == "" {
+			label = fieldType.Name
+		}
+
+		valStr := "null"
+
+		// Handle sql.Null* types via reflection
+		if fieldValue.Kind() == reflect.Struct {
+			isValidField := fieldValue.FieldByName("Valid")
+			if isValidField.IsValid() && isValidField.Bool() {
+				// Index 0 is typically the internal value (String, Int32, etc.)
+				actualValue := fieldValue.Field(0).Interface()
+
+				if tm, ok := actualValue.(time.Time); ok {
+					valStr = tm.Format("2006-01-02 15:04:05")
+				} else {
+					valStr = fmt.Sprintf("%v", actualValue)
+				}
+			}
+		} else {
+			// Handle standard types (string, int, etc.)
+			valStr = fmt.Sprintf("%v", fieldValue.Interface())
+		}
+
+		parts = append(parts, fmt.Sprintf("%s: %s", label, valStr))
+	}
+
+	// Wrap in markers so you can see start/end in a dense log
+	sep = " | "
+	return "» " + strings.Join(parts, sep) + " «"
 }

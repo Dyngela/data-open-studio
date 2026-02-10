@@ -56,7 +56,7 @@ func (j *JobExecution) Run() error {
 	}
 
 	//if j.isDebug() {
-	return j.outputToLocal()
+	//return j.outputToLocal()
 	//}
 	return j.runInDocker()
 }

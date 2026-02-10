@@ -10,7 +10,7 @@ func {{ .FuncName }}(ctx context.Context, in <-chan *{{ .InputType }}, progress 
 		totalRows++
 		fmt.Printf("[log] row %d: %+v\n", totalRows, row)
 		if progress != nil {
-			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, fmt.Sprintf("%v", row)))
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, lib.PrettyPrintStruct(row, "|")))
 		}
 	}
 
