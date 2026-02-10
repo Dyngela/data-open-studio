@@ -84,7 +84,6 @@ func (d *DataModel) sqlNullType(baseType string) string {
 // normalizeGoType converts the raw GoType from database driver to a clean Go type
 func (d *DataModel) normalizeGoType() string {
 	goType := d.GoType
-
 	// Handle sql.Null* types
 	switch goType {
 	case "sql.NullString":
@@ -101,11 +100,20 @@ func (d *DataModel) normalizeGoType() string {
 
 	// Handle common type variations
 	switch {
-	case strings.Contains(goType, "int64"):
+	case goType == "interface {}" || goType == "interface{}":
+		return "interface{}"
+
+	// 2. Handle JSON types explicitly
+	case strings.Contains(strings.ToLower(goType), "json"):
+		return "[]byte"
+
+	// 3. Use more specific integer checks
+	case goType == "int64", strings.HasPrefix(goType, "int64"):
 		return "int64"
-	case strings.Contains(goType, "int32"):
+	case goType == "int32", strings.HasPrefix(goType, "int32"):
 		return "int32"
-	case strings.Contains(goType, "int"):
+	// Use exact match or ensure it's not 'interface'
+	case goType == "int", (strings.Contains(goType, "int") && !strings.Contains(goType, "interface")):
 		return "int"
 	case strings.Contains(goType, "float64"):
 		return "float64"
@@ -119,8 +127,6 @@ func (d *DataModel) normalizeGoType() string {
 		return "[]byte"
 	case strings.Contains(goType, "string"):
 		return "string"
-	case goType == "interface {}":
-		return "interface{}"
 	}
 
 	// Default to interface{} for unknown types

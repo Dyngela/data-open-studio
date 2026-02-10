@@ -632,20 +632,18 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
 
     // Wait for WebSocket to connect and subscribe before triggering execution
     localConsole.addLog('info', 'Connexion au flux temps réel...');
-    // try {
-    //   await this.realtime.subscribeToJob(id);
-    // } catch {
-    //   localConsole.addLog('warn', 'WebSocket non disponible, lancement sans suivi temps réel');
-    // }
+    try {
+      await this.realtime.subscribeToJob(id);
+    } catch {
+      localConsole.addLog('warn', 'WebSocket non disponible, lancement sans suivi temps réel');
+    }
 
     const mutation = this.jobService.execute(id,
       () => {
         localConsole.addLog('info', 'Job lancé, en attente des résultats...');
-        localConsole.setRunning(true);
       },
       (error) => {
         localConsole.markError(error?.message ?? 'Erreur lors du lancement du job');
-        localConsole.setRunning(false);
       },
     );
     mutation.execute(null);
