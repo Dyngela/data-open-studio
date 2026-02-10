@@ -81,10 +81,43 @@ func (g *MapGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorContext
 func (g *MapGenerator) GetLaunchArgs(node *models.Node, channels []channelInfo, dbConnections map[string]string) []string {
 	args := make([]string, 0)
 
-	// Add input channels (in order)
-	for _, ch := range channels {
-		if ch.toNodeID == node.ID {
-			args = append(args, fmt.Sprintf("ch_%d", ch.portID))
+	config, err := node.GetMapConfig()
+	if err == nil && config.Join != nil {
+		// Join node: order input channels to match left/right from join config.
+		// Build a map from input name (A, B, ...) to the source node's channel.
+		inputNameToChan := make(map[string]string)
+		inputIndex := 0
+		for _, port := range node.InputPort {
+			if port.Type != models.PortTypeInput {
+				continue
+			}
+			sourceNodeID := int(port.ConnectedNodeID)
+			if sourceNodeID == 0 {
+				inputIndex++
+				continue
+			}
+			inputName := string(rune('A' + inputIndex))
+			for _, ch := range channels {
+				if ch.toNodeID == node.ID && ch.fromNodeID == sourceNodeID {
+					inputNameToChan[inputName] = fmt.Sprintf("ch_%d", ch.portID)
+					break
+				}
+			}
+			inputIndex++
+		}
+		// Add left first, then right
+		if ch, ok := inputNameToChan[config.Join.LeftInput]; ok {
+			args = append(args, ch)
+		}
+		if ch, ok := inputNameToChan[config.Join.RightInput]; ok {
+			args = append(args, ch)
+		}
+	} else {
+		// Single input or no join config: add input channels in order
+		for _, ch := range channels {
+			if ch.toNodeID == node.ID {
+				args = append(args, fmt.Sprintf("ch_%d", ch.portID))
+			}
 		}
 	}
 
@@ -198,8 +231,8 @@ func (g *MapGenerator) generateJoinFuncData(node *models.Node, config *models.Ma
 // generateLeftJoinBody generates the body for a left join using template
 func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
 	join := config.Join
-	leftKey := g.getJoinKey(join.LeftKey, join.LeftKeys)
-	rightKey := g.getJoinKey(join.RightKey, join.RightKeys)
+	leftKeys := g.getJoinKeys(join.LeftKey, join.LeftKeys)
+	rightKeys := g.getJoinKeys(join.RightKey, join.RightKeys)
 
 	transforms := g.buildJoinTransformCode(columns, join.LeftInput, join.RightInput, ctx)
 
@@ -215,8 +248,8 @@ func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.Ma
 		LeftType:   leftType,
 		RightType:  rightType,
 		OutputType: outputStructName,
-		LeftKey:    toPascalCase(leftKey),
-		RightKey:   toPascalCase(rightKey),
+		LeftKeys:   leftKeys,
+		RightKeys:  rightKeys,
 		Transforms: transforms,
 	}
 
@@ -231,15 +264,15 @@ func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.Ma
 // generateInnerJoinBody generates the body for an inner join using template
 func (g *MapGenerator) generateInnerJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
 	join := config.Join
-	leftKey := g.getJoinKey(join.LeftKey, join.LeftKeys)
-	rightKey := g.getJoinKey(join.RightKey, join.RightKeys)
+	leftKeys := g.getJoinKeys(join.LeftKey, join.LeftKeys)
+	rightKeys := g.getJoinKeys(join.RightKey, join.RightKeys)
 	transforms := g.buildJoinTransformCode(columns, join.LeftInput, join.RightInput, ctx)
 
 	engine, _ := NewTemplateEngine()
 	templateData := MapJoinTemplateData{
 		FuncName: ctx.FuncName(node), NodeID: node.ID, NodeName: node.Name,
 		LeftType: leftType, RightType: rightType, OutputType: outputStructName,
-		LeftKey: toPascalCase(leftKey), RightKey: toPascalCase(rightKey), Transforms: transforms,
+		LeftKeys: leftKeys, RightKeys: rightKeys, Transforms: transforms,
 	}
 	body, _ := engine.GenerateNodeFunction("node_map_inner_join.go.tmpl", templateData)
 	return body
@@ -248,15 +281,15 @@ func (g *MapGenerator) generateInnerJoinBody(node *models.Node, config *models.M
 // generateRightJoinBody generates the body for a right join using template
 func (g *MapGenerator) generateRightJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
 	join := config.Join
-	leftKey := g.getJoinKey(join.LeftKey, join.LeftKeys)
-	rightKey := g.getJoinKey(join.RightKey, join.RightKeys)
+	leftKeys := g.getJoinKeys(join.LeftKey, join.LeftKeys)
+	rightKeys := g.getJoinKeys(join.RightKey, join.RightKeys)
 	transforms := g.buildJoinTransformCode(columns, join.LeftInput, join.RightInput, ctx)
 
 	engine, _ := NewTemplateEngine()
 	templateData := MapJoinTemplateData{
 		FuncName: ctx.FuncName(node), NodeID: node.ID, NodeName: node.Name,
 		LeftType: leftType, RightType: rightType, OutputType: outputStructName,
-		LeftKey: toPascalCase(leftKey), RightKey: toPascalCase(rightKey), Transforms: transforms,
+		LeftKeys: leftKeys, RightKeys: rightKeys, Transforms: transforms,
 	}
 	body, _ := engine.GenerateNodeFunction("node_map_right_join.go.tmpl", templateData)
 	return body
@@ -533,12 +566,16 @@ func (g *MapGenerator) findInputRowTypes(node *models.Node, config *models.MapCo
 	return result
 }
 
-// getJoinKey returns the first key (handles both single and composite keys)
-func (g *MapGenerator) getJoinKey(singleKey string, multiKeys []string) string {
+// getJoinKeys returns all keys as PascalCase field names
+func (g *MapGenerator) getJoinKeys(singleKey string, multiKeys []string) []string {
 	if len(multiKeys) > 0 {
-		return multiKeys[0]
+		keys := make([]string, len(multiKeys))
+		for i, k := range multiKeys {
+			keys[i] = toPascalCase(k)
+		}
+		return keys
 	}
-	return singleKey
+	return []string{toPascalCase(singleKey)}
 }
 
 // getZeroValue returns the zero value for a data type (sql.Null* zero = {Valid: false})

@@ -4,6 +4,7 @@ import (
 	"api"
 	"api/internal/api/handler/response"
 	"api/internal/api/models"
+	"api/pkg"
 	"database/sql"
 	"fmt"
 	"time"
@@ -130,6 +131,8 @@ func IntrospectColumns(metadataID *uint, connection *models.DBConnectionConfig, 
 			IsPrimary:  isPrimary,
 		})
 	}
+
+	pkg.PrettyPrint(columns)
 
 	return columns, nil
 }

@@ -113,10 +113,39 @@ func (slf *DBInputConfig) findPostgresDataModels(conn *sql.DB) error {
 	slf.DataModels = make([]DataModel, 0, len(columnTypes))
 
 	for _, col := range columnTypes {
+		dbType := col.DatabaseTypeName()
+		goType := col.ScanType().String()
+
+		// Manual override based on Postgres type names
+		switch dbType {
+		case "SMALLINT", "INT2":
+			goType = "int16"
+		case "INTEGER", "INT", "INT4", "SERIAL":
+			goType = "int32"
+		case "BIGINT", "INT8", "BIGSERIAL":
+			goType = "int64"
+		case "FLOAT4", "REAL":
+			goType = "float32"
+		case "FLOAT8", "DOUBLE PRECISION", "NUMERIC", "DECIMAL":
+			goType = "float64"
+		case "TEXT", "VARCHAR", "CHAR", "BPCHAR", "UUID", "INET", "CIDR":
+			goType = "string"
+		case "BOOL", "BOOLEAN":
+			goType = "bool"
+		case "BYTEA":
+			goType = "[]byte"
+		case "JSON", "JSONB":
+			goType = "json.RawMessage"
+		case "DATE", "TIMESTAMP", "TIMESTAMPTZ":
+			goType = "time.Time"
+		default:
+			// Fallback for custom or unknown types
+			goType = "interface{}"
+		}
 		model := DataModel{
 			Name:   col.Name(),
-			Type:   col.DatabaseTypeName(),
-			GoType: col.ScanType().String(),
+			Type:   dbType,
+			GoType: goType,
 		}
 
 		slf.DataModels = append(slf.DataModels, model)
@@ -142,12 +171,42 @@ func (slf *DBInputConfig) findSqlServerDataModels(conn *sql.DB) error {
 	slf.DataModels = make([]DataModel, 0, len(columnTypes))
 
 	for _, col := range columnTypes {
-		model := DataModel{
-			Name:   col.Name(),
-			Type:   col.DatabaseTypeName(),
-			GoType: col.ScanType().String(),
+		dbType := col.DatabaseTypeName()
+		goType := col.ScanType().String()
+
+		switch dbType {
+		case "BIT":
+			goType = "bool"
+		case "TINYINT":
+			goType = "uint8"
+		case "SMALLINT":
+			goType = "int16"
+		case "INT":
+			goType = "int32"
+		case "BIGINT":
+			goType = "int64"
+		case "DECIMAL", "NUMERIC", "	MONEY", "SMALLMONEY", "FLOAT":
+			goType = "float64"
+		case "REAL":
+			goType = "float32"
+		case "CHAR", "VARCHAR", "NCHAR", "NVARCHAR", "TEXT", "NTEXT", "UNIQUEIDENTIFIER", "XML":
+			goType = "string"
+		case "DATE", "DATETIME", "DATETIME2", "SMALLDATETIME", "DATETIMEOFFSET":
+			goType = "time.Time"
+		case "BINARY", "VARBINARY", "IMAGE":
+			goType = "[]byte"
+		default:
+			// Keep the original ScanType if not explicitly handled
+			if goType == "interface {}" {
+				goType = "string" // Safe fallback for most SQL Server outputs
+			}
 		}
 
+		model := DataModel{
+			Name:   col.Name(),
+			Type:   dbType,
+			GoType: goType,
+		}
 		slf.DataModels = append(slf.DataModels, model)
 	}
 

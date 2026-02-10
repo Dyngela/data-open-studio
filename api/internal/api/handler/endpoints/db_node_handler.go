@@ -82,6 +82,8 @@ func (slf *dbNodeHandler) guessSchema(c *gin.Context) {
 		return
 	}
 
+	pkg.PrettyPrint(node.DataModels)
+
 	slf.logger.Info().
 		Int("columnsFound", len(node.DataModels)).
 		Msg("Successfully guessed schema")

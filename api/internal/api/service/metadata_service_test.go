@@ -40,7 +40,7 @@ func TestDbMetadata_Create(t *testing.T) {
 
 	metadata := models.MetadataDatabase{
 		Host:         "localhost",
-		Port:         "5433",
+		Port:         5433,
 		User:         "testuser",
 		Password:     "testpass",
 		DatabaseName: "testdb",
@@ -56,7 +56,7 @@ func TestDbMetadata_Create(t *testing.T) {
 	defer cleanupDbMetadata(t, created.ID)
 
 	assert.Equal(t, "localhost", created.Host)
-	assert.Equal(t, "5433", created.Port)
+	assert.Equal(t, 5433, created.Port)
 	assert.Equal(t, "testuser", created.User)
 	assert.Equal(t, "testpass", created.Password)
 	assert.Equal(t, "testdb", created.DatabaseName)
@@ -71,7 +71,7 @@ func TestDbMetadata_FindByID(t *testing.T) {
 	// Create test metadata
 	metadata := models.MetadataDatabase{
 		Host:         "db.example.com",
-		Port:         "5432",
+		Port:         5432,
 		User:         "admin",
 		Password:     "secret",
 		DatabaseName: "production",
@@ -89,7 +89,7 @@ func TestDbMetadata_FindByID(t *testing.T) {
 
 	assert.Equal(t, created.ID, found.ID)
 	assert.Equal(t, "db.example.com", found.Host)
-	assert.Equal(t, "5432", found.Port)
+	assert.Equal(t, 5432, found.Port)
 	assert.Equal(t, "admin", found.User)
 	assert.Equal(t, "production", found.DatabaseName)
 }
@@ -111,7 +111,7 @@ func TestDbMetadata_FindAll(t *testing.T) {
 	// Create multiple test metadata
 	metadata1 := models.MetadataDatabase{
 		Host:         "host1.example.com",
-		Port:         "5432",
+		Port:         5432,
 		User:         "user1",
 		Password:     "pass1",
 		DatabaseName: "db1",
@@ -119,7 +119,7 @@ func TestDbMetadata_FindAll(t *testing.T) {
 	}
 	metadata2 := models.MetadataDatabase{
 		Host:         "host2.example.com",
-		Port:         "5433",
+		Port:         5433,
 		User:         "user2",
 		Password:     "pass2",
 		DatabaseName: "db2",
@@ -148,7 +148,7 @@ func TestDbMetadata_Update(t *testing.T) {
 	// Create test metadata
 	metadata := models.MetadataDatabase{
 		Host:         "old-host.example.com",
-		Port:         "5432",
+		Port:         5432,
 		User:         "olduser",
 		Password:     "oldpass",
 		DatabaseName: "olddb",
@@ -174,7 +174,7 @@ func TestDbMetadata_Update(t *testing.T) {
 	assert.Equal(t, "newuser", updated.User)
 	assert.Equal(t, "newdb", updated.DatabaseName)
 	// Unchanged fields
-	assert.Equal(t, "5432", updated.Port)
+	assert.Equal(t, 5432, updated.Port)
 	assert.Equal(t, "oldpass", updated.Password)
 }
 
@@ -186,7 +186,7 @@ func TestDbMetadata_Delete(t *testing.T) {
 	// Create test metadata
 	metadata := models.MetadataDatabase{
 		Host:         "delete-me.example.com",
-		Port:         "5432",
+		Port:         5432,
 		User:         "user",
 		Password:     "pass",
 		DatabaseName: "db",
@@ -214,7 +214,7 @@ func TestSftpMetadata_Create(t *testing.T) {
 
 	metadata := models.MetadataSftp{
 		Host:       "sftp.example.com",
-		Port:       "22",
+		Port:       22,
 		User:       "sftpuser",
 		Password:   "sftppass",
 		PrivateKey: "",
@@ -230,7 +230,7 @@ func TestSftpMetadata_Create(t *testing.T) {
 	defer cleanupSftpMetadata(t, created.ID)
 
 	assert.Equal(t, "sftp.example.com", created.Host)
-	assert.Equal(t, "22", created.Port)
+	assert.Equal(t, 22, created.Port)
 	assert.Equal(t, "sftpuser", created.User)
 	assert.Equal(t, "sftppass", created.Password)
 	assert.Equal(t, "/data/uploads", created.BasePath)
@@ -248,7 +248,7 @@ QyNTUxOQAAACBbeWvHh1hVy4k9P/l0JsY3TEstVZDQ7CfNMgAAAA==
 
 	metadata := models.MetadataSftp{
 		Host:       "secure-sftp.example.com",
-		Port:       "22",
+		Port:       22,
 		User:       "keyuser",
 		Password:   "",
 		PrivateKey: privateKey,
@@ -272,7 +272,7 @@ func TestSftpMetadata_FindByID(t *testing.T) {
 
 	metadata := models.MetadataSftp{
 		Host:     "find-me.example.com",
-		Port:     "2222",
+		Port:     2222,
 		User:     "finduser",
 		Password: "findpass",
 		BasePath: "/find/path",
@@ -288,7 +288,7 @@ func TestSftpMetadata_FindByID(t *testing.T) {
 
 	assert.Equal(t, created.ID, found.ID)
 	assert.Equal(t, "find-me.example.com", found.Host)
-	assert.Equal(t, "2222", found.Port)
+	assert.Equal(t, 2222, found.Port)
 	assert.Equal(t, "finduser", found.User)
 }
 
@@ -308,14 +308,14 @@ func TestSftpMetadata_FindAll(t *testing.T) {
 
 	metadata1 := models.MetadataSftp{
 		Host:     "sftp1.example.com",
-		Port:     "22",
+		Port:     22,
 		User:     "user1",
 		Password: "pass1",
 		BasePath: "/path1",
 	}
 	metadata2 := models.MetadataSftp{
 		Host:     "sftp2.example.com",
-		Port:     "2222",
+		Port:     2222,
 		User:     "user2",
 		Password: "pass2",
 		BasePath: "/path2",
@@ -341,7 +341,7 @@ func TestSftpMetadata_Update(t *testing.T) {
 
 	metadata := models.MetadataSftp{
 		Host:     "old-sftp.example.com",
-		Port:     "22",
+		Port:     22,
 		User:     "olduser",
 		Password: "oldpass",
 		BasePath: "/old/path",
@@ -365,7 +365,7 @@ func TestSftpMetadata_Update(t *testing.T) {
 	assert.Equal(t, "newuser", updated.User)
 	assert.Equal(t, "/new/path", updated.BasePath)
 	// Unchanged fields
-	assert.Equal(t, "22", updated.Port)
+	assert.Equal(t, 22, updated.Port)
 	assert.Equal(t, "oldpass", updated.Password)
 }
 
@@ -376,7 +376,7 @@ func TestSftpMetadata_Delete(t *testing.T) {
 
 	metadata := models.MetadataSftp{
 		Host:     "delete-sftp.example.com",
-		Port:     "22",
+		Port:     22,
 		User:     "user",
 		Password: "pass",
 		BasePath: "/delete",

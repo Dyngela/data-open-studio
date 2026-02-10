@@ -9,13 +9,13 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 	// Build right index
 	rightIndex := make(map[string]*{{ .RightType }})
 	for r := range rightIn {
-		key := fmt.Sprintf("%v", r.{{ .RightKey }})
+		key := {{ range $i, $k := .RightKeys }}{{ if $i }} + "|" + {{ end }}fmt.Sprintf("%v", r.{{ $k }}){{ end }}
 		rightIndex[key] = r
 	}
 
 	// Process left stream, only emit matches
 	for left := range leftIn {
-		key := fmt.Sprintf("%v", left.{{ .LeftKey }})
+		key := {{ range $i, $k := .LeftKeys }}{{ if $i }} + "|" + {{ end }}fmt.Sprintf("%v", left.{{ $k }}){{ end }}
 		right, ok := rightIndex[key]
 		if !ok {
 			continue // Skip non-matching rows

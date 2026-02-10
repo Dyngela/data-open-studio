@@ -90,8 +90,8 @@ type MapJoinTemplateData struct {
 	LeftType   string
 	RightType  string
 	OutputType string
-	LeftKey    string
-	RightKey   string
+	LeftKeys   []string
+	RightKeys  []string
 	Transforms string
 }
 
