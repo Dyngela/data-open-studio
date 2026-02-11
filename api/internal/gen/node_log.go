@@ -42,6 +42,11 @@ func (g *LogGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorContext
 		inputRowType = "any"
 	}
 
+	separator := " | "
+	if config, err := node.GetLogConfig(); err == nil && config.Separator != "" {
+		separator = config.Separator
+	}
+
 	// Use template engine
 	engine, err := NewTemplateEngine()
 	if err != nil {
@@ -53,6 +58,7 @@ func (g *LogGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorContext
 		NodeID:    node.ID,
 		NodeName:  node.Name,
 		InputType: inputRowType,
+		Separator: separator,
 	}
 
 	body, err := engine.GenerateNodeFunction("node_log.go.tmpl", templateData)

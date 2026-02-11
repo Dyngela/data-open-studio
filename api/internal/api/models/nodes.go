@@ -101,7 +101,9 @@ func (slf *Node) SetData(data any) error {
 			return errors.New("invalid data type for email_output node")
 		}
 	case NodeTypeLog:
-		return errors.New("Log has no data, it just logs messages")
+		if _, ok := data.(NodeLogConfig); !ok {
+			return errors.New("invalid data type for log node")
+		}
 	default:
 		return errors.New("unknown node type: " + string(slf.Type))
 	}

@@ -113,6 +113,7 @@ type LogTemplateData struct {
 	NodeID    int
 	NodeName  string
 	InputType string
+	Separator string
 }
 
 // DBOutputInsertTemplateData holds data for db_output INSERT template

@@ -84,26 +84,29 @@ func (g *MapGenerator) GetLaunchArgs(node *models.Node, channels []channelInfo, 
 	config, err := node.GetMapConfig()
 	if err == nil && config.Join != nil {
 		// Join node: order input channels to match left/right from join config.
-		// Build a map from input name (A, B, ...) to the source node's channel.
-		inputNameToChan := make(map[string]string)
-		inputIndex := 0
-		for _, port := range node.InputPort {
+		// Build a map from absolute port array index to channel name.
+		portIndexToChan := make(map[int]string)
+		for idx, port := range node.InputPort {
 			if port.Type != models.PortTypeInput {
 				continue
 			}
 			sourceNodeID := int(port.ConnectedNodeID)
 			if sourceNodeID == 0 {
-				inputIndex++
 				continue
 			}
-			inputName := string(rune('A' + inputIndex))
 			for _, ch := range channels {
 				if ch.toNodeID == node.ID && ch.fromNodeID == sourceNodeID {
-					inputNameToChan[inputName] = fmt.Sprintf("ch_%d", ch.portID)
+					portIndexToChan[idx] = fmt.Sprintf("ch_%d", ch.portID)
 					break
 				}
 			}
-			inputIndex++
+		}
+		// Use config inputs to map input names to channels via port index.
+		inputNameToChan := make(map[string]string)
+		for _, input := range config.Inputs {
+			if ch, ok := portIndexToChan[input.PortID]; ok {
+				inputNameToChan[input.Name] = ch
+			}
 		}
 		// Add left first, then right
 		if ch, ok := inputNameToChan[config.Join.LeftInput]; ok {
@@ -543,24 +546,24 @@ func (g *MapGenerator) substituteJoinInputRefs(expr, inputName, rowVar string) s
 func (g *MapGenerator) findInputRowTypes(node *models.Node, config *models.MapConfig, ctx *GeneratorContext) map[string]string {
 	result := make(map[string]string)
 
-	// Collect input ports in order — their index maps to input name (A=0, B=1, ...)
-	inputIndex := 0
-	for _, port := range node.InputPort {
+	// Build a map from absolute port array index to source node ID (data ports only)
+	portIndexToSource := make(map[int]int)
+	for idx, port := range node.InputPort {
 		if port.Type != models.PortTypeInput {
 			continue
 		}
+		portIndexToSource[idx] = int(port.ConnectedNodeID)
+	}
 
-		sourceNodeID := int(port.ConnectedNodeID)
+	// Use config inputs to map input names to source types via port index
+	for _, input := range config.Inputs {
+		sourceNodeID := portIndexToSource[input.PortID]
 		if sourceNodeID == 0 {
-			inputIndex++
 			continue
 		}
-
-		inputName := string(rune('A' + inputIndex))
 		if structName, exists := ctx.NodeStructNames[sourceNodeID]; exists {
-			result[inputName] = structName
+			result[input.Name] = structName
 		}
-		inputIndex++
 	}
 
 	return result

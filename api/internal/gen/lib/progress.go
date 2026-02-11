@@ -145,6 +145,8 @@ func PrettyPrintStruct(s interface{}, sep string) string {
 	}
 
 	// Wrap in markers so you can see start/end in a dense log
-	sep = " | "
+	if sep == "" {
+		sep = " | "
+	}
 	return "» " + strings.Join(parts, sep) + " «"
 }
