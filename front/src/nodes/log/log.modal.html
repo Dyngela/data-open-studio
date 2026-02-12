@@ -8,6 +8,20 @@
   </div>
 
   <div class="modal-body">
+    <label class="field">
+      <span class="field-label">
+        <i class="pi pi-sliders-h"></i>
+        SÃ©parateur
+      </span>
+      <input
+        type="text"
+        [value]="separator()"
+        (input)="separator.set($any($event.target).value)"
+        placeholder=" | "
+      />
+      <span class="field-hint">CaractÃ¨res utilisÃ©s entre chaque colonne dans les logs</span>
+    </label>
+
     @if (upstreamSchema().length > 0) {
       <div class="schema-results">
         <div class="schema-header">

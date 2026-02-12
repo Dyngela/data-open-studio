@@ -93,25 +93,29 @@ export class TransformModal {
   onDrop(event: DragEvent, targetInputName: string, targetCol: DataModel) {
     event.preventDefault();
     const dragged = this.draggedColumn();
-    if (!dragged || dragged.inputName === targetInputName) return;
 
+    // 1. Safety checks
+    if (!dragged || dragged.inputName === targetInputName) return;
     const left = this.leftInput();
     const right = this.rightInput();
     if (!left || !right) return;
 
-    let leftCol: string;
-    let rightCol: string;
+    // 2. Explicitly assign based on input identity, not drag direction
+    let leftCol: string = '';
+    let rightCol: string = '';
 
+    // Determine which piece of data belongs to 'Left' and which to 'Right'
     if (dragged.inputName === left.name) {
       leftCol = dragged.colName;
-      rightCol = targetCol.name;
-    } else {
-      leftCol = targetCol.name;
+      rightCol = targetCol.name; // Because target must be right
+    } else if (dragged.inputName === right.name) {
       rightCol = dragged.colName;
+      leftCol = targetCol.name; // Because target must be left
     }
 
+    // 3. Update state
     const exists = this.joinKeys().some(k => k.leftCol === leftCol && k.rightCol === rightCol);
-    if (!exists) {
+    if (!exists && leftCol && rightCol) {
       this.joinKeys.update(keys => [...keys, { leftCol, rightCol }]);
     }
 

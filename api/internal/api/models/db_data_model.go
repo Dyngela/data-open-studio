@@ -58,13 +58,7 @@ func (d *DataModel) sqlNullType(baseType string) string {
 	switch baseType {
 	case "string":
 		return "sql.NullString"
-	case "int64":
-		return "sql.NullInt64"
-	case "int32":
-		return "sql.NullInt32"
-	case "int16":
-		return "sql.NullInt16"
-	case "int":
+	case "int64", "int32", "int16", "int8", "int":
 		return "sql.NullInt64"
 	case "float64":
 		return "sql.NullFloat64"

@@ -5,6 +5,7 @@ import { NodeDefinition } from '../node-definition.type';
 export interface LogConfig {
   kind: 'log';
   input?: DataModel[];
+  separator?: string;
 }
 
 // ── Guard ───────────────────────────────────────────────

@@ -57,6 +57,61 @@
   padding-right: 0.5rem;
 }
 
+/* Field */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #d9d9d9;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #b5b5b5;
+  font-weight: 600;
+}
+
+.field-label i {
+  color: rgba(165, 165, 158, 0.93);
+  font-size: 1rem;
+}
+
+.field-hint {
+  font-size: 0.8rem;
+  color: #6a6a6a;
+  font-style: italic;
+  margin-top: -0.25rem;
+}
+
+.field input {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1.5px solid #2a2a2a;
+  border-radius: 8px;
+  color: #fff;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.95rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.field input:hover {
+  border-color: #3a3a3a;
+  background: #1f1f1f;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: rgba(165, 165, 158, 0.93);
+  background: #1f1f1f;
+  box-shadow: 0 0 0 3px rgba(165, 165, 158, 0.15);
+}
+
 /* Schema results */
 .schema-results {
   background: linear-gradient(135deg, #1f1f1f, #181818);
