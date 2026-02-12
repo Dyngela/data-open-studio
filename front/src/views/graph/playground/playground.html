@@ -153,6 +153,11 @@
                     [node]="node"
                   ></app-log-modal>
                 }
+                @if (modal.nodeTypeId === 'output' && nodeGraph.getNodeById(modal.nodeId); as node) {
+                  <app-output-modal
+                    [node]="node"
+                  ></app-output-modal>
+                }
               </div>
             </div>
           }

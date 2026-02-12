@@ -1,0 +1,20 @@
+func {{ .FuncName }}(ctx context.Context, db *sql.DB, in <-chan *any, progress lib.ProgressFunc) error {
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "truncating table"))
+	}
+
+	_, err := db.ExecContext(ctx, "TRUNCATE TABLE {{ .TableName }}")
+	if err != nil {
+		return fmt.Errorf("truncate failed: %w", err)
+	}
+
+	// Drain the input channel if connected
+	for range in {
+	}
+
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, 0, "completed"))
+	}
+
+	return nil
+}

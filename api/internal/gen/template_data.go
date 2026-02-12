@@ -129,6 +129,56 @@ type DBOutputInsertTemplateData struct {
 	BatchSize      int
 }
 
+// DBOutputUpdateTemplateData holds data for db_output UPDATE template
+type DBOutputUpdateTemplateData struct {
+	FuncName     string
+	NodeID       int
+	NodeName     string
+	InputType    string
+	TableName    string
+	NumColumns   int
+	BatchSize    int
+	SetColumns   []string // columns to SET
+	SetAccessors []string // Go field accessors for SET columns
+	KeyColumns   []string // columns for WHERE clause
+	KeyAccessors []string // Go field accessors for WHERE columns
+}
+
+// DBOutputDeleteTemplateData holds data for db_output DELETE template
+type DBOutputDeleteTemplateData struct {
+	FuncName     string
+	NodeID       int
+	NodeName     string
+	InputType    string
+	TableName    string
+	BatchSize    int
+	KeyColumns   []string
+	KeyAccessors []string
+}
+
+// DBOutputMergeTemplateData holds data for db_output MERGE (UPSERT) template
+type DBOutputMergeTemplateData struct {
+	FuncName       string
+	NodeID         int
+	NodeName       string
+	InputType      string
+	TableName      string
+	ColumnNames    string
+	NumColumns     int
+	BatchSize      int
+	FieldAccessors []string
+	KeyColumns     []string // conflict columns
+	UpdateColumns  []string // columns to update on conflict
+}
+
+// DBOutputTruncateTemplateData holds data for db_output TRUNCATE template
+type DBOutputTruncateTemplateData struct {
+	FuncName  string
+	NodeID    int
+	NodeName  string
+	TableName string
+}
+
 // EmailOutputTemplateData holds data for email_output template
 type EmailOutputTemplateData struct {
 	FuncName        string

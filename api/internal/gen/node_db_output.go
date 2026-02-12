@@ -45,15 +45,16 @@ func (g *DBOutputGenerator) GenerateFuncData(node *models.Node, ctx *GeneratorCo
 	switch config.Mode {
 	case models.DbOutputModeInsert:
 		return g.generateInsertFuncData(node, &config, ctx, funcName, inputRowType)
+	case models.DbOutputModeUpdate:
+		return g.generateUpdateFuncData(node, &config, ctx, funcName, inputRowType)
+	case models.DbOutputModeDelete:
+		return g.generateDeleteFuncData(node, &config, ctx, funcName, inputRowType)
+	case models.DbOutputModeMerge:
+		return g.generateMergeFuncData(node, &config, ctx, funcName, inputRowType)
+	case models.DbOutputModeTruncate:
+		return g.generateTruncateFuncData(node, &config, ctx, funcName)
 	default:
-		// For now, only implement INSERT - others can be added later
-		return &NodeFunctionData{
-			Name:      funcName,
-			NodeID:    node.ID,
-			NodeName:  node.Name,
-			Signature: fmt.Sprintf("func %s(ctx context.Context, db *sql.DB, in <-chan *%s, progress lib.ProgressFunc) error", funcName, inputRowType),
-			Body:      fmt.Sprintf("	// TODO: Implement %s mode\n	for row := range in {\n		_ = row\n	}\n	return nil", config.Mode),
-		}, nil
+		return nil, fmt.Errorf("db_output node %q: unsupported mode %q", node.Name, config.Mode)
 	}
 }
 
@@ -151,5 +152,231 @@ func (g *DBOutputGenerator) generateInsertFuncData(node *models.Node, config *mo
 		NodeName:  node.Name,
 		Signature: "", // Not used - template generates complete function
 		Body:      body,
+	}, nil
+}
+
+// generateUpdateFuncData generates a batch UPDATE function using template
+func (g *DBOutputGenerator) generateUpdateFuncData(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName, inputRowType string) (*NodeFunctionData, error) {
+	if len(config.DataModels) == 0 {
+		return nil, fmt.Errorf("db_output node %q: DataModels is empty - cannot generate UPDATE without columns", node.Name)
+	}
+	if len(config.KeyColumns) == 0 {
+		return nil, fmt.Errorf("db_output node %q: KeyColumns is empty - cannot generate UPDATE without key columns", node.Name)
+	}
+
+	batchSize := config.BatchSize
+	if batchSize <= 0 {
+		batchSize = 500
+	}
+
+	tableName := config.Table
+	if config.DbSchema != "" {
+		tableName = fmt.Sprintf("%s.%s", config.DbSchema, config.Table)
+	}
+
+	keySet := make(map[string]bool, len(config.KeyColumns))
+	for _, k := range config.KeyColumns {
+		keySet[k] = true
+	}
+
+	var setColumns, setAccessors, keyColumns, keyAccessors []string
+	for _, col := range config.DataModels {
+		if keySet[col.Name] {
+			keyColumns = append(keyColumns, col.Name)
+			keyAccessors = append(keyAccessors, col.GoFieldName())
+		} else {
+			setColumns = append(setColumns, col.Name)
+			setAccessors = append(setAccessors, col.GoFieldName())
+		}
+	}
+
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
+	}
+
+	templateData := DBOutputUpdateTemplateData{
+		FuncName:     funcName,
+		NodeID:       node.ID,
+		NodeName:     node.Name,
+		InputType:    inputRowType,
+		TableName:    tableName,
+		NumColumns:   len(config.DataModels),
+		BatchSize:    batchSize,
+		SetColumns:   setColumns,
+		SetAccessors: setAccessors,
+		KeyColumns:   keyColumns,
+		KeyAccessors: keyAccessors,
+	}
+
+	body, err := engine.GenerateNodeFunction("node_db_output_update.go.tmpl", templateData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate db_output update function: %w", err)
+	}
+
+	return &NodeFunctionData{
+		Name:     funcName,
+		NodeID:   node.ID,
+		NodeName: node.Name,
+		Body:     body,
+	}, nil
+}
+
+// generateDeleteFuncData generates a batch DELETE function using template
+func (g *DBOutputGenerator) generateDeleteFuncData(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName, inputRowType string) (*NodeFunctionData, error) {
+	if len(config.KeyColumns) == 0 {
+		return nil, fmt.Errorf("db_output node %q: KeyColumns is empty - cannot generate DELETE without key columns", node.Name)
+	}
+
+	batchSize := config.BatchSize
+	if batchSize <= 0 {
+		batchSize = 500
+	}
+
+	tableName := config.Table
+	if config.DbSchema != "" {
+		tableName = fmt.Sprintf("%s.%s", config.DbSchema, config.Table)
+	}
+
+	var keyColumns, keyAccessors []string
+	keySet := make(map[string]bool, len(config.KeyColumns))
+	for _, k := range config.KeyColumns {
+		keySet[k] = true
+	}
+	for _, col := range config.DataModels {
+		if keySet[col.Name] {
+			keyColumns = append(keyColumns, col.Name)
+			keyAccessors = append(keyAccessors, col.GoFieldName())
+		}
+	}
+
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
+	}
+
+	templateData := DBOutputDeleteTemplateData{
+		FuncName:     funcName,
+		NodeID:       node.ID,
+		NodeName:     node.Name,
+		InputType:    inputRowType,
+		TableName:    tableName,
+		BatchSize:    batchSize,
+		KeyColumns:   keyColumns,
+		KeyAccessors: keyAccessors,
+	}
+
+	body, err := engine.GenerateNodeFunction("node_db_output_delete.go.tmpl", templateData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate db_output delete function: %w", err)
+	}
+
+	return &NodeFunctionData{
+		Name:     funcName,
+		NodeID:   node.ID,
+		NodeName: node.Name,
+		Body:     body,
+	}, nil
+}
+
+// generateMergeFuncData generates a PostgreSQL UPSERT function using template
+func (g *DBOutputGenerator) generateMergeFuncData(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName, inputRowType string) (*NodeFunctionData, error) {
+	if len(config.DataModels) == 0 {
+		return nil, fmt.Errorf("db_output node %q: DataModels is empty - cannot generate MERGE without columns", node.Name)
+	}
+	if len(config.KeyColumns) == 0 {
+		return nil, fmt.Errorf("db_output node %q: KeyColumns is empty - cannot generate MERGE without key columns", node.Name)
+	}
+
+	batchSize := config.BatchSize
+	if batchSize <= 0 {
+		batchSize = 500
+	}
+
+	tableName := config.Table
+	if config.DbSchema != "" {
+		tableName = fmt.Sprintf("%s.%s", config.DbSchema, config.Table)
+	}
+
+	keySet := make(map[string]bool, len(config.KeyColumns))
+	for _, k := range config.KeyColumns {
+		keySet[k] = true
+	}
+
+	columns := make([]string, len(config.DataModels))
+	fieldAccessors := make([]string, len(config.DataModels))
+	var keyColumns, updateColumns []string
+
+	for i, col := range config.DataModels {
+		columns[i] = col.Name
+		fieldAccessors[i] = col.GoFieldName()
+		if keySet[col.Name] {
+			keyColumns = append(keyColumns, col.Name)
+		} else {
+			updateColumns = append(updateColumns, col.Name)
+		}
+	}
+
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
+	}
+
+	templateData := DBOutputMergeTemplateData{
+		FuncName:       funcName,
+		NodeID:         node.ID,
+		NodeName:       node.Name,
+		InputType:      inputRowType,
+		TableName:      tableName,
+		ColumnNames:    strings.Join(columns, ", "),
+		NumColumns:     len(config.DataModels),
+		BatchSize:      batchSize,
+		FieldAccessors: fieldAccessors,
+		KeyColumns:     keyColumns,
+		UpdateColumns:  updateColumns,
+	}
+
+	body, err := engine.GenerateNodeFunction("node_db_output_merge.go.tmpl", templateData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate db_output merge function: %w", err)
+	}
+
+	return &NodeFunctionData{
+		Name:     funcName,
+		NodeID:   node.ID,
+		NodeName: node.Name,
+		Body:     body,
+	}, nil
+}
+
+// generateTruncateFuncData generates a TRUNCATE function using template
+func (g *DBOutputGenerator) generateTruncateFuncData(node *models.Node, config *models.DBOutputConfig, ctx *GeneratorContext, funcName string) (*NodeFunctionData, error) {
+	tableName := config.Table
+	if config.DbSchema != "" {
+		tableName = fmt.Sprintf("%s.%s", config.DbSchema, config.Table)
+	}
+
+	engine, err := NewTemplateEngine()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create template engine: %w", err)
+	}
+
+	templateData := DBOutputTruncateTemplateData{
+		FuncName:  funcName,
+		NodeID:    node.ID,
+		NodeName:  node.Name,
+		TableName: tableName,
+	}
+
+	body, err := engine.GenerateNodeFunction("node_db_output_truncate.go.tmpl", templateData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate db_output truncate function: %w", err)
+	}
+
+	return &NodeFunctionData{
+		Name:     funcName,
+		NodeID:   node.ID,
+		NodeName: node.Name,
+		Body:     body,
 	}, nil
 }

@@ -27,6 +27,12 @@ export const appConfig: ApplicationConfig = {
         preset: Aura,
       },
       ripple: true,
+      zIndex: {
+        modal: 4000,
+        overlay: 5000,
+        menu: 5000,
+        tooltip: 6000,
+      },
     }),
     PrimeLocaleService,
     provideAppInitializer(() => {

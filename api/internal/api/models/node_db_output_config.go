@@ -24,6 +24,7 @@ type DBOutputConfig struct {
 	DbSchema   string             `json:"dbschema"`
 	Connection DBConnectionConfig `json:"connection"`
 	DataModels []DataModel        `json:"dataModel"`
+	KeyColumns []string           `json:"keyColumns"`
 }
 
 func (slf *DBOutputConfig) FillDataModels() error {

@@ -1,0 +1,15 @@
+@if (mode(); as m) {
+  <div class="mode-badge">{{ m }}</div>
+}
+@if (tableName(); as t) {
+  <div class="table-badge">
+    <i class="pi pi-table"></i>
+    {{ t }}
+  </div>
+}
+@if (columnCount(); as count) {
+  <div class="schema-badge">
+    <i class="pi pi-list"></i>
+    {{ count }} col.
+  </div>
+}

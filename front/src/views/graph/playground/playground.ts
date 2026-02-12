@@ -26,6 +26,7 @@ import {DbInputModal} from '../../../nodes/db-input/db-input.modal';
 import {StartModal} from '../../../nodes/start/start.modal';
 import {TransformModal} from '../../../nodes/transform/transform.modal';
 import {LogModal} from '../../../nodes/log/log.modal';
+import {OutputModal} from '../../../nodes/output/output.modal';
 import {JobService} from '../../../core/api/job.service';
 import {JobWithNodes, UpdateJobRequest} from '../../../core/api/job.type';
 import {NodeGraphService} from '../../../core/nodes-services/node-graph.service';
@@ -37,7 +38,7 @@ import {NodeRegistryService} from '../../../nodes/node-registry.service';
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, FormsModule, ContextMenu, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal],
+  imports: [CommonModule, CdkDropList, FormsModule, ContextMenu, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal, OutputModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })

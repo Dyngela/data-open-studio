@@ -1,8 +1,20 @@
+import { DataModel, DbType } from '../../core/api/metadata.type';
 import { NodeDefinition } from '../node-definition.type';
+import { DbConnectionConfig } from '../db-input/definition';
 
-// ── Config (placeholder — no UI yet) ────────────────────
+// ── Config types ────────────────────────────────────────
+export type DbOutputMode = 'insert' | 'update' | 'merge' | 'delete' | 'truncate';
+
 export interface OutputNodeConfig {
   kind: 'output';
+  table: string;
+  mode: DbOutputMode;
+  batchSize: number;
+  dbSchema: string;
+  connection: DbConnectionConfig;
+  connectionId?: string;
+  dataModels: DataModel[];
+  keyColumns: string[];
 }
 
 // ── Guard ───────────────────────────────────────────────

@@ -1,0 +1,175 @@
+<div class="z-[max]">
+  <div class="modal-header">
+    <div>
+      <h3>Database Output</h3>
+      <p class="subtitle">Configurer la sortie vers une table de base de données</p>
+    </div>
+    <button class="icon-btn" type="button" (click)="onCancel()">×</button>
+  </div>
+
+  <div class="modal-body">
+
+    <!-- Connection select -->
+    <kui-select
+      [control]="connectionControl"
+      [options]="connectionsOptions()"
+      (change)="onConnectionSelected($event)"
+    ></kui-select>
+
+    <!-- Connection details card -->
+    @if (selectedConnection(); as conn) {
+      <div class="connection-details-card">
+        <div class="connection-details-header">
+          <i class="pi pi-check-circle" style="color: #4caf50;"></i>
+          <span>Détails de la connexion</span>
+        </div>
+
+        <div class="connection-details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Type:</span>
+            <span class="detail-value">
+              <i [class]="getConnectionDbIcon(conn)"></i>
+              {{ conn.databaseType || '—' }}
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Host:</span>
+            <span class="detail-value">{{ conn.host || '—' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Port:</span>
+            <span class="detail-value">{{ conn.port || '—' }}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Base de données:</span>
+            <span class="detail-value">{{ conn.databaseName || '—' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table selector -->
+      <label class="field">
+        <span class="field-label">
+          <i class="pi pi-table"></i>
+          Table cible
+          @if (isLoadingTables()) {
+            <i class="pi pi-spin pi-spinner" style="margin-left: auto;"></i>
+          }
+        </span>
+        <kui-select
+          [control]="tableControl"
+          [options]="tableOptions()"
+          (change)="onTableSelected($event)"
+        ></kui-select>
+      </label>
+
+      <!-- Mode selector -->
+      <div class="field">
+        <span class="field-label">
+          <i class="pi pi-cog"></i>
+          Mode d'écriture
+        </span>
+        <div class="mode-selector">
+          @for (m of modes; track m.value) {
+            <button
+              class="mode-btn"
+              [class.active]="selectedMode() === m.value"
+              (click)="onModeSelected(m.value)"
+              type="button"
+            >
+              <i [class]="m.icon"></i>
+              {{ m.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Columns grid -->
+      @if (columns().length > 0) {
+        <div class="schema-results">
+          <div class="schema-header">
+            <i class="pi pi-list" style="color: #F44336;"></i>
+            <span>Colonnes ({{ columns().length }})</span>
+            @if (isLoadingColumns()) {
+              <i class="pi pi-spin pi-spinner" style="margin-left: auto;"></i>
+            }
+          </div>
+          <div class="schema-table">
+            <table>
+              <thead>
+                <tr>
+                  @if (needsKeyColumns()) {
+                    <th class="col-key-header">Clé</th>
+                  }
+                  <th>Colonne</th>
+                  <th>Type</th>
+                  <th>Nullable</th>
+                  <th>PK</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (col of columns(); track col.name) {
+                  <tr>
+                    @if (needsKeyColumns()) {
+                      <td class="col-key">
+                        <input
+                          type="checkbox"
+                          class="key-checkbox"
+                          [checked]="isKeyColumn(col.name)"
+                          (change)="toggleKeyColumn(col.name)"
+                        />
+                      </td>
+                    }
+                    <td class="col-name">{{ col.name }}</td>
+                    <td class="col-type">{{ col.dataType }}</td>
+                    <td class="col-nullable">
+                      <i [class]="col.isNullable ? 'pi pi-check' : 'pi pi-times'"
+                         [style.color]="col.isNullable ? '#4caf50' : '#888'"></i>
+                    </td>
+                    <td class="col-nullable">
+                      <i [class]="col.isPrimary ? 'pi pi-key' : ''"
+                         [style.color]="col.isPrimary ? '#FF9800' : 'transparent'"></i>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Batch size -->
+      @if (selectedMode() !== 'truncate') {
+        <label class="field">
+          <span class="field-label">
+            <i class="pi pi-sort-numeric-up"></i>
+            Taille du batch
+          </span>
+          <input
+            type="number"
+            [ngModel]="batchSize()"
+            (ngModelChange)="batchSize.set($event)"
+            min="1"
+            max="10000"
+            placeholder="500"
+          />
+          <span class="field-hint">Nombre de lignes par transaction (défaut: 500)</span>
+        </label>
+      }
+    }
+
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn secondary" type="button" (click)="onCancel()">Annuler</button>
+    <button
+      class="btn primary"
+      type="button"
+      (click)="onSave()"
+      [disabled]="!selectedConnection() || !selectedTable()"
+    >Enregistrer</button>
+  </div>
+</div>

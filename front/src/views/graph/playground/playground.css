@@ -253,13 +253,15 @@
   border: 1px solid #333;
   border-radius: 12px;
   padding: 1.25rem;
-  width: 520px;
+  width: 680px;
   max-width: 90%;
+  max-height: 90vh;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  overflow: visible;
 }
 
 .modal-container:has(app-transform-modal) {
-  width: 720px;
+  width: 780px;
 }
 
 /* Bottom tab strip */

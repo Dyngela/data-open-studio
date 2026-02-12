@@ -1,0 +1,72 @@
+func {{ .FuncName }}(ctx context.Context, db *sql.DB, in <-chan *{{ .InputType }}, progress lib.ProgressFunc) error {
+	batch := make([]*{{ .InputType }}, 0, {{ .BatchSize }})
+	var totalRows int64
+
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting merge"))
+	}
+
+	flushBatch := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+
+		batchLen := int64(len(batch))
+		var placeholders []string
+		var args []any
+
+		for i, row := range batch {
+			offset := i * {{ .NumColumns }}
+			var ph []string
+			for j := 0; j < {{ .NumColumns }}; j++ {
+				ph = append(ph, fmt.Sprintf("$%d", offset+j+1))
+			}
+			placeholders = append(placeholders, "("+strings.Join(ph, ", ")+")")
+			args = append(args, {{ range $i, $field := .FieldAccessors }}{{if $i}}, {{end}}row.{{ $field }}{{end}})
+		}
+
+		var updateSet []string
+		{{ range .UpdateColumns -}}
+		updateSet = append(updateSet, "{{ . }} = EXCLUDED.{{ . }}")
+		{{ end }}
+		query := fmt.Sprintf(
+			"INSERT INTO {{ .TableName }} ({{ .ColumnNames }}) VALUES %s ON CONFLICT ({{ range $i, $col := .KeyColumns }}{{if $i}}, {{end}}{{ $col }}{{ end }}) DO UPDATE SET %s",
+			strings.Join(placeholders, ", "),
+			strings.Join(updateSet, ", "))
+
+		_, err := db.ExecContext(ctx, query, args...)
+		if err != nil {
+			return fmt.Errorf("batch merge failed: %w", err)
+		}
+
+		totalRows += batchLen
+
+		if progress != nil {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, "batch merged"))
+		}
+
+		batch = batch[:0]
+		return nil
+	}
+
+	for row := range in {
+		batch = append(batch, row)
+		if len(batch) >= {{ .BatchSize }} {
+			if err := flushBatch(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(batch) > 0 {
+		if err := flushBatch(); err != nil {
+			return err
+		}
+	}
+
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, totalRows, "completed"))
+	}
+
+	return nil
+}

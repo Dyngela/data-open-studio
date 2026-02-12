@@ -3,14 +3,16 @@ import { CommonModule } from '@angular/common';
 import { NodeInstance, PortType } from '../../../core/nodes-services/node.type';
 import { JobStateService } from '../../../core/nodes-services/job-state.service';
 import { isDbInputConfig } from '../../../nodes/db-input/definition';
+import { isOutputConfig } from '../../../nodes/output/definition';
 import { DbInputCanvasComponent } from '../../../nodes/db-input/db-input-canvas';
 import { MapCanvasComponent } from '../../../nodes/transform/map-canvas';
 import { LogCanvasComponent } from '../../../nodes/log/log-canvas';
+import { OutputCanvasComponent } from '../../../nodes/output/output-canvas';
 
 @Component({
   selector: 'app-node-instance',
   standalone: true,
-  imports: [CommonModule, DbInputCanvasComponent, MapCanvasComponent, LogCanvasComponent],
+  imports: [CommonModule, DbInputCanvasComponent, MapCanvasComponent, LogCanvasComponent, OutputCanvasComponent],
   templateUrl: './node-instance.html',
   styleUrl: './node-instance.css',
 })
@@ -49,12 +51,19 @@ export class NodeInstanceComponent {
     return this.node().type.hasFlowOutput ? [0] : [];
   }
 
-  /** Header icon — typed config aware for db-input */
+  /** Header icon — typed config aware for db-input and output */
   protected headerIcon = computed(() => {
     const n = this.node();
-    if (n.type.id === 'db-input') {
+    if (n.type.id === 'db-input' || n.type.id === 'output') {
       const config = this.jobState.getNodeConfig(n.id);
       if (isDbInputConfig(config)) {
+        switch (config.connection?.type) {
+          case 'postgres': return 'pi pi-database';
+          case 'sqlserver': return 'pi pi-table';
+          case 'mysql': return 'pi pi-box';
+        }
+      }
+      if (isOutputConfig(config)) {
         switch (config.connection?.type) {
           case 'postgres': return 'pi pi-database';
           case 'sqlserver': return 'pi pi-table';
@@ -77,13 +86,21 @@ export class NodeInstanceComponent {
   /** Header DB badge — typed config aware */
   protected dbName = computed(() => {
     const n = this.node();
-    if (n.type.id !== 'db-input') return null;
-    const config = this.jobState.getNodeConfig(n.id);
-    if (isDbInputConfig(config)) {
-      return config.connection?.database || null;
+    if (n.type.id === 'db-input') {
+      const config = this.jobState.getNodeConfig(n.id);
+      if (isDbInputConfig(config)) {
+        return config.connection?.database || null;
+      }
+      const cfg = n.config as Record<string, any> | undefined;
+      return cfg?.['database'] ? String(cfg['database']) : null;
     }
-    const cfg = n.config as Record<string, any> | undefined;
-    return cfg?.['database'] ? String(cfg['database']) : null;
+    if (n.type.id === 'output') {
+      const config = this.jobState.getNodeConfig(n.id);
+      if (isOutputConfig(config)) {
+        return config.table || null;
+      }
+    }
+    return null;
   });
 
   protected readonly PortType = PortType;

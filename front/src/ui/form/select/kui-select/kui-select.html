@@ -12,6 +12,7 @@
         [filter]="filter()"
         [showClear]="showClear()"
         [disabled]="disabled()"
+        appendTo="body"
         inputId="floatInput"
         class="w-full"
         [ngClass]="{ 'ng-invalid ng-touched': control().invalid && control().touched }"

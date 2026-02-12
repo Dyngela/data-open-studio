@@ -1,0 +1,79 @@
+func {{ .FuncName }}(ctx context.Context, db *sql.DB, in <-chan *{{ .InputType }}, progress lib.ProgressFunc) error {
+	batch := make([]*{{ .InputType }}, 0, {{ .BatchSize }})
+	var totalRows int64
+
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "starting update"))
+	}
+
+	flushBatch := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("begin tx failed: %w", err)
+		}
+
+		for _, row := range batch {
+			paramIdx := 1
+			var setClauses []string
+			var args []any
+
+			{{ range $i, $col := .SetColumns -}}
+			setClauses = append(setClauses, fmt.Sprintf("{{ $col }} = $%d", paramIdx))
+			args = append(args, row.{{ index $.SetAccessors $i }})
+			paramIdx++
+			{{ end }}
+			var whereClauses []string
+			{{ range $i, $col := .KeyColumns -}}
+			whereClauses = append(whereClauses, fmt.Sprintf("{{ $col }} = $%d", paramIdx))
+			args = append(args, row.{{ index $.KeyAccessors $i }})
+			paramIdx++
+			{{ end }}
+			query := fmt.Sprintf("UPDATE {{ .TableName }} SET %s WHERE %s",
+				strings.Join(setClauses, ", "),
+				strings.Join(whereClauses, " AND "))
+
+			if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+				_ = tx.Rollback()
+				return fmt.Errorf("batch update failed: %w", err)
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit failed: %w", err)
+		}
+
+		totalRows += int64(len(batch))
+
+		if progress != nil {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, totalRows, "batch updated"))
+		}
+
+		batch = batch[:0]
+		return nil
+	}
+
+	for row := range in {
+		batch = append(batch, row)
+		if len(batch) >= {{ .BatchSize }} {
+			if err := flushBatch(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(batch) > 0 {
+		if err := flushBatch(); err != nil {
+			return err
+		}
+	}
+
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, totalRows, "completed"))
+	}
+
+	return nil
+}
