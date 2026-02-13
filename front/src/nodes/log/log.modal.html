@@ -1,11 +1,11 @@
 <div>
-  <div class="modal-header">
-    <div>
-      <h3>Log Output</h3>
-      <p class="subtitle">Affiche les lignes entrantes dans la console</p>
-    </div>
-    <button class="icon-btn" type="button" (click)="onCancel()">&#215;</button>
-  </div>
+  <kui-modal-header
+    [title]="modalTitle()"
+    subtitle="Affiche les lignes entrantes dans la console"
+    [editable]="true"
+    (titleChange)="onTitleChange($event)"
+    (close)="onCancel()"
+  ></kui-modal-header>
 
   <div class="modal-body">
     <label class="field">

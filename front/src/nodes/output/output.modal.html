@@ -1,11 +1,11 @@
 <div class="z-[max]">
-  <div class="modal-header">
-    <div>
-      <h3>Database Output</h3>
-      <p class="subtitle">Configurer la sortie vers une table de base de données</p>
-    </div>
-    <button class="icon-btn" type="button" (click)="onCancel()">×</button>
-  </div>
+  <kui-modal-header
+    [title]="modalTitle()"
+    subtitle="Configurer la sortie vers une table de base de données"
+    [editable]="true"
+    (titleChange)="onTitleChange($event)"
+    (close)="onCancel()"
+  ></kui-modal-header>
 
   <div class="modal-body">
 

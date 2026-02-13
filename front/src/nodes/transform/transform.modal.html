@@ -1,11 +1,11 @@
 <div class="h-max-content">
-  <div class="modal-header">
-    <div>
-      <h3>Transformation</h3>
-      <p class="subtitle">Configure les jointures et les colonnes de sortie</p>
-    </div>
-    <button class="icon-btn" type="button" (click)="onCancel()">×</button>
-  </div>
+  <kui-modal-header
+    [title]="modalTitle()"
+    subtitle="Configure les jointures et les colonnes de sortie"
+    [editable]="true"
+    (titleChange)="onTitleChange($event)"
+    (close)="onCancel()"
+  ></kui-modal-header>
 
   <div class="modal-body">
 

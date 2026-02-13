@@ -141,6 +141,7 @@
                 }
                 @if (modal.nodeTypeId === 'start' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-start-modal
+                    [node]="node"
                   ></app-start-modal>
                 }
                 @if (modal.nodeTypeId === 'transform' && nodeGraph.getNodeById(modal.nodeId); as node) {
