@@ -6,13 +6,13 @@ import { Injectable } from '@angular/core';
   providedIn: 'root',
 })
 export class IconRegistryService {
-  private icons = new Map<string, string>();
+  private registry = new Map<string, string>();
 
   registerIcons(icons: Record<string, string>) {
-    Object.entries(icons).forEach(([name, path]) => this.icons.set(name, path));
+    Object.entries(icons).forEach(([name, content]) => this.registry.set(name, content));
   }
 
   getIcon(name: string): string {
-    return this.icons.get(name) ?? '';
+    return this.registry.get(name) ?? '';
   }
 }
