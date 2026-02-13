@@ -12,6 +12,8 @@ import {
 } from './definition';
 import { LayoutService } from '../../core/services/layout-service';
 import { DataModel } from '../../core/api/metadata.type';
+import {MapGlobalFilter} from './map-global-filter/map-global-filter';
+import {MapOutputField} from './map-output-field/map-output-field';
 
 interface JoinKeyPair {
   leftCol: string;
@@ -23,7 +25,7 @@ type JoinType = 'inner' | 'left' | 'right';
 @Component({
   selector: 'app-transform-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, MapGlobalFilter, MapOutputField],
   templateUrl: './transform.modal.html',
   styleUrl: './transform.modal.css',
 })
@@ -42,12 +44,18 @@ export class TransformModal {
   protected leftInput = computed(() => this.upstreamInputs()[0] ?? null);
   protected rightInput = computed(() => this.upstreamInputs()[1] ?? null);
 
+  protected downstreamSchema = computed(() => {
+    return this.jobState.getDownstreamExpectedSchema(this.node().id);
+  });
+
   protected outputColumns = signal<MapOutputCol[]>([]);
   protected joinType = signal<JoinType>('inner');
   protected joinKeys = signal<JoinKeyPair[]>([]);
 
   protected draggedColumn = signal<{ inputName: string; colName: string; colType: string } | null>(null);
   protected dropTargetCol = signal<string | null>(null);
+  protected dropTargetOutputIndex = signal<number | null>(null);
+  protected outputPanelHovered = signal(false);
 
   ngOnInit() {
     const config = this.jobState.getNodeConfig(this.node().id);
@@ -71,7 +79,7 @@ export class TransformModal {
   onDragStart(event: DragEvent, inputName: string, col: DataModel) {
     this.draggedColumn.set({ inputName, colName: col.name, colType: col.type });
     if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'link';
+      event.dataTransfer.effectAllowed = 'copyLink';
       event.dataTransfer.setData('text/plain', `${inputName}.${col.name}`);
     }
   }
@@ -126,6 +134,8 @@ export class TransformModal {
   onDragEnd() {
     this.draggedColumn.set(null);
     this.dropTargetCol.set(null);
+    this.dropTargetOutputIndex.set(null);
+    this.outputPanelHovered.set(false);
   }
 
   removeJoinKey(index: number) {
@@ -149,6 +159,66 @@ export class TransformModal {
     return this.joinKeys().some(k => k.rightCol === colName);
   }
 
+  // ── Drag & drop: input → output mapping ────────────────
+
+  onOutputPanelDragOver(event: DragEvent) {
+    if (!this.draggedColumn()) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    this.outputPanelHovered.set(true);
+  }
+
+  onOutputPanelDragLeave(event: DragEvent) {
+    const related = event.relatedTarget as HTMLElement;
+    if (related && (event.currentTarget as HTMLElement).contains(related)) return;
+    this.outputPanelHovered.set(false);
+  }
+
+  onOutputPanelDrop(event: DragEvent) {
+    event.preventDefault();
+    const dragged = this.draggedColumn();
+    if (!dragged) return;
+
+    // Add as a new output column (panel-level drop, not on a specific item)
+    this.addColumn(dragged.inputName, { name: dragged.colName, type: dragged.colType });
+
+    this.draggedColumn.set(null);
+    this.outputPanelHovered.set(false);
+  }
+
+  onOutputItemDragOver(event: DragEvent, index: number) {
+    if (!this.draggedColumn()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'link';
+    this.dropTargetOutputIndex.set(index);
+  }
+
+  onOutputItemDragLeave() {
+    this.dropTargetOutputIndex.set(null);
+  }
+
+  onOutputItemDrop(event: DragEvent, index: number) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dragged = this.draggedColumn();
+    if (!dragged) return;
+
+    // Map the dragged input column onto this output column
+    this.outputColumns.update(cols => {
+      const next = [...cols];
+      next[index] = {
+        ...next[index],
+        inputRef: `${dragged.inputName}.${dragged.colName}`,
+      };
+      return next;
+    });
+
+    this.draggedColumn.set(null);
+    this.dropTargetOutputIndex.set(null);
+    this.outputPanelHovered.set(false);
+  }
+
   // ── Output columns ────────────────────────────────────
 
   addColumn(inputName: string, col: { name: string; type: string }) {
@@ -169,34 +239,67 @@ export class TransformModal {
     ]);
   }
 
+  /** Load the downstream target schema (names + types only, no mapping). */
+  fillFromDownstream() {
+    const downstream = this.downstreamSchema();
+    if (!downstream.length) return;
+
+    const columns: MapOutputCol[] = downstream.map(col => ({
+      name: col.name,
+      dataType: col.type,
+      funcType: 'direct' as const,
+      inputRef: '',
+    }));
+
+    this.outputColumns.set(columns);
+  }
+
+  /** Auto-match unmapped output columns to upstream inputs by column name. */
+  autoMatchColumns() {
+    const inputs = this.upstreamInputs();
+    if (!inputs.length) return;
+
+    // Track matches and whether they are unique
+    // Value will be the match object, or null if a duplicate is found
+    const upstreamLookup = new Map<string, { inputName: string; colName: string } | null>();
+
+    for (const input of inputs) {
+      for (const col of input.schema) {
+        const key = col.name.toLowerCase();
+
+        if (upstreamLookup.has(key)) {
+          // If it already exists, mark it as a duplicate (null)
+          upstreamLookup.set(key, null);
+        } else {
+          // First time seeing this name
+          upstreamLookup.set(key, { inputName: input.name, colName: col.name });
+        }
+      }
+    }
+
+    this.outputColumns.update(cols =>
+      cols.map(col => {
+        if (col.inputRef) return col;
+
+        const match = upstreamLookup.get(col.name.toLowerCase());
+
+        // Only match if we found it exactly once (match is not null)
+        if (match) {
+          return { ...col, inputRef: `${match.inputName}.${match.colName}` };
+        }
+
+        return col;
+      }),
+    );
+  }
+
   addAllColumns(inputName: string, schema: DataModel[]) {
     for (const col of schema) {
       this.addColumn(inputName, col);
     }
   }
 
-  removeColumn(index: number) {
-    this.outputColumns.update(cols => cols.filter((_, i) => i !== index));
-  }
 
-  moveUp(index: number) {
-    if (index <= 0) return;
-    this.outputColumns.update(cols => {
-      const next = [...cols];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      return next;
-    });
-  }
-
-  moveDown(index: number) {
-    const cols = this.outputColumns();
-    if (index >= cols.length - 1) return;
-    this.outputColumns.update(cols => {
-      const next = [...cols];
-      [next[index], next[index + 1]] = [next[index + 1], next[index]];
-      return next;
-    });
-  }
 
   // ── Save / Cancel ─────────────────────────────────────
 
