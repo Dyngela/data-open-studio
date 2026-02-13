@@ -15,6 +15,12 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 	// Cross product
 	for left := range leftIn {
 		for _, right := range rightRows {
+{{- if .FilterExpr }}
+			// Global filter
+			if !({{ .FilterExpr }}) {
+				continue
+			}
+{{- end }}
 			out := &{{ .OutputType }}{}
 {{ .Transforms }}
 			rowCount++

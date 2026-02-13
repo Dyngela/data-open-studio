@@ -56,6 +56,7 @@ export class TransformModal {
   protected outputColumns = signal<MapOutputCol[]>([]);
   protected joinType = signal<JoinType>('inner');
   protected joinKeys = signal<JoinKeyPair[]>([]);
+  protected filterExpr = signal<string>('');
 
   protected draggedColumn = signal<{ inputName: string; colName: string; colType: string } | null>(null);
   protected dropTargetCol = signal<string | null>(null);
@@ -80,6 +81,9 @@ export class TransformModal {
           rightCol: config.join!.rightKeys[i],
         }));
         this.joinKeys.set(pairs);
+      }
+      if (config.globalFilter) {
+        this.filterExpr.set(config.globalFilter);
       }
     }
   }
@@ -331,6 +335,11 @@ export class TransformModal {
       inputs,
       outputs: [outputFlow],
     };
+
+    const filter = this.filterExpr().trim();
+    if (filter) {
+      config.globalFilter = filter;
+    }
 
     if (this.hasMultipleInputs() && this.joinKeys().length > 0) {
       const left = this.leftInput()!;

@@ -81,9 +81,10 @@ type JoinConfig struct {
 
 // MapConfig is the complete configuration for a Map node
 type MapConfig struct {
-	Inputs  []InputFlow  `json:"inputs"`          // Input streams (1 or more)
-	Outputs []OutputFlow `json:"outputs"`         // Output streams (1 or more, each with own port)
-	Join    *JoinConfig  `json:"join,omitempty"`  // How to combine multiple inputs (nil if single input)
+	Inputs       []InputFlow  `json:"inputs"`                 // Input streams (1 or more)
+	Outputs      []OutputFlow `json:"outputs"`                // Output streams (1 or more, each with own port)
+	Join         *JoinConfig  `json:"join,omitempty"`         // How to combine multiple inputs (nil if single input)
+	GlobalFilter string       `json:"globalFilter,omitempty"` // Boolean expression, e.g. "input.price > 100"
 }
 
 // GetInputByName returns an input flow by its reference name

@@ -7,6 +7,12 @@ func {{ .FuncName }}(ctx context.Context, in <-chan *{{ .InputType }}, outChan c
 	}
 
 	for row := range in {
+{{- if .FilterExpr }}
+		// Global filter
+		if !({{ .FilterExpr }}) {
+			continue
+		}
+{{- end }}
 		out := &{{ .OutputType }}{}
 {{ .Transforms }}
 		rowCount++

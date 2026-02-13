@@ -80,6 +80,7 @@ type MapTransformTemplateData struct {
 	InputType  string
 	OutputType string
 	Transforms string
+	FilterExpr string
 }
 
 // MapJoinTemplateData holds data for map join templates
@@ -93,6 +94,7 @@ type MapJoinTemplateData struct {
 	LeftKeys   []string
 	RightKeys  []string
 	Transforms string
+	FilterExpr string
 }
 
 // MapUnionTemplateData holds data for map union template
@@ -105,6 +107,8 @@ type MapUnionTemplateData struct {
 	OutputType      string
 	LeftTransforms  string
 	RightTransforms string
+	LeftFilterExpr  string
+	RightFilterExpr string
 }
 
 // LogTemplateData holds data for log node template

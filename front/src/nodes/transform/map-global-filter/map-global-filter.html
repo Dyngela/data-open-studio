@@ -1,1 +1,42 @@
-<p>map-global-filter works!</p>
+<div class="filter-section">
+  <div class="filter-header">
+    <i class="pi pi-filter text-[#ff9800]"></i>
+    <span>Filtre global</span>
+  </div>
+
+  <div class="filter-body">
+    <textarea
+      class="filter-input"
+      [ngModel]="model()"
+      (ngModelChange)="model.set($event)"
+      placeholder="Ex: input.price > 100"
+      rows="3"
+    ></textarea>
+
+    <div class="filter-help">
+      Les lignes ne satisfaisant pas la condition seront ignorees.
+    </div>
+
+    @if (inputs().length) {
+      <div class="ref-columns">
+        <div class="ref-label">Colonnes disponibles</div>
+        @for (inp of inputs(); track inp.name) {
+          <div class="ref-group">
+            <div class="ref-group-name">{{ inp.name }}</div>
+            <div class="ref-chips">
+              @for (col of inp.schema; track col.name) {
+                <button
+                  class="ref-chip"
+                  (click)="insertRef(inp.name, col.name)"
+                  [title]="col.type"
+                >
+                  {{ col.name }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

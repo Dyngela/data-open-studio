@@ -39,6 +39,7 @@ export interface MapNodeConfig {
   inputs: InputFlow[];
   outputs: OutputFlow[];
   join?: JoinConfig;
+  globalFilter?: string;
 }
 
 // ── Guard ───────────────────────────────────────────────
