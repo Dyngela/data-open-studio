@@ -53,12 +53,27 @@ func ToJobResponseWithNodes(j models.Job, accessList []models.JobUserAccess) res
 		}
 
 		for _, n := range j.Nodes {
-			for portIdx, p := range n.OutputPort {
+			// Track relative indices for each port type separately
+			flowOutputIdx := 0
+			dataOutputIdx := 0
+
+			for _, p := range n.OutputPort {
 				connType := toConnexionPortType(p.Type)
 				targetPortIdx := findTargetPortIndex(nodeByID, p, n.ID)
+
+				// Use relative index based on port type
+				sourcePortIdx := 0
+				if connType == "flow" {
+					sourcePortIdx = flowOutputIdx
+					flowOutputIdx++
+				} else {
+					sourcePortIdx = dataOutputIdx
+					dataOutputIdx++
+				}
+
 				resp.Connexions = append(resp.Connexions, response.Connexion{
 					SourceNodeId:   n.ID,
-					SourcePort:     portIdx,
+					SourcePort:     sourcePortIdx,
 					SourcePortType: connType,
 					TargetNodeId:   int(p.ConnectedNodeID),
 					TargetPort:     targetPortIdx,
@@ -149,9 +164,17 @@ func findTargetPortIndex(nodeByID map[int]models.Node, outputPort models.Port, s
 		return 0
 	}
 	inputType := correspondingInputType(outputPort.Type)
-	for idx, ip := range target.InputPort {
+	connType := toConnexionPortType(outputPort.Type)
+
+	// Count ports of the same type before finding our port
+	relativeIdx := 0
+	for _, ip := range target.InputPort {
 		if ip.ConnectedNodeID == uint(sourceNodeID) && ip.Type == inputType {
-			return idx
+			return relativeIdx
+		}
+		// Only increment if it's the same connexion type (flow or data)
+		if toConnexionPortType(ip.Type) == connType {
+			relativeIdx++
 		}
 	}
 	return 0
