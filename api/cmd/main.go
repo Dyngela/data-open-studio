@@ -4,6 +4,7 @@ import (
 	"api"
 	"api/internal/api/handler/endpoints"
 	"api/internal/api/service"
+	"api/pkg"
 	"context"
 	"errors"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 
 func main() {
 	api.InitConfig(".env")
+	pkg.InitializeEmailsProviders()
 	gin.SetMode(gin.ReleaseMode)
 
 	if api.GetConfig().Mode == "dev" {

@@ -22,6 +22,8 @@ bin/
 go.work
 go.work.sum
 
+api/.env
+
 # IDE
 .idea/
 .vscode/*

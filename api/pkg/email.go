@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"api"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -8,6 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	auth "github.com/microsoft/kiota-authentication-azure-go"
+	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 )
 
 var providerRegistry = make(map[EmailProvider]IEmailProvider)
@@ -181,9 +186,57 @@ func (s *SMTPCustomProvider) send(msg EmailMessage) iCustomEmailError {
 }
 func (s *SMTPCustomProvider) name() EmailProvider { return EMAIL_PROVIDER_SMTP_CUSTOM }
 
-type OutlookProvider struct{}
+type OutlookProvider struct {
+	initialized            bool
+	clientSecretCredential *azidentity.ClientSecretCredential
+	userClient             *msgraphsdk.GraphServiceClient
+	graphUserScopes        []string
+	config                 api.AppConfig
+}
 
-func (o *OutlookProvider) init()                                   {}
-func (o *OutlookProvider) isInitialized() bool                     { return true }
-func (o *OutlookProvider) send(msg EmailMessage) iCustomEmailError { return nil }
-func (o *OutlookProvider) name() EmailProvider                     { return EMAIL_PROVIDER_OUTLOOK }
+func (slf *OutlookProvider) init() {
+	slf.config = api.GetConfig()
+	clientId := slf.config.SMTP.Outlook.OutlookClientID
+	clientSecret := slf.config.SMTP.Outlook.OutlookClientSecret
+	tenantId := slf.config.SMTP.Outlook.OutlookTenantID
+
+	if clientId == "" || clientSecret == "" || tenantId == "" {
+		slf.initialized = false
+		return
+	}
+
+	slf.graphUserScopes = []string{"https://graph.microsoft.com/.default"}
+
+	credential, err := azidentity.NewClientSecretCredential(
+		tenantId,
+		clientId,
+		clientSecret,
+		nil,
+	)
+	if err != nil {
+		slf.initialized = false
+		return
+	}
+
+	slf.clientSecretCredential = credential
+
+	authProvider, err := auth.NewAzureIdentityAuthenticationProviderWithScopes(credential, slf.graphUserScopes)
+	if err != nil {
+		slf.initialized = false
+		return
+	}
+
+	adapter, err := msgraphsdk.NewGraphRequestAdapter(authProvider)
+	if err != nil {
+		slf.initialized = false
+		return
+	}
+
+	client := msgraphsdk.NewGraphServiceClient(adapter)
+	slf.userClient = client
+	slf.initialized = true
+}
+
+func (slf *OutlookProvider) isInitialized() bool                     { return slf.initialized }
+func (slf *OutlookProvider) send(msg EmailMessage) iCustomEmailError { return nil }
+func (slf *OutlookProvider) name() EmailProvider                     { return EMAIL_PROVIDER_OUTLOOK }

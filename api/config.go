@@ -30,6 +30,16 @@ type AppConfig struct {
 		Enabled   bool
 		QueueName string
 	}
+	SMTP struct {
+		Outlook struct {
+			OutlookClientID     string
+			OutlookClientSecret string
+			OutlookTenantID     string
+		}
+		Brevo struct {
+			APIKey string
+		}
+	}
 	MainDatabase struct {
 		Host         string
 		Port         string
@@ -71,6 +81,28 @@ func InitConfig(envfile string) {
 		ApiPort:            getEnvOrPanic("API_PORT"),
 		OllamaHost:         getEnvOrPanic("OLLAMA_HOST"),
 		OllamaMessageLimit: getIntEnvOrPanic("OLLAMA_MESSAGE_LIMIT"),
+		SMTP: struct {
+			Outlook struct {
+				OutlookClientID     string
+				OutlookClientSecret string
+				OutlookTenantID     string
+			}
+			Brevo struct {
+				APIKey string
+			}
+		}{Outlook: struct {
+			OutlookClientID     string
+			OutlookClientSecret string
+			OutlookTenantID     string
+		}{
+			OutlookClientID:     GetEnv("SMTP_OUTLOOK_CLIENT_ID", ""),
+			OutlookClientSecret: GetEnv("SMTP_OUTLOOK_CLIENT_SECRET", ""),
+			OutlookTenantID:     GetEnv("SMTP_OUTLOOK_TENANT_ID", ""),
+		},
+			Brevo: struct {
+				APIKey string
+			}{APIKey: GetEnv("SMTP_BREVO_API_KEY", "")},
+		},
 		MainDatabase: struct {
 			Host         string
 			Port         string
