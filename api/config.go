@@ -42,6 +42,13 @@ type AppConfig struct {
 		Brevo struct {
 			APIKey string
 		}
+		LocalSmtpConfig struct {
+			Host     string
+			Port     int
+			Username string
+			Password string
+			UseTLS   bool
+		}
 	}
 	MainDatabase struct {
 		Host         string
@@ -62,14 +69,6 @@ type AppConfig struct {
 		Password string
 		DB       int
 	}
-	SmtpConfig struct {
-		Host     string
-		Port     int
-		Username string
-		Password string
-		UseTLS   bool
-		From     string
-	}
 }
 
 var config AppConfig
@@ -86,30 +85,53 @@ func InitConfig(envfile string) {
 		OllamaMessageLimit: getIntEnvOrPanic("OLLAMA_MESSAGE_LIMIT"),
 		SMTP: struct {
 			SenderEmail string
-			Outlook     struct {
+
+			Outlook struct {
 				OutlookClientID     string
 				OutlookClientSecret string
 				OutlookTenantID     string
 				SenderAzureObjectID string
 			}
-
 			Brevo struct {
 				APIKey string
 			}
-		}{Outlook: struct {
-			OutlookClientID     string
-			OutlookClientSecret string
-			OutlookTenantID     string
-			SenderAzureObjectID string
+			LocalSmtpConfig struct {
+				Host     string
+				Port     int
+				Username string
+				Password string
+				UseTLS   bool
+			}
 		}{
-			OutlookClientID:     GetEnv("SMTP_OUTLOOK_CLIENT_ID", ""),
-			OutlookClientSecret: GetEnv("SMTP_OUTLOOK_CLIENT_SECRET", ""),
-			OutlookTenantID:     GetEnv("SMTP_OUTLOOK_TENANT_ID", ""),
-			SenderAzureObjectID: GetEnv("SMTP_SENDER_AZURE_OBJECT_ID", ""),
-		},
+			Outlook: struct {
+				OutlookClientID     string
+				OutlookClientSecret string
+				OutlookTenantID     string
+				SenderAzureObjectID string
+			}{
+				OutlookClientID:     GetEnv("SMTP_OUTLOOK_CLIENT_ID", ""),
+				OutlookClientSecret: GetEnv("SMTP_OUTLOOK_CLIENT_SECRET", ""),
+				OutlookTenantID:     GetEnv("SMTP_OUTLOOK_TENANT_ID", ""),
+				SenderAzureObjectID: GetEnv("SMTP_SENDER_AZURE_OBJECT_ID", ""),
+			},
+			LocalSmtpConfig: struct {
+				Host     string
+				Port     int
+				Username string
+				Password string
+				UseTLS   bool
+			}{
+				Host:     GetEnv("SMTP_LOCAL_HOST", ""),
+				Port:     getIntEnvOrDefault("SMTP_LOCAL_PORT", 25),
+				Username: GetEnv("SMTP_LOCAL_USERNAME", ""),
+				Password: GetEnv("SMTP_LOCAL_PASSWORD", ""),
+				UseTLS:   getEnvBoolOrDefault("SMTP_LOCAL_USE_TLS", false),
+			},
 			Brevo: struct {
 				APIKey string
-			}{APIKey: GetEnv("SMTP_BREVO_API_KEY", "")},
+			}{
+				APIKey: GetEnv("SMTP_BREVO_API_KEY", ""),
+			},
 			SenderEmail: GetEnv("SMTP_SENDER_EMAIL", ""),
 		},
 		MainDatabase: struct {
@@ -154,21 +176,6 @@ func InitConfig(envfile string) {
 			Password: GetEnv("REDIS_PASSWORD", ""),
 			DB:       getIntEnvOrDefault("REDIS_DB", 0),
 		},
-		SmtpConfig: struct {
-			Host     string
-			Port     int
-			Username string
-			Password string
-			UseTLS   bool
-			From     string
-		}{
-			Host:     GetEnv("SMTP_HOST", ""),
-			Port:     getIntEnvOrDefault("SMTP_PORT", 587),
-			Username: GetEnv("SMTP_USERNAME", ""),
-			Password: GetEnv("SMTP_PASSWORD", ""),
-			UseTLS:   GetEnv("SMTP_USE_TLS", "true") == "true",
-			From:     GetEnv("SMTP_FROM", ""),
-		},
 	}
 
 	DB = connectToPostgres(config.MainDatabase.Host, config.MainDatabase.User, config.MainDatabase.Password, config.MainDatabase.DatabaseName, config.MainDatabase.Port, config.MainDatabase.SSLMode)
@@ -210,6 +217,18 @@ func getIntEnvOrDefault(key string, defaultValue int) int {
 		return defaultValue
 	}
 	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return defaultValue
+	}
+	return value
+}
+
+func getEnvBoolOrDefault(key string, defaultValue bool) bool {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return defaultValue
+	}
+	value, err := strconv.ParseBool(raw)
 	if err != nil {
 		return defaultValue
 	}

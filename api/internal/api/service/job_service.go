@@ -6,6 +6,7 @@ import (
 	"api/internal/api/repo"
 	"api/internal/gen"
 	"api/internal/gen/lib"
+	"api/pkg"
 	"errors"
 	"fmt"
 	"time"
@@ -475,20 +476,12 @@ func (slf *JobService) sendFailureEmails(jobID uint, jobErr error, logs string, 
 		return
 	}
 
-	mailService := NewMailService()
-	if !mailService.IsInternalSmtpConfigured() {
-		slf.logger.Warn().Msg("Internal SMTP not configured, skipping failure notification emails")
-		return
-	}
-
-	// Get job name
 	job, findErr := slf.jobRepo.FindByID(jobID)
 	jobName := fmt.Sprintf("Job #%d", jobID)
 	if findErr == nil {
 		jobName = job.Name
 	}
 
-	// Truncate logs if too long for email
 	truncatedLogs := logs
 	if len(truncatedLogs) > 50000 {
 		truncatedLogs = truncatedLogs[:50000] + "\n\n... (logs truncated)"
@@ -524,14 +517,17 @@ func (slf *JobService) sendFailureEmails(jobID uint, jobErr error, logs string, 
 		truncatedLogs,
 	)
 
-	msg := EmailMessage{
-		To:      recipients,
-		Subject: fmt.Sprintf("[Data Open Studio] Job en échec : %s", jobName),
-		Body:    body,
-		IsHTML:  true,
+	msg := pkg.EmailMessage{
+		To:          recipients,
+		CC:          nil,
+		BCC:         nil,
+		Subject:     fmt.Sprintf("[Data Open Studio] Job en échec : %s", jobName),
+		Body:        body,
+		IsHTML:      true,
+		Attachments: nil,
 	}
 
-	if err := mailService.SendInternal(msg); err != nil {
+	if err := pkg.SendEmail(msg); err != nil {
 		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to send failure notification email")
 	} else {
 		slf.logger.Info().Uint("jobID", jobID).Int("recipients", len(recipients)).Msg("Failure notification email sent")

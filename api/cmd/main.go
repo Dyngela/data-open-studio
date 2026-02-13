@@ -18,7 +18,7 @@ import (
 
 func main() {
 	api.InitConfig(".env")
-	pkg.InitializeEmailsProviders()
+	pkg.InitializeEmailsProviders(api.Logger)
 	gin.SetMode(gin.ReleaseMode)
 
 	if api.GetConfig().Mode == "dev" {
