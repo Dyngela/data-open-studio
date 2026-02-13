@@ -31,10 +31,13 @@ type AppConfig struct {
 		QueueName string
 	}
 	SMTP struct {
+		SenderEmail string
+
 		Outlook struct {
 			OutlookClientID     string
 			OutlookClientSecret string
 			OutlookTenantID     string
+			SenderAzureObjectID string
 		}
 		Brevo struct {
 			APIKey string
@@ -82,11 +85,14 @@ func InitConfig(envfile string) {
 		OllamaHost:         getEnvOrPanic("OLLAMA_HOST"),
 		OllamaMessageLimit: getIntEnvOrPanic("OLLAMA_MESSAGE_LIMIT"),
 		SMTP: struct {
-			Outlook struct {
+			SenderEmail string
+			Outlook     struct {
 				OutlookClientID     string
 				OutlookClientSecret string
 				OutlookTenantID     string
+				SenderAzureObjectID string
 			}
+
 			Brevo struct {
 				APIKey string
 			}
@@ -94,14 +100,17 @@ func InitConfig(envfile string) {
 			OutlookClientID     string
 			OutlookClientSecret string
 			OutlookTenantID     string
+			SenderAzureObjectID string
 		}{
 			OutlookClientID:     GetEnv("SMTP_OUTLOOK_CLIENT_ID", ""),
 			OutlookClientSecret: GetEnv("SMTP_OUTLOOK_CLIENT_SECRET", ""),
 			OutlookTenantID:     GetEnv("SMTP_OUTLOOK_TENANT_ID", ""),
+			SenderAzureObjectID: GetEnv("SMTP_SENDER_AZURE_OBJECT_ID", ""),
 		},
 			Brevo: struct {
 				APIKey string
 			}{APIKey: GetEnv("SMTP_BREVO_API_KEY", "")},
+			SenderEmail: GetEnv("SMTP_SENDER_EMAIL", ""),
 		},
 		MainDatabase: struct {
 			Host         string
