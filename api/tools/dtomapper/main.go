@@ -320,8 +320,8 @@ func New{{.InterfaceName}}() {{.InterfaceName}} {
 	return &{{.ImplName}}{}
 }
 {{range .Methods}}
-// {{.Name}} {{.Comment}}
-func (mapper *{{$.ImplName}}) {{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{if .Returns}}{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{$r}}{{end}}{{end}} {
+// {{.name}} {{.Comment}}
+func (mapper *{{$.ImplName}}) {{.name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.name}} {{$p.Type}}{{end}}) {{if .Returns}}{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{$r}}{{end}}{{end}} {
 {{.Body}}
 }
 {{end}}
@@ -341,7 +341,7 @@ func generateMapperImpl(packageName string, iface *InterfaceInfo, structMap map[
 		body := generateMethodBody(method, structMap)
 
 		methods = append(methods, map[string]interface{}{
-			"Name":    method.Name,
+			"name":    method.Name,
 			"Params":  method.Params,
 			"Returns": method.Returns,
 			"Body":    body,

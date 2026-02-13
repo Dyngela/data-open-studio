@@ -7,11 +7,18 @@ import {TokenRefreshSchedulerService} from '../core/services/token-refresh-sched
 import {Toast} from 'primeng/toast';
 import {Button} from 'primeng/button';
 import {NodePanel} from '../views/graph/node-panel/node-panel';
+import {IconRegistryService} from '../core/services/icon-registry-service';
+import {Icon} from '../core/services/icon';
+
+export const DOS_ICONS = {
+  'check': 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  'close': 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
+};
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, Toast],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, Toast, Icon],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -20,11 +27,13 @@ export class App implements AfterViewInit {
   private localMetadata = inject(MetadataLocalService);
   private tokenRefreshScheduler = inject(TokenRefreshSchedulerService);
   private router = inject(Router);
+  private iconRegistry = inject(IconRegistryService);
 
   currentUser = this.authService.currentUser;
   isAuthenticated = this.authService.isAuthenticated;
 
   constructor() {
+    this.iconRegistry.registerIcons(DOS_ICONS);
     effect(() => {
       if (this.authService.isAuthenticated()){
         untracked(() => this.localMetadata.initialize())

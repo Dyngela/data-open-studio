@@ -55,7 +55,7 @@ func TestIsValidIdentifier(t *testing.T) {
 }
 
 func TestContainsColumn(t *testing.T) {
-	columns := []string{"id", "Name", "email"}
+	columns := []string{"id", "name", "email"}
 
 	assert.True(t, containsColumn(columns, "id"))
 	assert.True(t, containsColumn(columns, "name"), "Should be case-insensitive")

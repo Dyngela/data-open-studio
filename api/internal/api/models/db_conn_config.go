@@ -23,7 +23,7 @@ type DBConnectionConfig struct {
 	// Extra parameters for specific database types
 	Extra map[string]string `json:"extra,omitempty"`
 
-	// DSN allows specifying a full Data Source Name directly without building it
+	// DSN allows specifying a full Data Source name directly without building it
 	DSN string `json:"dsn"`
 }
 

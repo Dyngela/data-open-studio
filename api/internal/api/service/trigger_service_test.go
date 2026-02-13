@@ -171,7 +171,7 @@ func TestTrigger_Update(t *testing.T) {
 	defer cleanupTestUser(t, user.ID)
 
 	trigger := models.Trigger{
-		Name:        "Old Trigger Name",
+		Name:        "Old Trigger name",
 		Description: "Old description",
 		Type:        models.TriggerTypeWebhook,
 		CreatorID:   user.ID,
@@ -183,7 +183,7 @@ func TestTrigger_Update(t *testing.T) {
 	defer cleanupTrigger(t, created.ID)
 
 	patch := map[string]interface{}{
-		"name":        "New Trigger Name",
+		"name":        "New Trigger name",
 		"description": "New description",
 	}
 
@@ -191,7 +191,7 @@ func TestTrigger_Update(t *testing.T) {
 	require.NoError(t, err, "Failed to update trigger")
 	require.NotNil(t, updated)
 
-	assert.Equal(t, "New Trigger Name", updated.Name)
+	assert.Equal(t, "New Trigger name", updated.Name)
 	assert.Equal(t, "New description", updated.Description)
 }
 
@@ -602,9 +602,9 @@ func TestTrigger_Validate_Cron_MonthlyMissingDay(t *testing.T) {
 		CreatorID: user.ID,
 		Config: models.TriggerConfig{
 			Cron: &models.CronTriggerConfig{
-				Mode:               models.CronModeSchedule,
-				ScheduleFrequency:  models.ScheduleFrequencyMonthly,
-				ScheduleTime:       "10:00",
+				Mode:              models.CronModeSchedule,
+				ScheduleFrequency: models.ScheduleFrequencyMonthly,
+				ScheduleTime:      "10:00",
 				// ScheduleDayOfMonth is nil
 			},
 		},

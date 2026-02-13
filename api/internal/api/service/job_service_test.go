@@ -127,7 +127,7 @@ func TestJob_Update(t *testing.T) {
 	defer cleanupTestUser(t, user.ID)
 
 	job := models.Job{
-		Name:        "Old Name",
+		Name:        "Old name",
 		Description: "Old description",
 		CreatorID:   user.ID,
 		Visibility:  models.JobVisibilityPrivate,
@@ -138,7 +138,7 @@ func TestJob_Update(t *testing.T) {
 	defer cleanupJob(t, created.ID)
 
 	patch := map[string]any{
-		"name":        "New Name",
+		"name":        "New name",
 		"description": "New description",
 	}
 
@@ -146,7 +146,7 @@ func TestJob_Update(t *testing.T) {
 	require.NoError(t, err, "Failed to update job")
 	require.NotNil(t, updated)
 
-	assert.Equal(t, "New Name", updated.Name)
+	assert.Equal(t, "New name", updated.Name)
 	assert.Equal(t, "New description", updated.Description)
 	// CreatorID should remain unchanged
 	assert.Equal(t, user.ID, updated.CreatorID)

@@ -115,7 +115,7 @@ func PrettyPrintStruct(s interface{}, sep string) string {
 		fieldValue := v.Field(i)
 		fieldType := t.Field(i)
 
-		// Priority: 'db' tag -> Field Name
+		// Priority: 'db' tag -> Field name
 		label := fieldType.Tag.Get("db")
 		if label == "" {
 			label = fieldType.Name
