@@ -1,0 +1,25 @@
+<div class="output-item-info">
+  <span class="output-name">{{ column().name }}</span>
+  <span class="output-type">{{ column().dataType }}</span>
+  @if (column().inputRef) {
+    <span class="output-ref mapped">← {{ column().inputRef }}</span>
+  } @else {
+    <span class="output-ref unmapped">non associe</span>
+  }
+</div>
+<div class="output-item-actions">
+  @if (column().inputRef) {
+    <button class="btn-sm btn-unlink" (click)="clearMapping(index())" title="Dissocier">
+      <i class="pi pi-undo"></i>
+    </button>
+  }
+  <button class="btn-sm" (click)="moveUp(index())" [disabled]="index() === 0" title="Monter">
+    <i class="pi pi-chevron-up"></i>
+  </button>
+  <button class="btn-sm" (click)="moveDown(index())" [disabled]="index() === columns().length - 1" title="Descendre">
+    <i class="pi pi-chevron-down"></i>
+  </button>
+  <button class="btn-sm btn-remove" (click)="removeColumn(index())" title="Supprimer">
+    <i class="pi pi-times"></i>
+  </button>
+</div>

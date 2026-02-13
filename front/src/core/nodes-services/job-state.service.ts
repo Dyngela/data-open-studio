@@ -3,6 +3,7 @@ import { DataModel } from '../api/metadata.type';
 import type { NodeConfig } from '../../nodes/node-definition.type';
 import { type DbInputNodeConfig, isDbInputConfig } from '../../nodes/db-input/definition';
 import { type InputFlow, type MapNodeConfig, isMapConfig } from '../../nodes/transform/definition';
+import { isOutputConfig } from '../../nodes/output/definition';
 import { Connection, NodeInstance, PortType } from './node.type';
 import { NodeGraphService } from './node-graph.service';
 import { inject } from '@angular/core';
@@ -82,6 +83,29 @@ export class JobStateService {
       portId: conn.targetPort,
       schema: this.getOutputSchema(conn.sourceNodeId),
     }));
+  }
+
+  /**
+   * Traces DATA connections forward from a node and returns the expected
+   * input schema of the first connected downstream node that defines one
+   * (e.g. a db-output node with dataModels).
+   */
+  getDownstreamExpectedSchema(sourceNodeId: number): DataModel[] {
+    this.schemaVersion();
+
+    const connections = this.nodeGraph.connections();
+    const dataOutputs = connections.filter(
+      c => c.sourceNodeId === sourceNodeId && c.sourcePortType === PortType.DATA,
+    );
+
+    for (const conn of dataOutputs) {
+      const config = this.configs().get(conn.targetNodeId);
+      if (isOutputConfig(config) && config.dataModels?.length) {
+        return config.dataModels;
+      }
+    }
+
+    return [];
   }
 
   /**
