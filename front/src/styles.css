@@ -1,7 +1,9 @@
-/* You can add global styles to this file, and also import other style files */
+ /* You can add global styles to this file, and also import other style files */
 
 @import "tailwindcss";
 @import "primeicons/primeicons.css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 
 @theme {
   --color-jb-dark: #2b2b2b;
@@ -9,6 +11,39 @@
   --color-jb-border: #323232;
   --color-jb-text: #afb1b3;
   --color-jb-accent: #4a88c7;
+
+  /* PALETTE */
+
+  --color-vds-orange: #f19066;
+  --color-vds-orange-muted: #f3a683;
+
+  --color-vds-yellow: #f5cd79;
+  --color-vds-yellow-muted: #f7d794;
+
+  --color-vds-blue: #546de5;
+  --color-vds-blue-muted: #778beb;
+
+  --color-vds-burgundy: #c44569;
+  --color-vds-burgundy-muted: #cf6a87;
+
+  --color-vds-purple: #574b90;
+  --color-vds-purple-muted: #786fa6;
+
+  --color-vds-pink: #f78fb3;
+  --color-vds-pink-muted: #f8a5c2;
+
+  --color-vds-cyan: #3dc1d3;
+  --color-vds-cyan-muted: #63cdda;
+
+  --color-vds-red: #e66767;
+  --color-vds-red-muted: #ea8685;
+
+  --color-vds-slate: #303952;
+  --color-vds-slate-muted: #596275;
+
+  --color-vds-surface: #ffffff;
+  --color-vds-surface-muted: #f6f8ff;
+
 }
 
 /* On ajoute un petit style pour la sélection de texte dans l'IDE */
@@ -21,5 +56,9 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Roboto', system-ui, sans-serif;
+}
+
+* {
+  font-family: 'Inter', sans-serif;
 }
