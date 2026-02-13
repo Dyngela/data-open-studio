@@ -3,7 +3,6 @@ package main
 import (
 	"api"
 	"api/internal/api/handler/endpoints"
-	"api/internal/api/models"
 	"api/internal/api/service"
 	"context"
 	"errors"
@@ -21,7 +20,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 
 	if api.GetConfig().Mode == "dev" {
-		if err := api.DB.AutoMigrate(
+		/*if err := api.DB.AutoMigrate(
 			&models.User{},
 			&models.Job{},
 			&models.Node{},
@@ -39,7 +38,7 @@ func main() {
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
-		api.Logger.Info().Msg("Database migrated successfully")
+		api.Logger.Info().Msg("Database migrated successfully")*/
 		gin.SetMode(gin.DebugMode)
 	}
 
