@@ -14,6 +14,8 @@ import { LayoutService } from '../../core/services/layout-service';
 import { DataModel } from '../../core/api/metadata.type';
 import {MapGlobalFilter} from './map-global-filter/map-global-filter';
 import {MapOutputField} from './map-output-field/map-output-field';
+import { KuiModalHeader } from '../../ui/modal/kui-modal-header/kui-modal-header';
+import { NodeGraphService } from '../../core/nodes-services/node-graph.service';
 
 interface JoinKeyPair {
   leftCol: string;
@@ -25,7 +27,7 @@ type JoinType = 'inner' | 'left' | 'right';
 @Component({
   selector: 'app-transform-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, MapGlobalFilter, MapOutputField],
+  imports: [CommonModule, FormsModule, MapGlobalFilter, MapOutputField, KuiModalHeader],
   templateUrl: './transform.modal.html',
   styleUrl: './transform.modal.css',
 })
@@ -33,6 +35,9 @@ export class TransformModal {
   private layoutService = inject(LayoutService);
   node = input.required<NodeInstance>();
   save = output<MapNodeConfig>();
+  private nodeGraph = inject(NodeGraphService);
+
+  modalTitle = computed(() => this.node().name ?? this.node().type.label);
 
   private jobState = inject(JobStateService);
 
@@ -56,6 +61,11 @@ export class TransformModal {
   protected dropTargetCol = signal<string | null>(null);
   protected dropTargetOutputIndex = signal<number | null>(null);
   protected outputPanelHovered = signal(false);
+
+  onTitleChange(value: string) {
+    const trimmed = value.trim();
+    this.nodeGraph.renameNode(this.node().id, trimmed || this.node().type.label);
+  }
 
   ngOnInit() {
     const config = this.jobState.getNodeConfig(this.node().id);

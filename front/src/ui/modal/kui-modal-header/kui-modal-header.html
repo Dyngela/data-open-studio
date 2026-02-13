@@ -1,0 +1,25 @@
+<div class="modal-header">
+  <div>
+    @if (editable()) {
+      <input
+        class="title-input"
+        type="text"
+        [value]="title()"
+        (input)="onTitleInput($any($event.target).value)"
+      />
+    } @else {
+      <h3>{{ title() }}</h3>
+    }
+    @if (subtitle()) {
+      <p class="subtitle">{{ subtitle() }}</p>
+    }
+  </div>
+  <button
+    class="icon-btn"
+    type="button"
+    [attr.aria-label]="closeLabel()"
+    (click)="onClose()"
+  >
+    &times;
+  </button>
+</div>

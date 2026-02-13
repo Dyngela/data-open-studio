@@ -1,11 +1,11 @@
 <div class="z-[max]">
-  <div class="modal-header">
-    <div>
-      <h3>Database Input</h3>
-      <p class="subtitle">Sélectionner une connexion et configurer la requête</p>
-    </div>
-    <button class="icon-btn" type="button" (click)="onCancel()">×</button>
-  </div>
+  <kui-modal-header
+    [title]="modalTitle()"
+    subtitle="Sélectionner une connexion et configurer la requête"
+    [editable]="true"
+    (titleChange)="onTitleChange($event)"
+    (close)="onCancel()"
+  ></kui-modal-header>
 
   <div class="modal-body" [formGroup]="form">
 
