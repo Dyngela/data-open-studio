@@ -15,7 +15,9 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 	// Cross product
 	for left := range leftIn {
 		for _, right := range rightRows {
-{{- if .FilterExpr }}
+{{- if .VariablesCode }}
+{{ .VariablesCode }}
+{{- else if .FilterExpr }}
 			// Global filter
 			if !({{ .FilterExpr }}) {
 				continue

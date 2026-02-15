@@ -7,7 +7,9 @@ func {{ .FuncName }}(ctx context.Context, in <-chan *{{ .InputType }}, outChan c
 	}
 
 	for row := range in {
-{{- if .FilterExpr }}
+{{- if .VariablesCode }}
+{{ .VariablesCode }}
+{{- else if .FilterExpr }}
 		// Global filter
 		if !({{ .FilterExpr }}) {
 			continue

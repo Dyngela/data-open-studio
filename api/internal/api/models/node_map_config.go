@@ -17,6 +17,22 @@ const (
 	CustomFunc CustomFuncType = "func" // Full function declaration
 )
 
+// VariableKind defines whether a variable is a filter or a computed field
+type VariableKind string
+
+const (
+	VarKindFilter   VariableKind = "filter"   // Boolean guard: rows not matching are skipped
+	VarKindComputed VariableKind = "computed"  // Computed field: creates a local variable
+)
+
+// MapVariable represents a variable row in the Variables panel
+type MapVariable struct {
+	Name       string       `json:"name"`
+	Kind       VariableKind `json:"kind"`
+	Expression string       `json:"expression"`
+	DataType   string       `json:"dataType"`
+}
+
 // JoinType defines how multiple inputs are combined
 type JoinType string
 
@@ -81,10 +97,11 @@ type JoinConfig struct {
 
 // MapConfig is the complete configuration for a Map node
 type MapConfig struct {
-	Inputs       []InputFlow  `json:"inputs"`                 // Input streams (1 or more)
-	Outputs      []OutputFlow `json:"outputs"`                // Output streams (1 or more, each with own port)
-	Join         *JoinConfig  `json:"join,omitempty"`         // How to combine multiple inputs (nil if single input)
-	GlobalFilter string       `json:"globalFilter,omitempty"` // Boolean expression, e.g. "input.price > 100"
+	Inputs       []InputFlow   `json:"inputs"`                 // Input streams (1 or more)
+	Outputs      []OutputFlow  `json:"outputs"`                // Output streams (1 or more, each with own port)
+	Join         *JoinConfig   `json:"join,omitempty"`         // How to combine multiple inputs (nil if single input)
+	GlobalFilter string        `json:"globalFilter,omitempty"` // Deprecated: use Variables instead
+	Variables    []MapVariable `json:"variables,omitempty"`    // Ordered variable rows (computed fields + filters)
 }
 
 // GetInputByName returns an input flow by its reference name
@@ -125,4 +142,26 @@ func (c *MapConfig) HasMultipleInputs() bool {
 // HasMultipleOutputs returns true if the map node has more than one output
 func (c *MapConfig) HasMultipleOutputs() bool {
 	return len(c.Outputs) > 1
+}
+
+// GetFilterVariables returns only filter-kind variables
+func (c *MapConfig) GetFilterVariables() []MapVariable {
+	var result []MapVariable
+	for _, v := range c.Variables {
+		if v.Kind == VarKindFilter {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// GetComputedVariables returns only computed-kind variables
+func (c *MapConfig) GetComputedVariables() []MapVariable {
+	var result []MapVariable
+	for _, v := range c.Variables {
+		if v.Kind == VarKindComputed {
+			result = append(result, v)
+		}
+	}
+	return result
 }

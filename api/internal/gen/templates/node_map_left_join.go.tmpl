@@ -17,7 +17,9 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 	for left := range leftIn {
 		key := {{ range $i, $k := .LeftKeys }}{{ if $i }} + "|" + {{ end }}fmt.Sprintf("%v", left.{{ $k }}){{ end }}
 		right := rightIndex[key]
-{{- if .FilterExpr }}
+{{- if .VariablesCode }}
+{{ .VariablesCode }}
+{{- else if .FilterExpr }}
 
 		// Global filter
 		if !({{ .FilterExpr }}) {

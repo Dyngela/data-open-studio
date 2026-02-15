@@ -74,41 +74,45 @@ type NodeLaunchData struct {
 
 // MapTransformTemplateData holds data for map transformation template
 type MapTransformTemplateData struct {
-	FuncName   string
-	NodeID     int
-	NodeName   string
-	InputType  string
-	OutputType string
-	Transforms string
-	FilterExpr string
+	FuncName      string
+	NodeID        int
+	NodeName      string
+	InputType     string
+	OutputType    string
+	Transforms    string
+	FilterExpr    string
+	VariablesCode string
 }
 
 // MapJoinTemplateData holds data for map join templates
 type MapJoinTemplateData struct {
-	FuncName   string
-	NodeID     int
-	NodeName   string
-	LeftType   string
-	RightType  string
-	OutputType string
-	LeftKeys   []string
-	RightKeys  []string
-	Transforms string
-	FilterExpr string
+	FuncName      string
+	NodeID        int
+	NodeName      string
+	LeftType      string
+	RightType     string
+	OutputType    string
+	LeftKeys      []string
+	RightKeys     []string
+	Transforms    string
+	FilterExpr    string
+	VariablesCode string
 }
 
 // MapUnionTemplateData holds data for map union template
 type MapUnionTemplateData struct {
-	FuncName        string
-	NodeID          int
-	NodeName        string
-	LeftType        string
-	RightType       string
-	OutputType      string
-	LeftTransforms  string
-	RightTransforms string
-	LeftFilterExpr  string
-	RightFilterExpr string
+	FuncName           string
+	NodeID             int
+	NodeName           string
+	LeftType           string
+	RightType          string
+	OutputType         string
+	LeftTransforms     string
+	RightTransforms    string
+	LeftFilterExpr     string
+	RightFilterExpr    string
+	LeftVariablesCode  string
+	RightVariablesCode string
 }
 
 // LogTemplateData holds data for log node template

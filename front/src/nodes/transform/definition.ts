@@ -10,13 +10,16 @@ export interface InputFlow {
 
 export type MapFuncType = 'direct' | 'library' | 'custom';
 
+export type CustomFuncType = 'expr' | 'func';
+
 export interface MapOutputCol {
   name: string;
   dataType: string;
   funcType: MapFuncType;
-  inputRef?: string;    // "A.column_name"
+  inputRef?: string;       // "A.column_name"
   libFunc?: string;
   args?: string[];
+  customType?: CustomFuncType;
   expression?: string;
 }
 
@@ -24,6 +27,15 @@ export interface OutputFlow {
   name: string;
   portId: number;
   columns: MapOutputCol[];
+}
+
+export type VariableKind = 'filter' | 'computed';
+
+export interface MapVariable {
+  name: string;
+  kind: VariableKind;
+  expression: string;
+  dataType: string;
 }
 
 export interface JoinConfig {
@@ -40,6 +52,7 @@ export interface MapNodeConfig {
   outputs: OutputFlow[];
   join?: JoinConfig;
   globalFilter?: string;
+  variables?: MapVariable[];
 }
 
 // ── Guard ───────────────────────────────────────────────

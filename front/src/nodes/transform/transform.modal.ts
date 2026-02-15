@@ -7,12 +7,13 @@ import {
   InputFlow,
   MapNodeConfig,
   MapOutputCol,
+  MapVariable,
   OutputFlow,
   isMapConfig,
 } from './definition';
 import { LayoutService } from '../../core/services/layout-service';
 import { DataModel } from '../../core/api/metadata.type';
-import {MapGlobalFilter} from './map-global-filter/map-global-filter';
+import {MapVariablesPanel} from './map-variables-panel/map-variables-panel';
 import {MapOutputField} from './map-output-field/map-output-field';
 import { KuiModalHeader } from '../../ui/modal/kui-modal-header/kui-modal-header';
 import { NodeGraphService } from '../../core/nodes-services/node-graph.service';
@@ -27,7 +28,7 @@ type JoinType = 'inner' | 'left' | 'right';
 @Component({
   selector: 'app-transform-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, MapGlobalFilter, MapOutputField, KuiModalHeader],
+  imports: [CommonModule, FormsModule, MapVariablesPanel, MapOutputField, KuiModalHeader],
   templateUrl: './transform.modal.html',
   styleUrl: './transform.modal.css',
 })
@@ -56,9 +57,9 @@ export class TransformModal {
   protected outputColumns = signal<MapOutputCol[]>([]);
   protected joinType = signal<JoinType>('inner');
   protected joinKeys = signal<JoinKeyPair[]>([]);
-  protected filterExpr = signal<string>('');
+  protected variables = signal<MapVariable[]>([]);
 
-  protected draggedColumn = signal<{ inputName: string; colName: string; colType: string } | null>(null);
+  protected draggedColumn = signal<{ inputName: string; colName: string; colType: string; source?: 'input' | 'variable' } | null>(null);
   protected dropTargetCol = signal<string | null>(null);
   protected dropTargetOutputIndex = signal<number | null>(null);
   protected outputPanelHovered = signal(false);
@@ -82,8 +83,16 @@ export class TransformModal {
         }));
         this.joinKeys.set(pairs);
       }
-      if (config.globalFilter) {
-        this.filterExpr.set(config.globalFilter);
+      if (config.variables?.length) {
+        this.variables.set([...config.variables]);
+      } else if (config.globalFilter) {
+        // Backward compat: migrate old globalFilter into a single filter variable
+        this.variables.set([{
+          name: 'filter_1',
+          kind: 'filter',
+          expression: config.globalFilter,
+          dataType: 'bool',
+        }]);
       }
     }
   }
@@ -91,10 +100,18 @@ export class TransformModal {
   // ── Drag & drop for join keys ──────────────────────────
 
   onDragStart(event: DragEvent, inputName: string, col: DataModel) {
-    this.draggedColumn.set({ inputName, colName: col.name, colType: col.type });
+    this.draggedColumn.set({ inputName, colName: col.name, colType: col.type, source: 'input' });
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'copyLink';
       event.dataTransfer.setData('text/plain', `${inputName}.${col.name}`);
+    }
+  }
+
+  onVariableDragStart(event: DragEvent, varName: string, varType: string) {
+    this.draggedColumn.set({ inputName: '$var', colName: varName, colType: varType, source: 'variable' });
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copyLink';
+      event.dataTransfer.setData('text/plain', `$var.${varName}`);
     }
   }
 
@@ -236,6 +253,25 @@ export class TransformModal {
   // ── Output columns ────────────────────────────────────
 
   addColumn(inputName: string, col: { name: string; type: string }) {
+    if (inputName === '$var') {
+      // Variable reference → custom expression output column
+      const ref = `$var.${col.name}`;
+      const existing = this.outputColumns();
+      if (existing.some(c => c.funcType === 'custom' && c.expression === ref)) return;
+
+      this.outputColumns.update(cols => [
+        ...cols,
+        {
+          name: col.name,
+          dataType: col.type,
+          funcType: 'custom' as const,
+          customType: 'expr' as const,
+          expression: ref,
+        },
+      ]);
+      return;
+    }
+
     const existing = this.outputColumns();
     const alreadyExists = existing.some(
       c => c.funcType === 'direct' && c.inputRef === `${inputName}.${col.name}`,
@@ -336,9 +372,9 @@ export class TransformModal {
       outputs: [outputFlow],
     };
 
-    const filter = this.filterExpr().trim();
-    if (filter) {
-      config.globalFilter = filter;
+    const vars = this.variables();
+    if (vars.length > 0) {
+      config.variables = vars;
     }
 
     if (this.hasMultipleInputs() && this.joinKeys().length > 0) {
