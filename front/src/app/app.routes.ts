@@ -6,6 +6,8 @@ import { Settings } from '../views/settings/settings/settings';
 import { Jobs } from '../views/jobs/jobs/jobs';
 import { Login } from '../views/authentication/login/login';
 import { Register } from '../views/authentication/register/register';
+import { DatasetList } from '../views/datasets/dataset-list/dataset-list';
+import { DatasetEditor } from '../views/datasets/dataset-editor/dataset-editor';
 
 export const routes: Routes = [
   // Auth routes (accessible only when not logged in)
@@ -45,6 +47,8 @@ export const routes: Routes = [
     ]
   },
   { path: 'jobs', component: Jobs, canActivate: [authGuard] },
+  { path: 'datasets', component: DatasetList, canActivate: [authGuard] },
+  { path: 'datasets/:id', component: DatasetEditor, canActivate: [authGuard] },
 
   // Fallback
   { path: '**', redirectTo: 'jobs' }

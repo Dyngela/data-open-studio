@@ -1,0 +1,219 @@
+<p-toast />
+
+@if (isLoading()) {
+  <div class="flex items-center justify-center h-64">
+    <p-progressSpinner />
+  </div>
+} @else if (dataset(); as ds) {
+  <div class="p-6 max-w-6xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-6">
+      <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" (onClick)="goBack()" />
+      <div class="flex-1">
+        <div class="flex items-center gap-3">
+          <h1 class="text-xl font-semibold text-gray-900">{{ ds.name }}</h1>
+          <p-tag [value]="ds.status" [severity]="statusSeverity(ds.status)" />
+        </div>
+        @if (ds.description) {
+          <p class="text-sm text-gray-500 mt-0.5">{{ ds.description }}</p>
+        }
+      </div>
+      <div class="flex items-center gap-2">
+        <p-button
+          label="Preview"
+          icon="pi pi-play"
+          severity="secondary"
+          (onClick)="runPreview()"
+          [loading]="isPreviewing()"
+        />
+        <p-button
+          label="Refresh Schema"
+          icon="pi pi-sync"
+          severity="secondary"
+          (onClick)="refreshSchema()"
+          [loading]="isRefreshing()"
+        />
+        <p-button
+          label="Save"
+          icon="pi pi-check"
+          (onClick)="save()"
+          [loading]="isSaving()"
+          [disabled]="!isDirty() || editForm.invalid"
+        />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Left: Config -->
+      <div class="lg:col-span-1 flex flex-col gap-4">
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 class="text-sm font-medium text-gray-700 mb-4">Configuration</h2>
+
+          <form [formGroup]="editForm" class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium text-gray-600">Name</label>
+              <input pInputText formControlName="name" class="w-full" />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium text-gray-600">Description</label>
+              <textarea pTextarea formControlName="description" [rows]="2" class="w-full"></textarea>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium text-gray-600">Database</label>
+              <p-select
+                formControlName="metadataDatabaseId"
+                [options]="databaseOptions"
+                optionLabel="label"
+                optionValue="value"
+                [filter]="true"
+                class="w-full"
+              />
+            </div>
+          </form>
+        </div>
+
+        <!-- Stats -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 class="text-sm font-medium text-gray-700 mb-3">Info</h2>
+          <dl class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Columns</dt>
+              <dd class="font-medium">{{ columns.length }}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Last refreshed</dt>
+              <dd class="font-medium">
+                @if (ds.lastRefreshedAt) {
+                  {{ ds.lastRefreshedAt | date: 'short' }}
+                } @else {
+                  Never
+                }
+              </dd>
+            </div>
+            @if (ds.lastError) {
+              <div class="pt-2 border-t">
+                <dt class="text-red-500 text-xs mb-1">Last error</dt>
+                <dd class="text-xs text-red-600 break-words">{{ ds.lastError }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </div>
+
+      <!-- Right: SQL + Schema/Preview tabs -->
+      <div class="lg:col-span-2 flex flex-col gap-4">
+
+        <!-- SQL Query -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <label class="text-sm font-medium text-gray-700 block mb-2">SQL Query</label>
+          <textarea
+            pTextarea
+            [formControl]="$any(editForm.get('query'))"
+            [rows]="10"
+            class="w-full font-mono text-sm"
+            placeholder="SELECT ..."
+          ></textarea>
+        </div>
+
+        <!-- Tabs: Schema / Preview -->
+        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($event.toString())">
+            <p-tablist>
+              <p-tab value="schema">Schema ({{ columns.length }})</p-tab>
+              <p-tab value="preview">
+                Preview
+                @if (previewResult(); as p) {
+                  <span class="ml-1 text-xs text-gray-400">({{ p.rowCount }} rows)</span>
+                }
+              </p-tab>
+            </p-tablist>
+
+            <p-tabpanels>
+              <!-- Schema tab -->
+              <p-tabpanel value="schema">
+                @if (columns.length > 0) {
+                  <p-table [value]="columns" styleClass="p-datatable-sm" [scrollable]="true" scrollHeight="320px">
+                    <ng-template pTemplate="header">
+                      <tr>
+                        <th>Column Name</th>
+                        <th>Type</th>
+                        <th>Nullable</th>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-col>
+                      <tr>
+                        <td class="font-mono text-sm">{{ col.name }}</td>
+                        <td>
+                          <p-tag [value]="col.dataType" [severity]="dataTypeSeverity(col.dataType)" />
+                        </td>
+                        <td class="text-sm text-gray-500">{{ col.nullable ? 'Yes' : 'No' }}</td>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                      <tr>
+                        <td colspan="3" class="text-center py-8 text-gray-400">
+                          Run "Refresh Schema" to detect columns.
+                        </td>
+                      </tr>
+                    </ng-template>
+                  </p-table>
+                } @else {
+                  <div class="py-12 text-center text-gray-400">
+                    <i class="pi pi-table text-3xl mb-2 block"></i>
+                    <p class="text-sm">No schema yet. Run "Refresh Schema" to detect columns.</p>
+                  </div>
+                }
+              </p-tabpanel>
+
+              <!-- Preview tab -->
+              <p-tabpanel value="preview">
+                @if (isPreviewing()) {
+                  <div class="flex items-center justify-center py-12">
+                    <p-progressSpinner [style]="{ width: '40px', height: '40px' }" />
+                  </div>
+                } @else if (previewResult(); as preview) {
+                  <div class="overflow-x-auto">
+                    <p-table
+                      [value]="preview.rows"
+                      [columns]="preview.columns"
+                      styleClass="p-datatable-sm"
+                      [scrollable]="true"
+                      scrollHeight="320px"
+                    >
+                      <ng-template pTemplate="header" let-cols>
+                        <tr>
+                          @for (col of preview.columns; track col) {
+                            <th class="font-mono text-xs">{{ col }}</th>
+                          }
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="body" let-row>
+                        <tr>
+                          @for (col of preview.columns; track col) {
+                            <td class="font-mono text-xs max-w-xs truncate">
+                              {{ row[col] ?? 'null' }}
+                            </td>
+                          }
+                        </tr>
+                      </ng-template>
+                    </p-table>
+                  </div>
+                } @else {
+                  <div class="py-12 text-center text-gray-400">
+                    <i class="pi pi-play text-3xl mb-2 block"></i>
+                    <p class="text-sm">Click "Preview" to run the query and see sample data.</p>
+                  </div>
+                }
+              </p-tabpanel>
+            </p-tabpanels>
+          </p-tabs>
+        </div>
+
+      </div>
+    </div>
+  </div>
+}
