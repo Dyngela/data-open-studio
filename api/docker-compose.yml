@@ -34,7 +34,7 @@ services:
       - postgres_test_data:/var/lib/postgresql
       - ./init/postgres-test:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U testuser"]
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
       interval: 30s
       timeout: 5s
       retries: 5

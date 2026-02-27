@@ -201,28 +201,48 @@ func JobWithNodeToModel(jwn request.UpdateJob) []models.Node {
 		}
 
 		for _, c := range jwn.Connexions {
+			if c.SourcePortType != c.TargetPortType {
+				continue
+			}
+
 			outputPortType := fromConnexionPortType(c.SourcePortType, false)
 			inputPortType := fromConnexionPortType(c.TargetPortType, true)
 
-			// Add output port to source node
+			// Add output port to source node (only if not already exists)
 			if idx, ok := nodeIdxByID[c.SourceNodeId]; ok {
-				nodes[idx].OutputPort = append(nodes[idx].OutputPort, models.Port{
+				newPort := models.Port{
 					Type:            outputPortType,
 					ConnectedNodeID: uint(c.TargetNodeId),
-				})
+				}
+				if !portExists(nodes[idx].OutputPort, newPort) {
+					nodes[idx].OutputPort = append(nodes[idx].OutputPort, newPort)
+				}
 			}
 
-			// Add input port to target node
+			// Add input port to target node (only if not already exists)
 			if idx, ok := nodeIdxByID[c.TargetNodeId]; ok {
-				nodes[idx].InputPort = append(nodes[idx].InputPort, models.Port{
+				newPort := models.Port{
 					Type:            inputPortType,
 					ConnectedNodeID: uint(c.SourceNodeId),
-				})
+				}
+				if !portExists(nodes[idx].InputPort, newPort) {
+					nodes[idx].InputPort = append(nodes[idx].InputPort, newPort)
+				}
 			}
 		}
 	}
 
 	return nodes
+}
+
+// portExists checks if a port with the same Type and ConnectedNodeID already exists in the ports slice
+func portExists(ports []models.Port, newPort models.Port) bool {
+	for _, p := range ports {
+		if p.Type == newPort.Type && p.ConnectedNodeID == newPort.ConnectedNodeID {
+			return true
+		}
+	}
+	return false
 }
 
 // fromConnexionPortType converts frontend port types ("data"/"flow") back to model port types.

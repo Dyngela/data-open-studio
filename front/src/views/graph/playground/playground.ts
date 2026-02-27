@@ -16,7 +16,7 @@ import {ActivatedRoute, RouterOutlet} from '@angular/router';
 import {CdkDragDrop, CdkDropList} from '@angular/cdk/drag-drop';
 import {FormsModule} from '@angular/forms';
 import {ContextMenu} from 'primeng/contextmenu';
-import {MenuItem} from 'primeng/api';
+import {MenuItem, MessageService} from 'primeng/api';
 import {NodePanel} from '../node-panel/node-panel';
 import {NodeInstanceComponent} from '../node-instance/node-instance';
 import {Minimap} from '../minimap/minimap';
@@ -77,6 +77,7 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
   protected layoutService = inject(LayoutService);
   private realtime = inject(JobRealtimeService);
   private nodeRegistry = inject(NodeRegistryService);
+  private messageService = inject(MessageService);
 
   /** Track how many nodes are still running so we know when the job finishes */
   private runningNodes = new Set<number>();
@@ -234,11 +235,34 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
   onInputPortClick(event: { nodeId: number; portIndex: number; portType: PortType }) {
     const source = this.sourcePort();
     if (this.isConnecting() && source) {
-      this.nodeGraph.createConnection(source, {
+      if (source.portType !== event.portType) {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Type incompatible',
+          detail: `Impossible de connecter un port ${source.portType} à un port ${event.portType}.`,
+          life: 3000,
+        });
+        this.isConnecting.set(false);
+        this.sourcePort.set(null);
+        this.tempConnection.set(null);
+        return;
+      }
+
+      const connection = this.nodeGraph.createConnection(source, {
         nodeId: event.nodeId,
         portIndex: event.portIndex,
         portType: event.portType,
       });
+      
+      if (!connection) {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'Connexion existante',
+          detail: 'Cette connexion existe déjà entre ces deux nœuds.',
+          life: 3000,
+        });
+      }
+      
       this.isConnecting.set(false);
       this.sourcePort.set(null);
       this.tempConnection.set(null);
@@ -257,7 +281,7 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
     // Priority 1: Node drag
     if (this.isDraggingNode()) {
       const nodeId = this.draggedNodeId();
-      if (nodeId) {
+      if (nodeId !== null) {
         const playgroundRect = this.playgroundArea()?.nativeElement.getBoundingClientRect();
         const offset = this.panOffset();
         const z = this.zoom();

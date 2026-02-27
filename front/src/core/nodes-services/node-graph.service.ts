@@ -101,7 +101,12 @@ export class NodeGraphService {
   createConnection(
     source: { nodeId: number; portIndex: number; portType: PortType },
     target: { nodeId: number; portIndex: number; portType: PortType },
-  ): Connection {
+  ): Connection | null {
+
+    if (source.portType !== target.portType) {
+      return null;
+    }
+
     const connection: Connection = {
       sourceNodeId: source.nodeId,
       sourcePort: source.portIndex,
@@ -110,6 +115,21 @@ export class NodeGraphService {
       targetPort: target.portIndex,
       targetPortType: target.portType,
     };
+    
+    // Check if connection already exists
+    const connectionExists = this.connections().some(c =>
+      c.sourceNodeId === connection.sourceNodeId &&
+      c.sourcePort === connection.sourcePort &&
+      c.sourcePortType === connection.sourcePortType &&
+      c.targetNodeId === connection.targetNodeId &&
+      c.targetPort === connection.targetPort &&
+      c.targetPortType === connection.targetPortType
+    );
+    
+    if (connectionExists) {
+      return null;
+    }
+    
     this.connections.update(conns => [...conns, connection]);
     return connection;
   }
