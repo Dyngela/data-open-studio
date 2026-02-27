@@ -159,6 +159,11 @@
                     [node]="node"
                   ></app-output-modal>
                 }
+                @if (modal.nodeTypeId === 'script' && nodeGraph.getNodeById(modal.nodeId); as node) {
+                  <app-script-modal
+                    [node]="node"
+                  ></app-script-modal>
+                }
               </div>
             </div>
           }

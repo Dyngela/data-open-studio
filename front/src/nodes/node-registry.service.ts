@@ -6,12 +6,14 @@ import { dbInputDefinition } from './db-input/definition';
 import { transformDefinition } from './transform/definition';
 import { logDefinition } from './log/definition';
 import { outputDefinition } from './output/definition';
+import { scriptDefinition } from './script/definition';
 
 const ALL_NODE_DEFINITIONS = [
   startDefinition,
   dbInputDefinition,
   transformDefinition,
   logDefinition,
+  scriptDefinition,
   outputDefinition,
 ] as const;
 

@@ -9,7 +9,7 @@ export interface NodeType {
   hasDataOutput: boolean;
   hasFlowInput: boolean;
   hasFlowOutput: boolean;
-  type: 'start' | 'input' | 'output' | 'process' | 'log';
+  type: 'start' | 'input' | 'output' | 'process' | 'log' | 'script';
 }
 
 export interface NodeInstance {
@@ -18,7 +18,7 @@ export interface NodeInstance {
   name?: string;
   position: { x: number; y: number };
   config?: NodeConfig | Record<string, any>;
-  status?: 'idle' | 'waiting' | 'running' | 'success' | 'error';
+  status?: 'idle' | 'waiting' | 'running' | 'success' | 'error' ;
 }
 
 export interface Connection {

@@ -1,0 +1,60 @@
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Consolas', monospace;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #444;
+
+  .title { font-size: 16px; font-weight: bold; }
+
+  .run-btn {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    &:hover { background: #005f9e; }
+    &:disabled { background: #555; cursor: not-allowed; }
+  }
+}
+
+.monaco {
+  flex: 1;
+  min-height: 400px;
+}
+
+.output-panel {
+  height: 200px;
+  background: #0d0d0d;
+  border-top: 2px solid #444;
+  padding: 12px;
+  overflow-y: auto;
+
+  &.error { border-top-color: #f44; }
+
+  .output-title {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .output-content {
+    margin: 0;
+    font-size: 13px;
+    white-space: pre-wrap;
+    color: #d4d4d4;
+  }
+}

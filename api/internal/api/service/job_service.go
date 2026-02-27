@@ -8,8 +8,6 @@ import (
 	"api/internal/gen/lib"
 	"api/pkg"
 	"errors"
-	"fmt"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -41,7 +39,6 @@ func (slf *JobService) FindAllForUser(userID uint) ([]models.Job, error) {
 		Where("job.visibility = ? OR job.creator_id = ? OR job_user_access.user_id = ?",
 			models.JobVisibilityPublic, userID, userID).
 		Find(&jobs).Error
-
 	if err != nil {
 		slf.logger.Error().Err(err).Uint("userID", userID).Msg("Error getting jobs for user")
 		return nil, err
@@ -60,7 +57,6 @@ func (slf *JobService) FindByFilePathForUser(filePath string, userID uint) ([]mo
 		Where("job.visibility = ? OR job.creator_id = ? OR job_user_access.user_id = ?",
 			models.JobVisibilityPublic, userID, userID).
 		Find(&jobs).Error
-
 	if err != nil {
 		slf.logger.Error().Err(err).Str("filePath", filePath).Msg("Error getting jobs by file path")
 		return nil, err
@@ -413,7 +409,6 @@ func (slf *JobService) FindByIDWithAccess(id uint) (*models.Job, []models.JobUse
 		Preload("SharedWith").
 		Preload("NotifyUsers").
 		First(&job, id).Error
-
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, errors.New("job not found")
@@ -438,8 +433,8 @@ func (slf *JobService) Execute(id uint) error {
 	err = executer.Run()
 
 	slf.logger.Info().Msgf("%v", err)
-	//slf.logger.Info().Msgf("steps: %v", executer.Steps)
-	//slf.logger.Info().Msgf("context: %v", executer.Context)
+	// slf.logger.Info().Msgf("steps: %v", executer.Steps)
+	// slf.logger.Info().Msgf("context: %v", executer.Context)
 
 	// Notify frontend via NATS that the job is done
 	slf.notifyJobDone(id, err, executer.Logs, executer.Stats)
@@ -467,14 +462,14 @@ func (slf *JobService) notifyJobDone(jobID uint, jobErr error, logs string, stat
 
 // sendFailureEmails sends an email to all notification contacts for the given job.
 func (slf *JobService) sendFailureEmails(jobID uint, jobErr error, logs string, stats gen.DockerStats) {
-	contacts, err := slf.GetNotificationContacts(jobID)
-	if err != nil {
-		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to get notification contacts for failure email")
-		return
-	}
-	if len(contacts) == 0 {
-		return
-	}
+	// 	contacts, err := slf.GetNotificationContacts(jobID)
+	// 	if err != nil {
+	// 		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to get notification contacts for failure email")
+	// 		return
+	// 	}
+	// 	if len(contacts) == 0 {
+	// 		return
+	// 	}
 
 	job, findErr := slf.jobRepo.FindByID(jobID)
 	jobName := fmt.Sprintf("Job #%d", jobID)
@@ -487,35 +482,35 @@ func (slf *JobService) sendFailureEmails(jobID uint, jobErr error, logs string, 
 		truncatedLogs = truncatedLogs[:50000] + "\n\n... (logs truncated)"
 	}
 
-	recipients := make([]string, len(contacts))
-	for i, u := range contacts {
-		recipients[i] = u.Email
-	}
+	// 	recipients := make([]string, len(contacts))
+	// 	for i, u := range contacts {
+	// 		recipients[i] = u.Email
+	// 	}
 
-	body := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; color: #333;">
-  <h2 style="color: #d32f2f;">Job en échec : %s</h2>
-  <table style="border-collapse: collapse; margin-bottom: 16px;">
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Job ID</td><td style="padding: 4px 12px;">%d</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Date</td><td style="padding: 4px 12px;">%s</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Erreur</td><td style="padding: 4px 12px; color: #d32f2f;">%s</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">CPU</td><td style="padding: 4px 12px;">%s</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Mémoire</td><td style="padding: 4px 12px;">%s</td></tr>
-  </table>
-  <h3>Logs</h3>
-  <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; max-height: 600px; overflow-y: auto;">%s</pre>
-</body>
-</html>`,
-		jobName,
-		jobID,
-		time.Now().Format("2006-01-02 15:04:05"),
-		jobErr.Error(),
-		stats.CPUPercent,
-		stats.MemUsage,
-		truncatedLogs,
-	)
+	// 	body := fmt.Sprintf(`<!DOCTYPE html>
+	// <html>
+	// <head><meta charset="utf-8"></head>
+	// <body style="font-family: Arial, sans-serif; color: #333;">
+	//   <h2 style="color: #d32f2f;">Job en échec : %s</h2>
+	//   <table style="border-collapse: collapse; margin-bottom: 16px;">
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Job ID</td><td style="padding: 4px 12px;">%d</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Date</td><td style="padding: 4px 12px;">%s</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Erreur</td><td style="padding: 4px 12px; color: #d32f2f;">%s</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">CPU</td><td style="padding: 4px 12px;">%s</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Mémoire</td><td style="padding: 4px 12px;">%s</td></tr>
+	//   </table>
+	//   <h3>Logs</h3>
+	//   <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; max-height: 600px; overflow-y: auto;">%s</pre>
+	// </body>
+	// </html>`,
+	// 		jobName,
+	// 		jobID,
+	// 		time.Now().Format("2006-01-02 15:04:05"),
+	// 		jobErr.Error(),
+	// 		stats.CPUPercent,
+	// 		stats.MemUsage,
+	// 		truncatedLogs,
+	// 	)
 
 	msg := pkg.EmailMessage{
 		To:          recipients,

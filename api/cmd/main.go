@@ -75,7 +75,6 @@ func main() {
 		api.Logger.Fatal().Msg(err.Error())
 		panic(err)
 	}
-
 }
 
 func initAPI(router *graceful.Graceful) {
@@ -86,4 +85,5 @@ func initAPI(router *graceful.Graceful) {
 	endpoints.SqlHandler(router)
 	endpoints.TriggerHandler(router)
 	endpoints.DatasetHandler(router)
+	endpoints.ScriptHandler(router)
 }

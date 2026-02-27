@@ -34,11 +34,12 @@ import {JobStateService} from '../../../core/nodes-services/job-state.service';
 import {LayoutService} from '../../../core/services/layout-service';
 import {JobRealtimeService} from '../../../core/services/base-ws.service';
 import {NodeRegistryService} from '../../../nodes/node-registry.service';
+import { ScriptModal } from '../../../nodes/script/script.modal';
 
 @Component({
   selector: 'app-playground',
   standalone: true,
-  imports: [CommonModule, CdkDropList, FormsModule, ContextMenu, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal, OutputModal],
+  imports: [CommonModule, CdkDropList, FormsModule, ContextMenu, NodePanel, NodeInstanceComponent, Minimap, PlaygroundBottomBar, DbInputModal, StartModal, TransformModal, LogModal, OutputModal, ScriptModal],
   templateUrl: './playground.html',
   styleUrl: './playground.css',
 })

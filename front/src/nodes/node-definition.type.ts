@@ -3,12 +3,13 @@ import type { DbInputNodeConfig } from './db-input/definition';
 import type { MapNodeConfig } from './transform/definition';
 import type { LogConfig } from './log/definition';
 import type { OutputNodeConfig } from './output/definition';
+import type { ScriptNodeConfig } from './script/definition';
 
 /** API-side node type identifiers (snake_case, match backend enum) */
-export type ApiNodeType = 'start' | 'db_input' | 'db_output' | 'map' | 'log';
+export type ApiNodeType = 'start' | 'db_input' | 'db_output' | 'map' | 'log' | 'script';
 
 /** Discriminated union of all node config types */
-export type NodeConfig = StartNodeConfig | DbInputNodeConfig | MapNodeConfig | LogConfig | OutputNodeConfig;
+export type NodeConfig = StartNodeConfig | DbInputNodeConfig | MapNodeConfig | LogConfig | OutputNodeConfig | ScriptNodeConfig;
 
 /**
  * Every node type must satisfy this interface.
@@ -30,7 +31,7 @@ export interface NodeDefinition<TConfig> {
   hasDataOutput: boolean;
   hasFlowInput: boolean;
   hasFlowOutput: boolean;
-  type: 'start' | 'input' | 'output' | 'process' | 'log';
+  type: 'start' | 'input' | 'output' | 'process' | 'log' | 'script';
   /** The `kind` discriminator value stored in the config (e.g. 'db-input') */
   configKind: TConfig extends { kind: infer K } ? K : never;
   /** Type guard that narrows a generic NodeConfig to TConfig */

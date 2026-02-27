@@ -1,0 +1,23 @@
+<kui-modal-header
+  [title]="modalTitle()"
+  subtitle="Créer un script en python pour transformer les données"
+  [editable]="true"
+  (titleChange)="onTitleChange($event)"
+  (close)="onCancel()"
+></kui-modal-header>
+
+<div class="editor-container">
+  <div class="toolbar">
+    <span class="title"> Python Editor</span>
+    <button class="run-btn" (click)="runCode()" [disabled]="isLoading">
+      {{ isLoading ? '⏳ Exécution...' : '▶ Exécuter' }}
+    </button>
+  </div>
+
+  <div #editorContainer class="monaco"></div>
+
+  <div class="output-panel" [class.error]="hasError">
+    <div class="output-title">Output</div>
+    <pre class="output-content">{{ output || 'Aucune sortie...' }}</pre>
+  </div>
+</div>
