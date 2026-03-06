@@ -264,6 +264,10 @@
   width: 780px;
 }
 
+.modal-container:has(app-script-modal) {
+  width: 1200px;
+}
+
 /* Bottom tab strip */
 .bottom-tab-strip {
   display: flex;

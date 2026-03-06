@@ -4,6 +4,7 @@ import type { NodeConfig } from '../../nodes/node-definition.type';
 import { type DbInputNodeConfig, isDbInputConfig } from '../../nodes/db-input/definition';
 import { type InputFlow, type MapNodeConfig, isMapConfig } from '../../nodes/transform/definition';
 import { isOutputConfig } from '../../nodes/output/definition';
+import { isScriptConfig } from '../../nodes/script/definition';
 import { Connection, NodeInstance, PortType } from './node.type';
 import { NodeGraphService } from './node-graph.service';
 import { inject } from '@angular/core';
@@ -35,6 +36,7 @@ export class JobStateService {
    * Returns the output schema (DataModel[]) for a given node based on its type.
    *  - db-input: returns config.dataModels
    *  - map: converts output columns to DataModel[]
+    *  - script: returns config.dataModels
    */
   getOutputSchema(nodeId: number): DataModel[] {
     // Read schemaVersion so callers in computed() re-trigger
@@ -58,6 +60,10 @@ export class JobStateService {
           nullable: false,
         })),
       );
+    }
+
+    if (isScriptConfig(config)) {
+      return config.dataModels || [];
     }
 
     return [];

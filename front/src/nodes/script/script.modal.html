@@ -1,23 +1,136 @@
-<kui-modal-header
-  [title]="modalTitle()"
-  subtitle="Créer un script en python pour transformer les données"
-  [editable]="true"
-  (titleChange)="onTitleChange($event)"
-  (close)="onCancel()"
-></kui-modal-header>
+<div class="h-max-content w-full">
+  <kui-modal-header
+    [title]="modalTitle()"
+    subtitle="Créer un script en Python pour transformer les données"
+    [editable]="true"
+    (titleChange)="onTitleChange($event)"
+    (close)="onCancel()"
+  ></kui-modal-header>
 
-<div class="editor-container">
-  <div class="toolbar">
-    <span class="title"> Python Editor</span>
-    <button class="run-btn" (click)="runCode()" [disabled]="isLoading">
-      {{ isLoading ? '⏳ Exécution...' : '▶ Exécuter' }}
-    </button>
+  <div class="modal-body">
+
+    <!-- ── Ligne supérieure : entrées + sortie ── -->
+    <div class="schema-row">
+
+      <!-- Panel entrées avec onglets -->
+      <div class="panel">
+        <div class="section-header">
+          <i class="pi pi-sign-in"></i>
+          <span>Entrées upstream</span>
+          <span class="col-count-badge">{{ upstreamInputs().length }}</span>
+        </div>
+
+        @if (upstreamInputs().length === 0) {
+          <div class="empty-state">
+            <i class="pi pi-info-circle"></i>
+            <span>Aucune entrée connectée</span>
+          </div>
+        } @else {
+          <!-- Onglets -->
+          <div class="tab-bar" (wheel)="onScrollContainerWheel($event)">
+            @for (inp of upstreamInputs(); track inp.portId) {
+              <button
+                type="button"
+                class="tab"
+                [class.active]="selectedInputPortId() === inp.portId"
+                (click)="onSelectInput(inp.portId)"
+              >
+                {{ inp.name }}
+                <span class="tab-count">{{ inp.schema.length }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Colonnes de l'entrée sélectionnée -->
+          @if (selectedInput(); as selected) {
+            <div class="schema-col-list" (wheel)="onScrollContainerWheel($event)">
+              @for (col of selected.schema; track col.name) {
+                <div class="schema-col-item">
+                  <span class="col-name">{{ col.name }}</span>
+                  <span class="col-type">{{ col.type }}</span>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Panel sortie -->
+      <div class="panel">
+        <div class="section-header">
+          <i class="pi pi-sign-out"></i>
+          <span>Schéma de sortie</span>
+          <span class="col-count-badge">{{ outputFields().length }}</span>
+        </div>
+
+        <div class="output-schema-list" (wheel)="onScrollContainerWheel($event)">
+          @for (field of outputFields(); track $index; let i = $index) {
+            <div class="output-schema-row">
+              <input
+                class="field-input"
+                type="text"
+                placeholder="Nom du champ"
+                [ngModel]="field.name"
+                (ngModelChange)="updateOutputName(i, $event)"
+              />
+              <input
+                class="field-input"
+                type="text"
+                placeholder="Type (string, int, float…)"
+                [ngModel]="field.type"
+                (ngModelChange)="updateOutputType(i, $event)"
+              />
+              <label class="nullable-toggle">
+                <input
+                  type="checkbox"
+                  [ngModel]="field.nullable"
+                  (ngModelChange)="toggleNullable(i, $event)"
+                />
+                Nullable
+              </label>
+              <button
+                class="btn-sm btn-remove"
+                type="button"
+                (click)="removeOutputField(i)"
+                title="Retirer"
+              >
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="output-schema-actions">
+          <button class="btn-action" type="button" (click)="addOutputField()">
+            <i class="pi pi-plus"></i>
+            Ajouter un champ
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Éditeur Monaco ── -->
+    <div class="editor-container">
+      <div class="toolbar">
+        <span class="title">Python Editor</span>
+        <button class="run-btn" type="button" (click)="runCode()" [disabled]="isLoading">
+          {{ isLoading ? '⏳ Exécution...' : '▶ Exécuter' }}
+        </button>
+      </div>
+
+      <div #editorContainer class="monaco"></div>
+
+      <div class="output-panel" [class.error]="hasError">
+        <div class="output-title">Output</div>
+        <pre class="output-content">{{ output || 'Aucune sortie...' }}</pre>
+      </div>
+    </div>
+
   </div>
 
-  <div #editorContainer class="monaco"></div>
-
-  <div class="output-panel" [class.error]="hasError">
-    <div class="output-title">Output</div>
-    <pre class="output-content">{{ output || 'Aucune sortie...' }}</pre>
+  <div class="modal-footer">
+    <button class="btn secondary" type="button" (click)="onCancel()">Annuler</button>
+    <button class="btn primary" type="button" [disabled]="!canSave()" (click)="onSave()">Enregistrer</button>
   </div>
 </div>

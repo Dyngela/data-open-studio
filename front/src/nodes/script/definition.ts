@@ -1,8 +1,17 @@
+import { DataModel } from '../../core/api/metadata.type';
 import { NodeDefinition } from '../node-definition.type';
 
 // ── Config ──────────────────────────────────────────────
+export interface ScriptInputSelection {
+  name: string;
+  portId: number;
+}
+
 export interface ScriptNodeConfig {
   kind: 'script';
+  input?: ScriptInputSelection;
+  dataModels?: DataModel[];
+  code?: string;
 }
 
 // ── Guard ───────────────────────────────────────────────
