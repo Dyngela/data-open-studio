@@ -367,8 +367,10 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
   }
 
   onWheel(event: WheelEvent) {
+    // Keep native scrolling behavior when a modal is open (e.g. Monaco editor).
+    if (this.layoutService.activeModal()) return;
+
     event.preventDefault();
-    if (this.layoutService.activeModal !== null) return;
     const oldZoom = this.zoom();
     const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
     const newZoom = Math.min(Math.max(oldZoom * factor, 0.2), 5);
@@ -552,25 +554,40 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
     nodeId: number,
     portIndex: number,
     portType: Direction,
-    connectionType: PortType = PortType.DATA,
+    connectionType: PortType | string = PortType.DATA,
   ): { x: number; y: number } {
     const node = this.nodeGraph.getNodeById(nodeId);
     if (!node) return { x: 0, y: 0 };
 
     const playground = this.playgroundArea()?.nativeElement;
     if (!playground) {
-      return this.nodeGraph.calculatePortPosition(node, portIndex, portType, connectionType);
+      return this.nodeGraph.calculatePortPosition(
+        node,
+        0,
+        portType,
+        this.normalizeConnectionType(connectionType),
+      );
     }
 
-    // Build a unique selector that directly targets the port element
     const dirClass = portType === 'input' ? 'input-port' : 'output-port';
-    const typeClass = `${connectionType}-port`;
-    const selector =
-      `.node-instance[data-node-id="${nodeId}"] .${dirClass}.${typeClass}[data-port-index="${portIndex}"]`;
+    const normalizedType = this.normalizeConnectionType(connectionType);
+    const alternateType = normalizedType === PortType.DATA ? PortType.FLOW : PortType.DATA;
+    const baseSelector = `.node-instance[data-node-id="${nodeId}"] .${dirClass}`;
 
-    const portElement = playground.querySelector(selector) as HTMLElement | null;
+    // Try the exact port first, then gracefully fall back to an actually rendered
+    // port to avoid visual offsets when legacy connection metadata is inconsistent.
+    const selectors = [
+      `${baseSelector}.${normalizedType}-port[data-port-index="${portIndex}"]`,
+      `${baseSelector}.${normalizedType}-port`,
+      `${baseSelector}.${alternateType}-port[data-port-index="${portIndex}"]`,
+      `${baseSelector}.${alternateType}-port`,
+      `${baseSelector}[data-port-index="${portIndex}"]`,
+      `${baseSelector}`,
+    ];
+
+    const portElement = this.findFirstMatchingPort(playground, selectors);
     if (!portElement) {
-      return this.nodeGraph.calculatePortPosition(node, portIndex, portType, connectionType);
+      return this.nodeGraph.calculatePortPosition(node, 0, portType, normalizedType);
     }
 
     const playgroundRect = playground.getBoundingClientRect();
@@ -582,6 +599,24 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
       x: (portRect.left + portRect.width / 2 - playgroundRect.left - offset.x) / z,
       y: (portRect.top + portRect.height / 2 - playgroundRect.top - offset.y) / z,
     };
+  }
+
+  private normalizeConnectionType(connectionType: PortType | string): PortType {
+    const raw = String(connectionType ?? '').toLowerCase();
+    if (raw === PortType.FLOW || raw.includes('flow')) {
+      return PortType.FLOW;
+    }
+    return PortType.DATA;
+  }
+
+  private findFirstMatchingPort(playground: HTMLElement, selectors: string[]): HTMLElement | null {
+    for (const selector of selectors) {
+      const candidate = playground.querySelector(selector) as HTMLElement | null;
+      if (candidate) {
+        return candidate;
+      }
+    }
+    return null;
   }
 
   //#endregion

@@ -27,7 +27,7 @@
           </div>
         } @else {
           <!-- Onglets -->
-          <div class="tab-bar" (wheel)="onScrollContainerWheel($event)">
+          <div class="tab-bar">
             @for (inp of upstreamInputs(); track inp.portId) {
               <button
                 type="button"
@@ -43,7 +43,7 @@
 
           <!-- Colonnes de l'entrée sélectionnée -->
           @if (selectedInput(); as selected) {
-            <div class="schema-col-list" (wheel)="onScrollContainerWheel($event)">
+            <div class="schema-col-list">
               @for (col of selected.schema; track col.name) {
                 <div class="schema-col-item">
                   <span class="col-name">{{ col.name }}</span>
@@ -63,7 +63,7 @@
           <span class="col-count-badge">{{ outputFields().length }}</span>
         </div>
 
-        <div class="output-schema-list" (wheel)="onScrollContainerWheel($event)">
+        <div class="output-schema-list">
           @for (field of outputFields(); track $index; let i = $index) {
             <div class="output-schema-row">
               <input
@@ -114,16 +114,28 @@
     <div class="editor-container">
       <div class="toolbar">
         <span class="title">Python Editor</span>
-        <button class="run-btn" type="button" (click)="runCode()" [disabled]="isLoading">
-          {{ isLoading ? '⏳ Exécution...' : '▶ Exécuter' }}
+        <button class="run-btn" type="button" (click)="runCode()" [disabled]="isLoading()">
+          {{ isLoading() ? '⏳ Compilation...' : '▶ Compiler' }}
         </button>
       </div>
 
+      @if (compilationError(); as error) {
+        <div class="compile-status" [class.error]="hasError()">
+          <strong>{{ error.type || 'Erreur de compilation' }}</strong>
+          <span>
+            {{ error.message }}
+            @if (error.line) {
+              <span> (ligne {{ error.line }}@if (error.column) {, colonne {{ error.column }}})</span>
+            }
+          </span>
+        </div>
+      }
+
       <div #editorContainer class="monaco"></div>
 
-      <div class="output-panel" [class.error]="hasError">
-        <div class="output-title">Output</div>
-        <pre class="output-content">{{ output || 'Aucune sortie...' }}</pre>
+      <div class="output-panel" [class.error]="hasError()">
+        <div class="output-title">{{ hasError() ? 'Erreur de compilation' : 'Compilation' }}</div>
+        <pre class="output-content">{{ output() || 'Aucune sortie...' }}</pre>
       </div>
     </div>
 

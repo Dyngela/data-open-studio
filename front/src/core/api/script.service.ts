@@ -19,7 +19,7 @@ export class ScriptService {
     onError?: (error: any) => void
   ): ApiMutation<ScriptResponse, ScriptRequest> {
     return this.api.post<ScriptResponse, ScriptRequest>(
-      '/script/execute',
+      '/script/compile',
       onSuccess,
       onError
     );

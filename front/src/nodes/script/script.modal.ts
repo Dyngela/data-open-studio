@@ -19,6 +19,7 @@ import { JobStateService } from '../../core/nodes-services/job-state.service';
 import { DataModel } from '../../core/api/metadata.type';
 import { isScriptConfig, ScriptNodeConfig } from './definition';
 import { ScriptService } from '../../core/api/script.service';
+import { ScriptCompilationError, ScriptResponse } from '../../core/api/script.type';
 
 declare const monaco: any;
 
@@ -37,6 +38,8 @@ interface ScriptOutputField {
 })
 export class ScriptModal {
   @ViewChild('editorContainer') editorContainer!: ElementRef;
+
+  private readonly compilationMarkerOwner = 'script-compilation';
 
   private layout = inject(LayoutService);
   private nodeGraph = inject(NodeGraphService);
@@ -74,6 +77,12 @@ export class ScriptModal {
     if (hasDuplicateName) return false;
 
     if (this.upstreamInputs().length > 0 && !this.selectedInput()) return false;
+
+    // Require a successful compilation for the current editor content.
+    if (!this.hasCompiledCurrentCode()) return false;
+
+    // Block save when the last compilation run returned an error.
+    if (this.hasError()) return false;
 
     return true;
   });
@@ -199,9 +208,15 @@ export class ScriptModal {
   // Code sauvegardé depuis la config existante (prioritaire sur le code généré)
   private savedCode: string | null = null;
 
-  protected output = '';
-  protected isLoading = false;
-  protected hasError = false;
+  protected output = signal('');
+  protected isLoading = signal(false);
+  protected hasError = signal(false);
+  protected compilationError = signal<ScriptCompilationError | null>(null);
+  protected editorVersion = signal(0);
+  protected lastSuccessfulCompilationVersion = signal<number | null>(null);
+  protected hasCompiledCurrentCode = computed(() => {
+    return this.lastSuccessfulCompilationVersion() === this.editorVersion();
+  });
 
   private editor: any;
 
@@ -275,16 +290,6 @@ export class ScriptModal {
     this.selectedInputPortId.set(portId);
   }
 
-  onScrollContainerWheel(event: WheelEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const target = event.currentTarget as HTMLElement;
-    if (!target) return;
-
-    target.scrollTop += event.deltaY;
-  }
-
   addOutputField() {
     this.outputFields.update(fields => [...fields, { name: '', type: '', nullable: false }]);
   }
@@ -355,22 +360,32 @@ export class ScriptModal {
   runCode() {
     if (!this.editor) return;
 
-    this.isLoading = true;
-    this.output = '';
-    this.hasError = false;
+    this.isLoading.set(true);
+    this.output.set('');
+    this.hasError.set(false);
+    this.compilationError.set(null);
+    this.clearCompilationMarkers();
 
     const code = this.getEditorValue();
+    const compiledVersion = this.editorVersion();
 
     const mutation = this.scriptService.executeCode(
       response => {
-        this.output = response.output;
-        this.hasError = response.error;
-        this.isLoading = false;
+        this.handleCompilationResponse(response, compiledVersion);
       },
       error => {
-        this.output = error?.message || 'Une erreur est survenue';
-        this.hasError = true;
-        this.isLoading = false;
+        this.isLoading.set(false);
+
+        // Ignore stale failures from an older compilation request.
+        if (compiledVersion !== this.editorVersion()) {
+          return;
+        }
+
+        this.output.set(error?.message || 'Une erreur est survenue');
+        this.hasError.set(true);
+        this.compilationError.set(null);
+        this.lastSuccessfulCompilationVersion.set(null);
+        this.clearCompilationMarkers();
       },
     );
 
@@ -441,6 +456,20 @@ export class ScriptModal {
       scrollBeyondLastLine: false,
       automaticLayout: true,
     });
+
+    // Initial content starts at version 0.
+    this.editorVersion.set(0);
+
+    // Any edit invalidates the last successful compilation for save purposes.
+    this.editor.onDidChangeModelContent(() => {
+      this.editorVersion.update(version => version + 1);
+
+      if (this.hasError()) {
+        this.hasError.set(false);
+        this.compilationError.set(null);
+        this.clearCompilationMarkers();
+      }
+    });
   }
 
   private getEditorValue(): string {
@@ -451,7 +480,140 @@ export class ScriptModal {
     return this.savedCode ?? this.defaultCode();
   }
 
+  private handleCompilationResponse(response: ScriptResponse, compiledVersion: number) {
+    this.isLoading.set(false);
+
+    // Ignore stale responses when the editor content changed meanwhile.
+    if (compiledVersion !== this.editorVersion()) {
+      return;
+    }
+
+    this.output.set(this.formatCompilationOutput(response));
+    this.hasError.set(response.error);
+    this.compilationError.set(response.compilationError ?? null);
+    this.updateCompilationMarkers(response.compilationError);
+
+    if (response.error) {
+      this.lastSuccessfulCompilationVersion.set(null);
+      return;
+    }
+
+    this.lastSuccessfulCompilationVersion.set(compiledVersion);
+  }
+
+  private formatCompilationOutput(response: ScriptResponse): string {
+    if (!response.compilationError) {
+      return response.output;
+    }
+
+    const details = response.compilationError;
+    const headerParts: string[] = [];
+
+    if (details.type) {
+      headerParts.push(details.type);
+    }
+
+    if (details.line) {
+      const position = details.column
+        ? `ligne ${details.line}, colonne ${details.column}`
+        : `ligne ${details.line}`;
+      headerParts.push(position);
+    }
+
+    const header = headerParts.length > 0 ? `${headerParts.join(' - ')}: ` : '';
+    const hint = this.getCompilationHint(details);
+
+    return `${header}${details.message}${hint}`;
+  }
+
+  private getCompilationHint(details: ScriptCompilationError): string {
+    if (details.type !== 'IndentationError' && details.type !== 'TabError') {
+      return '';
+    }
+
+    const lineCount = this.editor?.getModel?.()?.getLineCount?.();
+    if (typeof lineCount === 'number' && details.line && details.line > lineCount) {
+      return '\n\nPython peut signaler la ligne qui suit le vrai problème d\'indentation. Vérifie aussi les lignes juste au-dessus de la fin du script.';
+    }
+
+    return '\n\nPython signale souvent la ligne où l\'indentation devient incohérente, pas forcément la première ligne réellement mal indentée. Vérifie aussi les lignes juste au-dessus.';
+  }
+
+  private updateCompilationMarkers(compilationError?: ScriptCompilationError) {
+    this.clearCompilationMarkers();
+
+    if (!compilationError || !this.editor || !monaco?.editor) {
+      return;
+    }
+
+    const model = this.editor.getModel?.();
+    if (!model) {
+      return;
+    }
+
+    const lineCount = model.getLineCount();
+    const lineNumber = this.resolveCompilationLine(compilationError?.line, lineCount);
+    if (!lineNumber) {
+      return;
+    }
+
+    const lineMaxColumn = model.getLineMaxColumn(lineNumber);
+    const startColumn = this.resolveCompilationColumn(compilationError.column, lineMaxColumn);
+    const endColumn = compilationError.column
+      ? Math.min(compilationError.column + 1, lineMaxColumn)
+      : lineMaxColumn;
+    const markerMessage = compilationError.type
+      ? `${compilationError.type}: ${compilationError.message}`
+      : compilationError.message;
+
+    monaco.editor.setModelMarkers(model, this.compilationMarkerOwner, [{
+      startLineNumber: lineNumber,
+      endLineNumber: lineNumber,
+      startColumn,
+      endColumn: Math.max(startColumn + 1, endColumn),
+      message: markerMessage,
+      severity: monaco.MarkerSeverity.Error,
+    }]);
+
+    this.editor.revealLineInCenter(lineNumber);
+    this.editor.setPosition({ lineNumber, column: startColumn });
+  }
+
+  private clearCompilationMarkers() {
+    const model = this.editor?.getModel?.();
+    if (!model || !monaco?.editor) {
+      return;
+    }
+
+    monaco.editor.setModelMarkers(model, this.compilationMarkerOwner, []);
+  }
+
+  private resolveCompilationColumn(column: number | undefined, lineMaxColumn: number): number {
+    if (!column) {
+      return 1;
+    }
+
+    return Math.min(Math.max(column, 1), Math.max(lineMaxColumn - 1, 1));
+  }
+
+  private resolveCompilationLine(line: number | undefined, lineCount: number): number | null {
+    if (!line) {
+      return null;
+    }
+
+    if (line < 1) {
+      return 1;
+    }
+
+    if (line > lineCount) {
+      return lineCount;
+    }
+
+    return line;
+  }
+
   ngOnDestroy() {
+    this.clearCompilationMarkers();
     this.editor?.dispose();
   }
 }

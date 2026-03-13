@@ -132,8 +132,8 @@
           }
 
           @if (layoutService.activeModal(); as modal) {
-            <div class="modal-overlay">
-              <div class="modal-container">
+            <div class="modal-overlay" (wheel)="$event.stopPropagation()">
+              <div class="modal-container" (wheel)="$event.stopPropagation()">
                 @if (modal.nodeTypeId === 'db-input' && nodeGraph.getNodeById(modal.nodeId); as node) {
                   <app-db-input-modal
                     [node]="node"

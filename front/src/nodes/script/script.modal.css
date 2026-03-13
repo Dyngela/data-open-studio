@@ -234,7 +234,7 @@
   border: 1.5px solid #2a2a2a;
   border-radius: 10px;
   overflow: hidden;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -268,7 +268,31 @@
 .run-btn:hover:not(:disabled) { background: #005f9e; }
 .run-btn:disabled { background: #555; cursor: not-allowed; }
 
-.monaco { min-height: 340px; }
+.monaco {
+  height: 420px;
+  min-height: 420px;
+}
+
+.compile-status {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid #2a2a2a;
+  color: #d4d4d4;
+  font-size: 0.82rem;
+}
+
+.compile-status.error {
+  background: rgba(244, 67, 54, 0.12);
+  color: #ffb4ab;
+}
+
+.compile-status strong {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
 
 .output-panel {
   height: 180px;
