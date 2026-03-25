@@ -1,0 +1,152 @@
+<div class="variables-section">
+  <div class="variables-header">
+    <i class="pi pi-calculator text-[#9c27b0]"></i>
+    <span>Variables</span>
+    <span class="var-count-badge">{{ variables().length }}</span>
+    <div class="header-actions">
+      <button class="btn-add" (click)="addVariable('computed')" title="Ajouter une variable calculee">
+        <i class="pi pi-plus"></i> Calculee
+      </button>
+      <button class="btn-add btn-add-filter" (click)="addVariable('filter')" title="Ajouter un filtre">
+        <i class="pi pi-filter"></i> Filtre
+      </button>
+    </div>
+  </div>
+
+  <div class="variables-body">
+    @if (variables().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-info-circle"></i>
+        <span>Ajoutez des variables calculees ou des filtres</span>
+      </div>
+    } @else {
+      <div class="variable-list">
+        @for (v of variables(); track $index; let i = $index) {
+          <div
+            class="variable-row"
+            [class.is-filter]="v.kind === 'filter'"
+            [class.is-computed]="v.kind === 'computed'"
+            [class.drop-target]="dropTargetIndex() === i"
+            [class.dragging]="draggedVarIndex() === i"
+            [draggable]="v.kind === 'computed'"
+            (dragstart)="onVarDragStart($event, i)"
+            (dragend)="onVarDragEnd()"
+            (dragover)="onRowDragOver($event, i)"
+            (dragleave)="onRowDragLeave()"
+            (drop)="onRowDrop($event, i)"
+          >
+            <!-- Kind toggle -->
+            <button
+              class="kind-toggle"
+              [class.filter]="v.kind === 'filter'"
+              [class.computed]="v.kind === 'computed'"
+              (click)="toggleKind(i)"
+              [title]="v.kind === 'filter' ? 'Filtre (cliquez pour convertir)' : 'Calculee (cliquez pour convertir)'"
+            >
+              <i [class]="v.kind === 'filter' ? 'pi pi-filter' : 'pi pi-calculator'"></i>
+            </button>
+
+            <!-- Name -->
+            <input
+              class="var-name-input"
+              [ngModel]="v.name"
+              (ngModelChange)="updateVariable(i, 'name', $event)"
+              placeholder="nom"
+              spellcheck="false"
+            />
+
+            <!-- Expression -->
+            <textarea
+              class="var-expr-input"
+              [ngModel]="v.expression"
+              (ngModelChange)="updateVariable(i, 'expression', $event)"
+              (dragover)="onExpressionDragOver($event)"
+              (drop)="onExpressionDrop($event, i)"
+              [placeholder]="v.kind === 'filter' ? 'Ex: A.price > 100' : 'Ex: A.price * A.qty'"
+              rows="1"
+              spellcheck="false"
+            ></textarea>
+
+            <!-- Type dropdown -->
+            <select
+              class="var-type-select"
+              [ngModel]="v.dataType"
+              (ngModelChange)="updateVariable(i, 'dataType', $event)"
+            >
+              <option value="string">string</option>
+              <option value="int">int</option>
+              <option value="float64">float64</option>
+              <option value="bool">bool</option>
+              <option value="time.Time">time</option>
+            </select>
+
+            <!-- Actions -->
+            <div class="var-actions">
+              <button class="btn-sm" (click)="moveUp(i)" [disabled]="i === 0" title="Monter">
+                <i class="pi pi-chevron-up"></i>
+              </button>
+              <button class="btn-sm" (click)="moveDown(i)" [disabled]="i === variables().length - 1" title="Descendre">
+                <i class="pi pi-chevron-down"></i>
+              </button>
+              <button class="btn-sm btn-remove" (click)="removeVariable(i)" title="Supprimer">
+                <i class="pi pi-times"></i>
+              </button>
+            </div>
+
+            <!-- Drag handle for computed vars -->
+            @if (v.kind === 'computed') {
+              <div class="var-drag-handle" title="Glissez vers les colonnes de sortie">
+                <i class="pi pi-arrows-alt"></i>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Available columns reference -->
+    @if (inputs().length) {
+      <div class="ref-columns">
+        <div class="ref-label">Colonnes disponibles</div>
+        @for (inp of inputs(); track inp.name) {
+          <div class="ref-group">
+            <div class="ref-group-name">{{ inp.name }}</div>
+            <div class="ref-chips">
+              @for (col of inp.schema; track col.name) {
+                <button
+                  class="ref-chip"
+                  draggable="true"
+                  (dragstart)="$event.dataTransfer?.setData('text/plain', inp.name + '.' + col.name)"
+                  [title]="col.type"
+                >
+                  {{ col.name }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Variable references -->
+        @if (variables().length) {
+          <div class="ref-group">
+            <div class="ref-group-name ref-var-name">$var</div>
+            <div class="ref-chips">
+              @for (v of variables(); track v.name) {
+                @if (v.kind === 'computed') {
+                  <button
+                    class="ref-chip ref-chip-var"
+                    draggable="true"
+                    (dragstart)="$event.dataTransfer?.setData('text/plain', '$var.' + v.name)"
+                    [title]="v.dataType"
+                  >
+                    {{ v.name }}
+                  </button>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

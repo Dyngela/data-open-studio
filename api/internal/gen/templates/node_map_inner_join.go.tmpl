@@ -20,6 +20,15 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 		if !ok {
 			continue // Skip non-matching rows
 		}
+{{- if .VariablesCode }}
+{{ .VariablesCode }}
+{{- else if .FilterExpr }}
+
+		// Global filter
+		if !({{ .FilterExpr }}) {
+			continue
+		}
+{{- end }}
 
 		out := &{{ .OutputType }}{}
 {{ .Transforms }}

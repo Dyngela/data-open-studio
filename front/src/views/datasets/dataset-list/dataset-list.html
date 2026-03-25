@@ -1,0 +1,130 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="p-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Datasets</h1>
+      <p class="text-sm text-gray-500 mt-1">Define reusable SQL queries as data sources for dashboards and reports</p>
+    </div>
+    <p-button label="New Dataset" icon="pi pi-plus" (onClick)="openCreateDialog()" />
+  </div>
+
+  <!-- Table -->
+  <p-table
+    [value]="datasets()"
+    [loading]="isLoading()"
+    [paginator]="datasets().length > 15"
+    [rows]="15"
+    styleClass="p-datatable-sm"
+    [rowHover]="true"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Name</th>
+        <th>Database</th>
+        <th>Columns</th>
+        <th>Status</th>
+        <th>Last Refreshed</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-dataset>
+      <tr class="cursor-pointer" (click)="openDataset(dataset)">
+        <td>
+          <div class="font-medium text-gray-900">{{ dataset.name }}</div>
+          @if (dataset.description) {
+            <div class="text-xs text-gray-500">{{ dataset.description }}</div>
+          }
+        </td>
+        <td class="text-sm text-gray-600">{{ getDatabaseName(dataset.metadataDatabaseId) }}</td>
+        <td class="text-sm text-gray-600">{{ dataset.columnCount }}</td>
+        <td>
+          <p-tag [value]="dataset.status" [severity]="statusSeverity(dataset.status)" />
+          @if (dataset.lastError && dataset.status === 'error') {
+            <div class="text-xs text-red-500 mt-1 max-w-xs truncate" [pTooltip]="dataset.lastError">{{ dataset.lastError }}</div>
+          }
+        </td>
+        <td class="text-sm text-gray-500">
+          @if (dataset.lastRefreshedAt) {
+            {{ dataset.lastRefreshedAt | date: 'short' }}
+          } @else {
+            <span class="text-gray-400">Never</span>
+          }
+        </td>
+        <td>
+          <p-button
+            icon="pi pi-trash"
+            severity="danger"
+            [text]="true"
+            size="small"
+            (onClick)="confirmDelete($event, dataset); $event.stopPropagation()"
+            pTooltip="Delete"
+          />
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6" class="text-center py-12 text-gray-400">
+          <i class="pi pi-database text-4xl mb-3 block"></i>
+          <p>No datasets yet. Create your first dataset to get started.</p>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<!-- Create Dataset Dialog -->
+<p-dialog
+  header="New Dataset"
+  [(visible)]="showCreateDialog"
+  [modal]="true"
+  [style]="{ width: '560px' }"
+  [closable]="!isCreating()"
+>
+  <form [formGroup]="createForm" (ngSubmit)="submitCreate()" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="name" placeholder="e.g. Monthly Sales" class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-gray-700">Description</label>
+      <textarea pTextarea formControlName="description" placeholder="Optional description" [rows]="2" class="w-full"></textarea>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-gray-700">Database Connection <span class="text-red-500">*</span></label>
+      <p-select
+        formControlName="metadataDatabaseId"
+        [options]="databaseOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Select a database connection"
+        [filter]="true"
+        class="w-full"
+      />
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-gray-700">SQL Query <span class="text-red-500">*</span></label>
+      <textarea
+        pTextarea
+        formControlName="query"
+        placeholder="SELECT * FROM orders WHERE ..."
+        [rows]="5"
+        class="w-full font-mono text-sm"
+      ></textarea>
+      <p class="text-xs text-gray-400">The schema will be auto-detected from this query.</p>
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="showCreateDialog.set(false)" [disabled]="isCreating()" />
+    <p-button label="Create" icon="pi pi-check" (onClick)="submitCreate()" [loading]="isCreating()" [disabled]="createForm.invalid" />
+  </ng-template>
+</p-dialog>

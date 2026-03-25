@@ -148,6 +148,16 @@ func (g *MapGenerator) generateSingleInputFuncData(node *models.Node, config *mo
 	// Build transformation statements
 	transforms := g.buildTransformCode(output.Columns, "row", ctx)
 
+	// Build variables code (new system) and legacy filter
+	variables := g.normalizeVariables(config)
+	variablesCode := g.buildVariablesCode(variables, "row")
+
+	// Build global filter expression (legacy fallback, used only when no variables)
+	filterExpr := ""
+	if len(variables) == 0 && config.GlobalFilter != "" {
+		filterExpr = g.substituteExprVars(config.GlobalFilter, "row")
+	}
+
 	// Get template engine
 	engine, err := NewTemplateEngine()
 	if err != nil {
@@ -156,12 +166,14 @@ func (g *MapGenerator) generateSingleInputFuncData(node *models.Node, config *mo
 
 	// Prepare template data
 	templateData := MapTransformTemplateData{
-		FuncName:   funcName,
-		NodeID:     node.ID,
-		NodeName:   node.Name,
-		InputType:  inputType,
-		OutputType: outputStructName,
-		Transforms: transforms,
+		FuncName:      funcName,
+		NodeID:        node.ID,
+		NodeName:      node.Name,
+		InputType:     inputType,
+		OutputType:    outputStructName,
+		Transforms:    transforms,
+		FilterExpr:    filterExpr,
+		VariablesCode: variablesCode,
 	}
 
 	// Generate body using template
@@ -203,20 +215,38 @@ func (g *MapGenerator) generateJoinFuncData(node *models.Node, config *models.Ma
 
 	var body strings.Builder
 
+	// Build variables code and legacy filter
+	variables := g.normalizeVariables(config)
+
+	filterExpr := ""
+	variablesCode := ""
+	if len(variables) > 0 {
+		if join.Type == models.JoinTypeUnion {
+			// Union handles variables per-stream, not here
+		} else {
+			variablesCode = g.buildJoinVariablesCode(variables, join.LeftInput, join.RightInput)
+		}
+	} else if config.GlobalFilter != "" {
+		if join.Type == models.JoinTypeUnion {
+			filterExpr = config.GlobalFilter
+		} else {
+			filterExpr = g.substituteJoinExprVars(config.GlobalFilter, join.LeftInput, join.RightInput)
+		}
+	}
+
 	switch join.Type {
 	case models.JoinTypeInner:
-		body.WriteString(g.generateInnerJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx))
+		body.WriteString(g.generateInnerJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx, filterExpr, variablesCode))
 	case models.JoinTypeLeft:
-		body.WriteString(g.generateLeftJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx))
+		body.WriteString(g.generateLeftJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx, filterExpr, variablesCode))
 	case models.JoinTypeRight:
-		body.WriteString(g.generateRightJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx))
+		body.WriteString(g.generateRightJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx, filterExpr, variablesCode))
 	case models.JoinTypeCross:
-		body.WriteString(g.generateCrossJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx))
+		body.WriteString(g.generateCrossJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx, filterExpr, variablesCode))
 	case models.JoinTypeUnion:
-		body.WriteString(g.generateUnionBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx))
+		body.WriteString(g.generateUnionBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx, filterExpr, variables))
 	default:
-		// Default to left join
-		body.WriteString(g.generateLeftJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx))
+		body.WriteString(g.generateLeftJoinBody(node, config, leftType, rightType, outputStructName, output.Columns, ctx, filterExpr, variablesCode))
 	}
 
 	signature := fmt.Sprintf("func %s(ctx context.Context, leftIn <-chan *%s, rightIn <-chan *%s, outChan chan<- *%s, progress lib.ProgressFunc) error",
@@ -232,7 +262,7 @@ func (g *MapGenerator) generateJoinFuncData(node *models.Node, config *models.Ma
 }
 
 // generateLeftJoinBody generates the body for a left join using template
-func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
+func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext, filterExpr string, variablesCode string) string {
 	join := config.Join
 	leftKeys := g.getJoinKeys(join.LeftKey, join.LeftKeys)
 	rightKeys := g.getJoinKeys(join.RightKey, join.RightKeys)
@@ -245,15 +275,17 @@ func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.Ma
 	}
 
 	templateData := MapJoinTemplateData{
-		FuncName:   ctx.FuncName(node),
-		NodeID:     node.ID,
-		NodeName:   node.Name,
-		LeftType:   leftType,
-		RightType:  rightType,
-		OutputType: outputStructName,
-		LeftKeys:   leftKeys,
-		RightKeys:  rightKeys,
-		Transforms: transforms,
+		FuncName:      ctx.FuncName(node),
+		NodeID:        node.ID,
+		NodeName:      node.Name,
+		LeftType:      leftType,
+		RightType:     rightType,
+		OutputType:    outputStructName,
+		LeftKeys:      leftKeys,
+		RightKeys:     rightKeys,
+		Transforms:    transforms,
+		FilterExpr:    filterExpr,
+		VariablesCode: variablesCode,
 	}
 
 	body, err := engine.GenerateNodeFunction("node_map_left_join.go.tmpl", templateData)
@@ -265,7 +297,7 @@ func (g *MapGenerator) generateLeftJoinBody(node *models.Node, config *models.Ma
 }
 
 // generateInnerJoinBody generates the body for an inner join using template
-func (g *MapGenerator) generateInnerJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
+func (g *MapGenerator) generateInnerJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext, filterExpr string, variablesCode string) string {
 	join := config.Join
 	leftKeys := g.getJoinKeys(join.LeftKey, join.LeftKeys)
 	rightKeys := g.getJoinKeys(join.RightKey, join.RightKeys)
@@ -276,13 +308,14 @@ func (g *MapGenerator) generateInnerJoinBody(node *models.Node, config *models.M
 		FuncName: ctx.FuncName(node), NodeID: node.ID, NodeName: node.Name,
 		LeftType: leftType, RightType: rightType, OutputType: outputStructName,
 		LeftKeys: leftKeys, RightKeys: rightKeys, Transforms: transforms,
+		FilterExpr: filterExpr, VariablesCode: variablesCode,
 	}
 	body, _ := engine.GenerateNodeFunction("node_map_inner_join.go.tmpl", templateData)
 	return body
 }
 
 // generateRightJoinBody generates the body for a right join using template
-func (g *MapGenerator) generateRightJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
+func (g *MapGenerator) generateRightJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext, filterExpr string, variablesCode string) string {
 	join := config.Join
 	leftKeys := g.getJoinKeys(join.LeftKey, join.LeftKeys)
 	rightKeys := g.getJoinKeys(join.RightKey, join.RightKeys)
@@ -293,38 +326,163 @@ func (g *MapGenerator) generateRightJoinBody(node *models.Node, config *models.M
 		FuncName: ctx.FuncName(node), NodeID: node.ID, NodeName: node.Name,
 		LeftType: leftType, RightType: rightType, OutputType: outputStructName,
 		LeftKeys: leftKeys, RightKeys: rightKeys, Transforms: transforms,
+		FilterExpr: filterExpr, VariablesCode: variablesCode,
 	}
 	body, _ := engine.GenerateNodeFunction("node_map_right_join.go.tmpl", templateData)
 	return body
 }
 
 // generateCrossJoinBody generates the body for a cross join using template
-func (g *MapGenerator) generateCrossJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
+func (g *MapGenerator) generateCrossJoinBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext, filterExpr string, variablesCode string) string {
 	transforms := g.buildJoinTransformCode(columns, config.Join.LeftInput, config.Join.RightInput, ctx)
 
 	engine, _ := NewTemplateEngine()
 	templateData := MapJoinTemplateData{
 		FuncName: ctx.FuncName(node), NodeID: node.ID, NodeName: node.Name,
 		LeftType: leftType, RightType: rightType, OutputType: outputStructName,
-		Transforms: transforms,
+		Transforms: transforms, FilterExpr: filterExpr, VariablesCode: variablesCode,
 	}
 	body, _ := engine.GenerateNodeFunction("node_map_cross_join.go.tmpl", templateData)
 	return body
 }
 
 // generateUnionBody generates the body for a union using template
-func (g *MapGenerator) generateUnionBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext) string {
+func (g *MapGenerator) generateUnionBody(node *models.Node, config *models.MapConfig, leftType, rightType, outputStructName string, columns []models.MapOutputCol, ctx *GeneratorContext, filterExpr string, variables []models.MapVariable) string {
 	leftTransforms := g.buildTransformCodeWithPrefix(columns, "left", config.Join.LeftInput)
 	rightTransforms := g.buildTransformCodeWithPrefix(columns, "right", config.Join.RightInput)
 
 	engine, _ := NewTemplateEngine()
+
+	// Build per-stream variables code or legacy filter
+	leftVariablesCode := ""
+	rightVariablesCode := ""
+	leftFilterExpr := ""
+	rightFilterExpr := ""
+	if len(variables) > 0 {
+		leftVariablesCode = g.buildUnionVariablesCode(variables, config.Join.LeftInput, "left")
+		rightVariablesCode = g.buildUnionVariablesCode(variables, config.Join.RightInput, "right")
+	} else if filterExpr != "" {
+		leftFilterExpr = g.substituteJoinInputRefs(filterExpr, config.Join.LeftInput, "left")
+		rightFilterExpr = g.substituteJoinInputRefs(filterExpr, config.Join.RightInput, "right")
+	}
+
 	templateData := MapUnionTemplateData{
 		FuncName: ctx.FuncName(node), NodeID: node.ID, NodeName: node.Name,
 		LeftType: leftType, RightType: rightType, OutputType: outputStructName,
 		LeftTransforms: leftTransforms, RightTransforms: rightTransforms,
+		LeftFilterExpr: leftFilterExpr, RightFilterExpr: rightFilterExpr,
+		LeftVariablesCode: leftVariablesCode, RightVariablesCode: rightVariablesCode,
 	}
 	body, _ := engine.GenerateNodeFunction("node_map_union.go.tmpl", templateData)
 	return body
+}
+
+// normalizeVariables returns Variables if present, else migrates GlobalFilter into a single filter variable
+func (g *MapGenerator) normalizeVariables(config *models.MapConfig) []models.MapVariable {
+	if len(config.Variables) > 0 {
+		return config.Variables
+	}
+	if config.GlobalFilter != "" {
+		return []models.MapVariable{{
+			Name:       "filter_1",
+			Kind:       models.VarKindFilter,
+			Expression: config.GlobalFilter,
+			DataType:   "bool",
+		}}
+	}
+	return nil
+}
+
+// buildVariablesCode generates Go code for variables (computed + filter) for single input
+func (g *MapGenerator) buildVariablesCode(variables []models.MapVariable, rowVar string) string {
+	if len(variables) == 0 {
+		return ""
+	}
+	var result strings.Builder
+	result.WriteString("\t\t// Variables\n")
+	for _, v := range variables {
+		expr := g.substituteExprVars(v.Expression, rowVar)
+		expr = g.substituteVarRefs(expr)
+		switch v.Kind {
+		case models.VarKindComputed:
+			result.WriteString(fmt.Sprintf("\t\tvar_%s := %s\n", v.Name, expr))
+		case models.VarKindFilter:
+			result.WriteString(fmt.Sprintf("\t\tif !(%s) {\n\t\t\tcontinue\n\t\t}\n", expr))
+		}
+	}
+	return result.String()
+}
+
+// buildJoinVariablesCode generates Go code for variables in join context
+func (g *MapGenerator) buildJoinVariablesCode(variables []models.MapVariable, leftInput, rightInput string) string {
+	if len(variables) == 0 {
+		return ""
+	}
+	var result strings.Builder
+	result.WriteString("\t\t// Variables\n")
+	for _, v := range variables {
+		expr := g.substituteJoinExprVars(v.Expression, leftInput, rightInput)
+		expr = g.substituteVarRefs(expr)
+		switch v.Kind {
+		case models.VarKindComputed:
+			result.WriteString(fmt.Sprintf("\t\tvar_%s := %s\n", v.Name, expr))
+		case models.VarKindFilter:
+			result.WriteString(fmt.Sprintf("\t\tif !(%s) {\n\t\t\tcontinue\n\t\t}\n", expr))
+		}
+	}
+	return result.String()
+}
+
+// buildUnionVariablesCode generates Go code for variables in union context (per-stream)
+func (g *MapGenerator) buildUnionVariablesCode(variables []models.MapVariable, inputName, rowVar string) string {
+	if len(variables) == 0 {
+		return ""
+	}
+	var result strings.Builder
+	result.WriteString("\t\t// Variables\n")
+	for _, v := range variables {
+		expr := g.substituteJoinInputRefs(v.Expression, inputName, rowVar)
+		expr = g.substituteVarRefs(expr)
+		switch v.Kind {
+		case models.VarKindComputed:
+			result.WriteString(fmt.Sprintf("\t\tvar_%s := %s\n", v.Name, expr))
+		case models.VarKindFilter:
+			result.WriteString(fmt.Sprintf("\t\tif !(%s) {\n\t\t\tcontinue\n\t\t}\n", expr))
+		}
+	}
+	return result.String()
+}
+
+// substituteVarRefs replaces $var.name references with var_name Go identifiers
+func (g *MapGenerator) substituteVarRefs(expr string) string {
+	result := expr
+	prefix := "$var."
+	for {
+		idx := strings.Index(result, prefix)
+		if idx == -1 {
+			break
+		}
+
+		endIdx := idx + len(prefix)
+		varName := ""
+		for endIdx < len(result) {
+			c := result[endIdx]
+			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' {
+				varName += string(c)
+				endIdx++
+			} else {
+				break
+			}
+		}
+
+		if varName != "" {
+			replacement := "var_" + varName
+			result = result[:idx] + replacement + result[endIdx:]
+		} else {
+			break
+		}
+	}
+	return result
 }
 
 // buildTransformCode builds transformation code for single input
@@ -411,10 +569,13 @@ func (g *MapGenerator) buildColumnExpression(col models.MapOutputCol, singleRowV
 	case models.FuncTypeCustom:
 		if col.CustomType == models.CustomExpr {
 			// Substitute variables in expression
+			var expr string
 			if singleRowVar != "" {
-				return g.substituteExprVars(col.Expression, singleRowVar)
+				expr = g.substituteExprVars(col.Expression, singleRowVar)
+			} else {
+				expr = g.substituteJoinExprVars(col.Expression, leftInput, rightInput)
 			}
-			return g.substituteJoinExprVars(col.Expression, leftInput, rightInput)
+			return g.substituteVarRefs(expr)
 		}
 		// Custom function
 		return fmt.Sprintf("func() %s { %s }()", mapDataType(col.DataType), col.FuncBody)

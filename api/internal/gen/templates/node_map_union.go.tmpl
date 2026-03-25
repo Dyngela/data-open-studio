@@ -8,6 +8,14 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 
 	// Process left stream
 	for left := range leftIn {
+{{- if .LeftVariablesCode }}
+{{ .LeftVariablesCode }}
+{{- else if .LeftFilterExpr }}
+		// Global filter
+		if !({{ .LeftFilterExpr }}) {
+			continue
+		}
+{{- end }}
 		out := &{{ .OutputType }}{}
 {{ .LeftTransforms }}
 		rowCount++
@@ -25,6 +33,14 @@ func {{ .FuncName }}(ctx context.Context, leftIn <-chan *{{ .LeftType }}, rightI
 
 	// Process right stream
 	for right := range rightIn {
+{{- if .RightVariablesCode }}
+{{ .RightVariablesCode }}
+{{- else if .RightFilterExpr }}
+		// Global filter
+		if !({{ .RightFilterExpr }}) {
+			continue
+		}
+{{- end }}
 		out := &{{ .OutputType }}{}
 {{ .RightTransforms }}
 		rowCount++
