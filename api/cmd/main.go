@@ -37,6 +37,8 @@ func main() {
 			&models.TriggerRule{},
 			&models.TriggerJob{},
 			&models.TriggerExecution{},
+			// Analytics models
+			&models.Dataset{},
 		); err != nil {
 			api.Logger.Fatal().Err(err).Msg("Failed to migrate database")
 		}
@@ -83,4 +85,5 @@ func initAPI(router *graceful.Graceful) {
 	endpoints.JobHandler(router)
 	endpoints.SqlHandler(router)
 	endpoints.TriggerHandler(router)
+	endpoints.DatasetHandler(router)
 }

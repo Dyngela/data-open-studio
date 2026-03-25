@@ -1,20 +1,36 @@
-# Dependencies
+# ============================================================
+# Angular / Frontend
+# ============================================================
 front/node_modules/
-
-# Angular / Frontend Build outputs
 front/dist/
 front/.angular/
-front/.angular/cache
 front/out-tsc/
+front/coverage/
+front/.sass-cache/
+front/connect.lock
+front/libpeerconnection.log
+front/testem.log
+front/typings/
+front/__screenshots__/
+front/npm-debug.log
+front/yarn-error.log
+front/.pnpm-debug.log
 
+# ============================================================
 # Go / Backend
+# ============================================================
+# Binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+
+# Test artifacts
 *.test
 *.out
+
+# Build outputs
 api/bin/
 bin/
 
@@ -22,21 +38,59 @@ bin/
 go.work
 go.work.sum
 
-api/.env
+# Go coverage
+coverage.txt
+coverage.html
 
+# Environment / secrets
+api/.env
+**/.env.local
+**/.env.*.local
+
+# ============================================================
+# Rust / viz
+# ============================================================
+viz/target/
+**/*.rs.bk
+# Cargo.lock is committed for binary crates (api); omit only for pure libraries
+
+# ============================================================
 # IDE
+# ============================================================
 .idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/launch.json
 !.vscode/tasks.json
 !.vscode/settings.json
+*.sublime-workspace
+*.sublime-project
+.history/
+.c9/
+*.launch
+.settings/
+.classpath
+.project
 
-# Logs
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================================
+# Logs & temp files
+# ============================================================
 *.log
-
-# Temporary files
 *.tmp
 *.temp
 *.swp
 *.swo
+
+# ============================================================
+# Misc
+# ============================================================
+nul
+a.json

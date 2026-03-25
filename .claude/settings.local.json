@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go test:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright install chromium)",
+      "Bash(docker-compose up:*)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(go run:*)",
+      "Bash(curl:*)",
+      "Bash(node test-websocket.js:*)",
+      "Bash(docker exec:*)",
+      "Bash(go generate:*)",
+      "Bash(grep:*)",
+      "Bash(go doc:*)",
+      "Bash(go vet:*)",
+      "Bash(npx ng build:*)",
+      "Bash(ls:*)",
+      "Bash(cargo check:*)"
+    ]
+  }
+}

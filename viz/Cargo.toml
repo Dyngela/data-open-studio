@@ -1,0 +1,37 @@
+[workspace]
+members = [
+    "df-store",
+    "connector",
+    "api",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+# DataFrame / data processing
+polars = { version = "0.46", features = ["lazy", "csv", "parquet", "json", "dtype-full", "streaming"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Async trait helpers
+async-trait = "0.1"
+
+# Inter-crate
+df-store = { path = "df-store" }
+connector = { path = "connector" }
