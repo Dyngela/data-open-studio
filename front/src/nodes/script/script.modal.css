@@ -421,3 +421,48 @@
   opacity: 0.65;
   cursor: not-allowed !important;
 }
+
+/* ── Schema row collapse header ─────────────────────── */
+.schema-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 4px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #c0c0c0;
+  border: 1.5px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.schema-row-header:hover {
+  background: #1f1f1f;
+  border-color: #2a2a2a;
+}
+
+.schema-row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.schema-row-label i {
+  color: #ff9800;
+  font-size: 0.9rem;
+}
+
+.schema-row-header .pi-chevron-down,
+.schema-row-header .pi-chevron-right {
+  font-size: 0.8rem;
+  color: #6a6a6a;
+  transition: color 0.15s ease;
+}
+
+.schema-row-header:hover .pi-chevron-down,
+.schema-row-header:hover .pi-chevron-right {
+  color: #9a9a9a;
+}

@@ -10,8 +10,19 @@
   <div class="modal-body">
 
     <!-- ── Ligne supérieure : entrées + sortie ── -->
-    <div class="schema-row">
+    <div class="schema-row-header" (click)="schemaRowExpanded.set(!schemaRowExpanded())">
+      <span class="schema-row-label">
+        <i class="pi pi-table"></i>
+          Schéma (entrées &amp; sortie)
+      </span>
+      <i class="pi"
+        [class.pi-chevron-down]="schemaRowExpanded()"
+        [class.pi-chevron-right]="!schemaRowExpanded()">
+      </i>
+    </div>
 
+    @if (schemaRowExpanded()) {
+    <div class="schema-row">
       <!-- Panel entrées avec onglets -->
       <div class="panel">
         <div class="section-header">
@@ -109,6 +120,7 @@
       </div>
 
     </div>
+  }
 
     <!-- ── Éditeur Monaco ── -->
     <div class="editor-container">

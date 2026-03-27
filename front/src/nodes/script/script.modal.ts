@@ -50,6 +50,8 @@ export class ScriptModal {
   node = input.required<NodeInstance>();
   modalTitle = computed(() => this.node().name ?? this.node().type.label);
 
+  schemaRowExpanded = signal(true);
+
   protected upstreamInputs = computed(() => {
     return this.jobState.getUpstreamSchemas(this.node().id);
   });
