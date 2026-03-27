@@ -6,10 +6,7 @@ import (
 	"api/internal/api/repo"
 	"api/internal/gen"
 	"api/internal/gen/lib"
-	"api/pkg"
 	"errors"
-	"fmt"
-	"time"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -464,71 +461,71 @@ func (slf *JobService) notifyJobDone(jobID uint, jobErr error, logs string, stat
 
 // sendFailureEmails sends an email to all notification contacts for the given job.
 func (slf *JobService) sendFailureEmails(jobID uint, jobErr error, logs string, stats gen.DockerStats) {
-	contacts, err := slf.GetNotificationContacts(jobID)
-	if err != nil {
-		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to get notification contacts for failure email")
-		return
-	}
-	if len(contacts) == 0 {
-		return
-	}
+	// 	contacts, err := slf.GetNotificationContacts(jobID)
+	// 	if err != nil {
+	// 		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to get notification contacts for failure email")
+	// 		return
+	// 	}
+	// 	if len(contacts) == 0 {
+	// 		return
+	// 	}
 
-	job, findErr := slf.jobRepo.FindByID(jobID)
-	jobName := fmt.Sprintf("Job #%d", jobID)
-	if findErr == nil {
-		jobName = job.Name
-	}
+	// job, findErr := slf.jobRepo.FindByID(jobID)
+	// jobName := fmt.Sprintf("Job #%d", jobID)
+	// if findErr == nil {
+	// 	jobName = job.Name
+	// }
 
-	truncatedLogs := logs
-	if len(truncatedLogs) > 50000 {
-		truncatedLogs = truncatedLogs[:50000] + "\n\n... (logs truncated)"
-	}
+	// truncatedLogs := logs
+	// if len(truncatedLogs) > 50000 {
+	// 	truncatedLogs = truncatedLogs[:50000] + "\n\n... (logs truncated)"
+	// }
 
-	recipients := make([]string, len(contacts))
-	for i, u := range contacts {
-		recipients[i] = u.Email
-	}
+	// 	recipients := make([]string, len(contacts))
+	// 	for i, u := range contacts {
+	// 		recipients[i] = u.Email
+	// 	}
 
-	body := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; color: #333;">
-  <h2 style="color: #d32f2f;">Job en échec : %s</h2>
-  <table style="border-collapse: collapse; margin-bottom: 16px;">
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Job ID</td><td style="padding: 4px 12px;">%d</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Date</td><td style="padding: 4px 12px;">%s</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Erreur</td><td style="padding: 4px 12px; color: #d32f2f;">%s</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">CPU</td><td style="padding: 4px 12px;">%s</td></tr>
-    <tr><td style="padding: 4px 12px; font-weight: bold;">Mémoire</td><td style="padding: 4px 12px;">%s</td></tr>
-  </table>
-  <h3>Logs</h3>
-  <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; max-height: 600px; overflow-y: auto;">%s</pre>
-</body>
-</html>`,
-		jobName,
-		jobID,
-		time.Now().Format("2006-01-02 15:04:05"),
-		jobErr.Error(),
-		stats.CPUPercent,
-		stats.MemUsage,
-		truncatedLogs,
-	)
+	// 	body := fmt.Sprintf(`<!DOCTYPE html>
+	// <html>
+	// <head><meta charset="utf-8"></head>
+	// <body style="font-family: Arial, sans-serif; color: #333;">
+	//   <h2 style="color: #d32f2f;">Job en échec : %s</h2>
+	//   <table style="border-collapse: collapse; margin-bottom: 16px;">
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Job ID</td><td style="padding: 4px 12px;">%d</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Date</td><td style="padding: 4px 12px;">%s</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Erreur</td><td style="padding: 4px 12px; color: #d32f2f;">%s</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">CPU</td><td style="padding: 4px 12px;">%s</td></tr>
+	//     <tr><td style="padding: 4px 12px; font-weight: bold;">Mémoire</td><td style="padding: 4px 12px;">%s</td></tr>
+	//   </table>
+	//   <h3>Logs</h3>
+	//   <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; max-height: 600px; overflow-y: auto;">%s</pre>
+	// </body>
+	// </html>`,
+	// 		jobName,
+	// 		jobID,
+	// 		time.Now().Format("2006-01-02 15:04:05"),
+	// 		jobErr.Error(),
+	// 		stats.CPUPercent,
+	// 		stats.MemUsage,
+	// 		truncatedLogs,
+	// 	)
 
-	msg := pkg.EmailMessage{
-		To:          recipients,
-		CC:          nil,
-		BCC:         nil,
-		Subject:     fmt.Sprintf("[Data Open Studio] Job en échec : %s", jobName),
-		Body:        body,
-		IsHTML:      true,
-		Attachments: nil,
-	}
+	// msg := pkg.EmailMessage{
+	// 	To:          recipients,
+	// 	CC:          nil,
+	// 	BCC:         nil,
+	// 	Subject:     fmt.Sprintf("[Data Open Studio] Job en échec : %s", jobName),
+	// 	Body:        body,
+	// 	IsHTML:      true,
+	// 	Attachments: nil,
+	// }
 
-	if err := pkg.SendEmail(msg); err != nil {
-		slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to send failure notification email")
-	} else {
-		slf.logger.Info().Uint("jobID", jobID).Int("recipients", len(recipients)).Msg("Failure notification email sent")
-	}
+	// if err := pkg.SendEmail(msg); err != nil {
+	// 	slf.logger.Error().Err(err).Uint("jobID", jobID).Msg("Failed to send failure notification email")
+	// } else {
+	// 	slf.logger.Info().Uint("jobID", jobID).Int("recipients", len(recipients)).Msg("Failure notification email sent")
+	// }
 }
 
 func (slf *JobService) Stop(id uint) error {

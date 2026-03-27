@@ -1,0 +1,83 @@
+func {{ .FuncName }}(ctx context.Context{{ range .Inputs }}, in_{{ .Name }} <-chan *{{ .RowType }}{{ end }}, out chan<- *{{ .OutputType }}, progress lib.ProgressFunc) error {
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, 0, "collecting inputs"))
+	}
+
+{{ range .Inputs }}
+	var slice_{{ .Name }} []{{ .RowType }}
+	for row := range in_{{ .Name }} {
+		if row != nil {
+			slice_{{ .Name }} = append(slice_{{ .Name }}, *row)
+		}
+	}
+{{ end }}
+
+	inputPayload := map[string]any{
+{{ range .Inputs }}		"{{ .Name }}": slice_{{ .Name }},
+{{ end }}	}
+
+	inputJSON, err := json.Marshal(inputPayload)
+	if err != nil {
+		return fmt.Errorf("node {{ .NodeID }}: failed to marshal inputs: %w", err)
+	}
+
+	tmpFile, err := os.CreateTemp("", "node_{{ .NodeID }}_*.py")
+	if err != nil {
+		return fmt.Errorf("node {{ .NodeID }}: failed to create temp script: %w", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString({{ printf "%q" .FullScript }}); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("node {{ .NodeID }}: failed to write script: %w", err)
+	}
+	tmpFile.Close()
+
+	cmd := exec.CommandContext(ctx, "python3", tmpFile.Name())
+	cmd.Stdin = bytes.NewReader(inputJSON)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("node {{ .NodeID }}: failed to get stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("node {{ .NodeID }}: failed to start python: %w", err)
+	}
+
+	var rowCount int64
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var row {{ .OutputType }}
+		if err := json.Unmarshal(line, &row); err != nil {
+			fmt.Printf("node {{ .NodeID }}: skipping malformed row: %s\n", string(line))
+			continue
+		}
+		rowCount++
+		if progress != nil && rowCount%1000 == 0 {
+			progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusRunning, rowCount, fmt.Sprintf("emitted %d rows", rowCount)))
+		}
+		select {
+		case out <- &row:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		fmt.Printf("node {{ .NodeID }}: python exited with error: %v\nstderr: %s\n", err, stderr.String())
+	}
+
+	if progress != nil {
+		progress(lib.NewProgress({{ .NodeID }}, "{{ .NodeName }}", lib.StatusCompleted, rowCount, "completed"))
+	}
+
+	return nil
+}

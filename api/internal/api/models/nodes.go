@@ -62,6 +62,7 @@ const (
 	NodeTypeMap         NodeType = "map"
 	NodeTypeLog         NodeType = "log"
 	NodeTypeEmailOutput NodeType = "email_output"
+	NodeTypeScript      NodeType = "script" // lol safé typescript kom le truk du frontaind
 )
 
 type Node struct {
@@ -103,6 +104,10 @@ func (slf *Node) SetData(data any) error {
 	case NodeTypeLog:
 		if _, ok := data.(NodeLogConfig); !ok {
 			return errors.New("invalid data type for log node")
+		}
+	case NodeTypeScript:
+		if _, ok := data.(ScriptConfig); !ok {
+			return errors.New("invalid data type for script node")
 		}
 	default:
 		return errors.New("unknown node type: " + string(slf.Type))
@@ -215,4 +220,11 @@ func (slf Node) GetDataOutputNodeIDs() []int {
 		}
 	}
 	return ids
+}
+
+func (slf Node) GetScriptConfig() (ScriptConfig, error) {
+	if slf.Type != NodeTypeScript {
+		return ScriptConfig{}, errors.New("node is not a script type")
+	}
+	return GetTypedData[ScriptConfig](slf)
 }

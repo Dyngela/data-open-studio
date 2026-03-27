@@ -206,3 +206,18 @@ type EmailOutputTemplateData struct {
 	Body            string
 	IsHTML          bool
 }
+
+type ScriptTemplateData struct {
+	FuncName   string
+	NodeID     int
+	NodeName   string
+	OutputType string
+	Inputs     []ScriptInputData
+	FullScript string // script complet prêt à écrire dans le fichier temp
+}
+
+type ScriptInputData struct {
+	Name       string // Python variable name ("A", "B")
+	ChannelVar string // "ch_12"
+	RowType    string // "Node9Row"
+}
