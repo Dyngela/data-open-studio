@@ -8,9 +8,5 @@ name = "df_store"
 path = "src/lib.rs"
 
 [dependencies]
-polars.workspace = true
-tokio.workspace = true
-thiserror.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-tracing.workspace = true
+postgres  = { version = "0.19", features = ["with-chrono-0_4"] }
+chrono    = "0.4"

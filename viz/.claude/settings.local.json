@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(python3 -c \"import os; print\\(os.listdir\\(''C:/dev/GO/data-open-studio/viz/test-files''\\)\\)\")",
+      "Bash(grep -v \"^warning\\\\|^  \\\\|^$\\\\|running\\\\|Doc-test\\\\|Finished\\\\|Compiling\")",
+      "Bash(python3 \"C:/dev/GO/data-open-studio/viz/gen_cedrus_read.py\")",
+      "Bash(python3 gen_cedrus_read.py)",
+      "Bash(grep -v \"^warning\\\\|^  \\\\|^$\\\\|Compiling\\\\|Finished\\\\|Running\\\\|Doc-test\")",
+      "Bash(python3:*)"
+    ]
+  }
+}

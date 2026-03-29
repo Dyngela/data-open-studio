@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "df-store",
-    "connector",
     "api",
 ]
 resolver = "2"
@@ -34,4 +33,3 @@ async-trait = "0.1"
 
 # Inter-crate
 df-store = { path = "df-store" }
-connector = { path = "connector" }

@@ -1,0 +1,29 @@
+[Signature de fichier : PAR1]
+
+  [ROW GROUP 1] (Mettons nos 4 lignes ici)
+
+    [Column Chunk: ID]
+      - Données : [1, 2, 3, 4] (compressées, ex: RLE)
+      - Stats : Min=1, Max=4, Nulls=0
+
+    [Column Chunk: Pays]
+      - Dictionnaire : {0: "France", 1: "Belgique", 2: "Suisse"}
+      - Données : [0, 1, 0, 2] (on stocke les index !)
+      - Stats : Nulls=0
+
+    [Column Chunk: Montant]
+      - Données : [150.50, 89.00, 200.00, 45.10]
+      - Stats : Min=45.10, Max=200.00, Somme=484.60
+
+    [Column Chunk: Actif]
+      - Données : [1, 0, 1, 1] (stocké sous forme de bits : 1101 = 13 en décimal)
+      - Stats : True=3, False=1
+
+  [METADATA DU FICHIER] (Situé à la fin du fichier !)
+    - Version : 2.0
+    - Schéma : ID: UInt32, Pays: String, Montant: Float64, Actif: Boolean
+    - Nombre de lignes : 4
+    - Emplacement des Row Groups et tailles...
+
+[Taille des Metadata : 4 octets]
+[Signature de fichier : PAR1]
