@@ -7,14 +7,17 @@ use crate::data_type::{DataType, DataValue};
 use crate::frame::Frame;
 use crate::store::Series;
 
+#[derive(serde::Deserialize)]
 pub struct CsvConfig {
     pub path:       String,
+    /// ASCII code of the delimiter character (e.g. 44 = comma, 59 = semicolon)
     pub delimiter:  u8,
     pub has_header: bool,
     pub frame_name: String,
 }
 
-pub fn load_csv(config: CsvConfig, cedrus: &mut crate::cedrus::Cedrus) -> Result<(), ConnectorError> {
+/// Build a `Frame` from a CSV file without persisting it.
+pub fn csv_to_frame(config: &CsvConfig) -> Result<Frame, ConnectorError> {
     let file   = File::open(&config.path)?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
@@ -24,7 +27,10 @@ pub fn load_csv(config: CsvConfig, cedrus: &mut crate::cedrus::Cedrus) -> Result
         .ok_or(ConnectorError::ParsingError("Empty file".to_string()))?
         .map_err(|e| ConnectorError::ParsingError(e.to_string()))?;
 
-    let col_names: Vec<&str> = header.split(config.delimiter as char).collect();
+    let col_names: Vec<String> = header
+        .split(config.delimiter as char)
+        .map(|s| s.trim().to_string())
+        .collect();
     let n_cols = col_names.len();
 
     let mut col_raw: Vec<Vec<String>> = vec![vec![]; n_cols];
@@ -42,8 +48,12 @@ pub fn load_csv(config: CsvConfig, cedrus: &mut crate::cedrus::Cedrus) -> Result
         .map(|(name, raw)| infer_series(name, raw))
         .collect();
 
-    cedrus.write(&Frame { columns, name: config.frame_name })
-        .map_err(ConnectorError::ArbitraryError)
+    Ok(Frame { columns, name: config.frame_name.clone() })
+}
+
+pub fn load_csv(config: CsvConfig, cedrus: &mut crate::cedrus::Cedrus) -> Result<(), ConnectorError> {
+    let frame = csv_to_frame(&config)?;
+    cedrus.write(&frame).map_err(ConnectorError::ArbitraryError)
 }
 
 fn infer_series(name: &str, raw: Vec<String>) -> Series {

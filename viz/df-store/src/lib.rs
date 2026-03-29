@@ -6,7 +6,8 @@
 pub mod store;
 mod chunk;
 mod time;
-mod data_type;
+pub mod data_type;
 pub mod connectors;
-mod frame;
+pub mod frame;
 pub mod cedrus;
+pub mod query;

@@ -20,6 +20,17 @@ pub enum ConnectorError {
     ArbitraryError(String),
 }
 
+impl std::fmt::Display for ConnectorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConnectorError::FileNotFound(s)    => write!(f, "file not found: {s}"),
+            ConnectorError::ConnectionError(s) => write!(f, "connection error: {s}"),
+            ConnectorError::ParsingError(s)    => write!(f, "parsing error: {s}"),
+            ConnectorError::ArbitraryError(s)  => write!(f, "{s}"),
+        }
+    }
+}
+
 impl From<std::io::Error> for ConnectorError {
     fn from(e: std::io::Error) -> Self {
         match e.kind() {

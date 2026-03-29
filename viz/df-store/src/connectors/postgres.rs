@@ -9,6 +9,7 @@ use crate::frame::Frame;
 use crate::store::Series;
 use crate::time::TimeUnit;
 
+#[derive(serde::Deserialize)]
 pub struct PostgresConfig {
     pub host:       String,
     pub port:       u16,
@@ -19,7 +20,8 @@ pub struct PostgresConfig {
     pub frame_name: String,
 }
 
-pub fn load_postgres(config: PostgresConfig, cedrus: &mut Cedrus) -> Result<(), ConnectorError> {
+/// Build a `Frame` from a Postgres query without persisting it.
+pub fn postgres_to_frame(config: PostgresConfig) -> Result<Frame, ConnectorError> {
     let conn_str = format!(
         "host={} port={} user={} password={} dbname={}",
         config.host, config.port, config.username, config.password, config.database
@@ -32,9 +34,7 @@ pub fn load_postgres(config: PostgresConfig, cedrus: &mut Cedrus) -> Result<(), 
         .map_err(|e| ConnectorError::ArbitraryError(e.to_string()))?;
 
     if rows.is_empty() {
-        return cedrus
-            .write(&Frame { name: config.frame_name, columns: vec![] })
-            .map_err(ConnectorError::ArbitraryError);
+        return Ok(Frame { name: config.frame_name, columns: vec![] });
     }
 
     let col_meta: Vec<(String, Type)> = rows[0]
@@ -58,9 +58,12 @@ pub fn load_postgres(config: PostgresConfig, cedrus: &mut Cedrus) -> Result<(), 
         .map(|((name, t), data)| build_series(name, pg_type_to_dtype(t), data))
         .collect();
 
-    cedrus
-        .write(&Frame { name: config.frame_name, columns })
-        .map_err(ConnectorError::ArbitraryError)
+    Ok(Frame { name: config.frame_name, columns })
+}
+
+pub fn load_postgres(config: PostgresConfig, cedrus: &mut Cedrus) -> Result<(), ConnectorError> {
+    let frame = postgres_to_frame(config)?;
+    cedrus.write(&frame).map_err(ConnectorError::ArbitraryError)
 }
 
 fn pg_type_to_dtype(t: &Type) -> DataType {
