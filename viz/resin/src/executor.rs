@@ -897,6 +897,8 @@ pub fn eval_expr(frame: &Frame, row: usize, expr: &Expr) -> DataValue {
         }
 
         Expr::Grouped(e, _) => eval_expr(frame, row, e),
+
+        Expr::If(if_expr) => eval_if(frame, row, if_expr, eval_expr),
     }
 }
 
@@ -958,8 +960,45 @@ pub fn eval_expr_join(
             DataValue::Boolean(!matches!(v, DataValue::Null))
         }
         Expr::Grouped(e, _) => eval_expr_join(left, right, l_row, r_row, e),
+
+        Expr::If(if_expr) => {
+            // Evaluate each condition in the join context; bodies too.
+            let cond = eval_expr_join(left, right, l_row, r_row, &if_expr.condition);
+            if dv_truthy(&cond) {
+                return eval_expr_join(left, right, l_row, r_row, &if_expr.then_branch);
+            }
+            for branch in &if_expr.else_if_branches {
+                let c = eval_expr_join(left, right, l_row, r_row, &branch.condition);
+                if dv_truthy(&c) {
+                    return eval_expr_join(left, right, l_row, r_row, &branch.body);
+                }
+            }
+            if_expr.else_branch.as_ref()
+                .map(|e| eval_expr_join(left, right, l_row, r_row, e))
+                .unwrap_or(DataValue::Null)
+        }
+
         other => eval_expr(left, l_row, other), // literals, functions
     }
+}
+
+/// Generic if/else evaluator; `eval` is the expression evaluator for the
+/// current context (regular frame or join).
+fn eval_if<F>(frame: &Frame, row: usize, if_expr: &IfExpr, eval: F) -> DataValue
+where
+    F: Fn(&Frame, usize, &Expr) -> DataValue,
+{
+    if dv_truthy(&eval(frame, row, &if_expr.condition)) {
+        return eval(frame, row, &if_expr.then_branch);
+    }
+    for branch in &if_expr.else_if_branches {
+        if dv_truthy(&eval(frame, row, &branch.condition)) {
+            return eval(frame, row, &branch.body);
+        }
+    }
+    if_expr.else_branch.as_ref()
+        .map(|e| eval(frame, row, e))
+        .unwrap_or(DataValue::Null)
 }
 
 fn eval_literal(l: &Literal) -> DataValue {

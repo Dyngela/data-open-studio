@@ -76,6 +76,12 @@ pub enum TokenKind {
     True,
     False,
     Coalesce,
+    If,
+    Else,
+
+    // ── braces ────────────────────────────────────────────────────────────
+    LBrace, // {
+    RBrace, // }
 
     // ── window-frame keywords ─────────────────────────────────────────────
     Preceding,
@@ -330,6 +336,8 @@ impl<'a> Lexer<'a> {
                 Some('*') => { self.advance(); tokens.push(Token::new(TokenKind::Star, span)); }
                 Some('(') => { self.advance(); tokens.push(Token::new(TokenKind::LParen, span)); }
                 Some(')') => { self.advance(); tokens.push(Token::new(TokenKind::RParen, span)); }
+                Some('{') => { self.advance(); tokens.push(Token::new(TokenKind::LBrace, span)); }
+                Some('}') => { self.advance(); tokens.push(Token::new(TokenKind::RBrace, span)); }
                 Some('+') => { self.advance(); tokens.push(Token::new(TokenKind::Plus, span)); }
                 Some('/') => { self.advance(); tokens.push(Token::new(TokenKind::Slash, span)); }
 
@@ -420,6 +428,8 @@ fn keyword_or_ident(word: &str) -> TokenKind {
         "true"                 => TokenKind::True,
         "false"                => TokenKind::False,
         "coalesce"             => TokenKind::Coalesce,
+        "if"                   => TokenKind::If,
+        "else"                 => TokenKind::Else,
         "preceding"            => TokenKind::Preceding,
         "following"            => TokenKind::Following,
         "unbounded_preceding"  => TokenKind::UnboundedPreceding,

@@ -922,3 +922,139 @@ sales
         assert!(!prog.statements.is_empty());
     }
 }
+
+// ---------------------------------------------------------------------------
+// Parser: if / else if / else expressions
+// ---------------------------------------------------------------------------
+
+mod parse_if_expr {
+    use super::*;
+
+    fn parse_if_in_map(src: &str) -> Expr {
+        let prog = parse_ok(src);
+        match prog.statements.first().unwrap() {
+            Statement::Query(q) => match q.ops.first().unwrap() {
+                PipeOp::Map(m) => m.expr.clone(),
+                _ => panic!("expected map op"),
+            },
+            _ => panic!("expected query statement"),
+        }
+    }
+
+    fn parse_if_in_filter(src: &str) -> Expr {
+        let prog = parse_ok(src);
+        match prog.statements.first().unwrap() {
+            Statement::Query(q) => match q.ops.first().unwrap() {
+                PipeOp::Filter(f) => f.condition.clone(),
+                _ => panic!("expected filter op"),
+            },
+            _ => panic!("expected query statement"),
+        }
+    }
+
+    // ── pass cases ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn pass_if_else_in_map() {
+        let expr = parse_if_in_map("t.map(if x > 0 { x } else { 0 } as result)");
+        match expr {
+            Expr::If(e) => {
+                assert!(e.else_if_branches.is_empty());
+                assert!(e.else_branch.is_some());
+            }
+            _ => panic!("expected IfExpr, got {expr:?}"),
+        }
+    }
+
+    #[test]
+    fn pass_if_no_else() {
+        // `else` is optional — missing else returns null
+        let expr = parse_if_in_map("t.map(if flag { 1 } as v)");
+        match expr {
+            Expr::If(e) => {
+                assert!(e.else_if_branches.is_empty());
+                assert!(e.else_branch.is_none());
+            }
+            _ => panic!("expected IfExpr"),
+        }
+    }
+
+    #[test]
+    fn pass_if_else_if_else() {
+        let expr = parse_if_in_map(
+            "t.map(if score >= 90 { 4 } else if score >= 70 { 3 } else if score >= 50 { 2 } else { 1 } as grade)",
+        );
+        match expr {
+            Expr::If(e) => {
+                assert_eq!(e.else_if_branches.len(), 2);
+                assert!(e.else_branch.is_some());
+            }
+            _ => panic!("expected IfExpr"),
+        }
+    }
+
+    #[test]
+    fn pass_if_in_filter() {
+        // if expression as the filter predicate itself
+        let expr = parse_if_in_filter("t.filter(if x > 0 { true } else { false })");
+        assert!(matches!(expr, Expr::If(_)));
+    }
+
+    #[test]
+    fn pass_nested_if() {
+        // if inside the body of another if
+        let expr = parse_if_in_map(
+            "t.map(if a > 0 { if b > 0 { 1 } else { 2 } } else { 3 } as v)",
+        );
+        match expr {
+            Expr::If(outer) => {
+                assert!(matches!(outer.then_branch, Expr::If(_)));
+            }
+            _ => panic!("expected nested IfExpr"),
+        }
+    }
+
+    #[test]
+    fn pass_if_condition_is_compound() {
+        let expr = parse_if_in_map(
+            r#"t.map(if country = "FR" and active = true { discount } else { 0 } as d)"#,
+        );
+        assert!(matches!(expr, Expr::If(_)));
+    }
+
+    #[test]
+    fn pass_if_body_is_arithmetic() {
+        let expr = parse_if_in_map("t.map(if flag { x * 2 } else { x + 1 } as v)");
+        match expr {
+            Expr::If(e) => {
+                assert!(matches!(e.then_branch, Expr::BinaryOp(_)));
+                assert!(matches!(e.else_branch.unwrap(), Expr::BinaryOp(_)));
+            }
+            _ => panic!("expected IfExpr"),
+        }
+    }
+
+    // ── fail cases ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn fail_if_missing_lbrace() {
+        // Missing `{` after condition
+        parse_err("t.map(if x > 0 x as v)");
+    }
+
+    #[test]
+    fn fail_if_missing_rbrace() {
+        // Missing closing `}` on then branch
+        parse_err("t.map(if x > 0 { x as v)");
+    }
+
+    #[test]
+    fn fail_if_else_missing_lbrace() {
+        parse_err("t.map(if x > 0 { 1 } else 0 as v)");
+    }
+
+    #[test]
+    fn fail_if_else_if_missing_condition() {
+        parse_err("t.map(if x > 0 { 1 } else if { 2 } else { 3 } as v)");
+    }
+}

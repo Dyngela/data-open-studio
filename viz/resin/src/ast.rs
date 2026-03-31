@@ -242,6 +242,8 @@ pub enum Expr {
     IsNotNull(Box<Expr>, Span),
     /// Parenthesised expression — kept in the tree for source-fidelity.
     Grouped(Box<Expr>, Span),
+    /// `if <cond> { <expr> } [else if <cond> { <expr> }]* [else { <expr> }]`
+    If(Box<IfExpr>),
 }
 
 impl Expr {
@@ -255,8 +257,34 @@ impl Expr {
             Expr::IsNull(_, s)   => s,
             Expr::IsNotNull(_, s)=> s,
             Expr::Grouped(_, s)  => s,
+            Expr::If(e)          => &e.span,
         }
     }
+}
+
+/// `if <cond> { <then> } [else if <cond> { <body> }]* [else { <else> }]`
+///
+/// Each branch is a single expression inside `{ }`.  The value of the whole
+/// expression is the body of the first matching branch, or `null` when no
+/// branch matches and there is no `else`.
+#[derive(Debug, Clone)]
+pub struct IfExpr {
+    /// The initial `if` condition.
+    pub condition: Expr,
+    /// Body of the initial `if` branch.
+    pub then_branch: Expr,
+    /// Zero or more `else if <cond> { <body> }` branches.
+    pub else_if_branches: Vec<ElseIfBranch>,
+    /// Optional `else { <body> }` fallback.
+    pub else_branch: Option<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ElseIfBranch {
+    pub condition: Expr,
+    pub body: Expr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

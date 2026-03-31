@@ -695,6 +695,9 @@ impl Parser {
                 Ok(Expr::FunctionCall(FunctionCall { name: "coalesce".to_owned(), args, span }))
             }
 
+            // ── if / else if / else ────────────────────────────────────────
+            TokenKind::If => self.parse_if_expr(),
+
             // ── identifier: function call, qualified column, or bare column
             TokenKind::Ident(name) => {
                 self.advance();
@@ -728,6 +731,50 @@ impl Parser {
                 token_kind_name(&self.current().kind)
             ))),
         }
+    }
+
+    /// Parse `if <cond> { <expr> } [else if <cond> { <expr> }]* [else { <expr> }]`
+    fn parse_if_expr(&mut self) -> Result<Expr, ParseError> {
+        let span = self.span();
+        self.expect(&TokenKind::If)?;
+
+        let condition   = self.parse_expr(0)?;
+        self.expect(&TokenKind::LBrace)?;
+        let then_branch = self.parse_expr(0)?;
+        self.expect(&TokenKind::RBrace)?;
+
+        let mut else_if_branches = Vec::new();
+        let mut else_branch      = None;
+
+        while self.current().kind == TokenKind::Else {
+            let branch_span = self.span();
+            self.advance(); // consume `else`
+
+            if self.current().kind == TokenKind::If {
+                // `else if <cond> { <body> }`
+                self.advance(); // consume `if`
+                let cond = self.parse_expr(0)?;
+                self.expect(&TokenKind::LBrace)?;
+                let body = self.parse_expr(0)?;
+                self.expect(&TokenKind::RBrace)?;
+                else_if_branches.push(ElseIfBranch { condition: cond, body, span: branch_span });
+            } else {
+                // `else { <body> }`
+                self.expect(&TokenKind::LBrace)?;
+                let body = self.parse_expr(0)?;
+                self.expect(&TokenKind::RBrace)?;
+                else_branch = Some(body);
+                break; // nothing can follow `else { }`
+            }
+        }
+
+        Ok(Expr::If(Box::new(IfExpr {
+            condition,
+            then_branch,
+            else_if_branches,
+            else_branch,
+            span,
+        })))
     }
 }
 
@@ -788,6 +835,10 @@ fn token_kind_name(kind: &TokenKind) -> &'static str {
         TokenKind::True             => "true",
         TokenKind::False            => "false",
         TokenKind::Coalesce         => "coalesce",
+        TokenKind::If               => "if",
+        TokenKind::Else             => "else",
+        TokenKind::LBrace           => "'{'",
+        TokenKind::RBrace           => "'}'",
         TokenKind::Preceding        => "preceding",
         TokenKind::Following        => "following",
         TokenKind::UnboundedPreceding => "unbounded_preceding",

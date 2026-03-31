@@ -254,3 +254,100 @@ sales_dim
   .sort_by(net_revenue desc)
   .limit(5)
   as top_categories
+
+
+-- ------------------------------------------------------------
+-- 21. if / else — basic conditional column
+--     Apply a different multiplier depending on order country.
+-- ------------------------------------------------------------
+
+orders
+  .map(
+    if country = "FR" { amount * 1.2 }
+    else              { amount * 1.1 }
+    as amount_taxed
+  )
+  as orders_taxed
+
+
+-- ------------------------------------------------------------
+-- 22. if / else if / else — multi-branch bucketing
+--     Bucket each order amount into a human-readable tier.
+-- ------------------------------------------------------------
+
+orders
+  .map(
+    if amount >= 250 { "high" }
+    else if amount >= 100 { "medium" }
+    else { "low" }
+    as tier
+  )
+  as orders_tiered
+
+
+-- ------------------------------------------------------------
+-- 23. if without else — returns null when condition is false
+--     Flag only premium orders; others get null.
+-- ------------------------------------------------------------
+
+orders
+  .map(if amount >= 200 { "premium" } as premium_flag)
+  as orders_premium_flag
+
+
+-- ------------------------------------------------------------
+-- 24. if in filter — different threshold per country
+--     Keep FR orders above 100 and all other orders above 200.
+-- ------------------------------------------------------------
+
+orders
+  .filter(
+    if country = "FR" { amount > 100 }
+    else              { amount > 200 }
+  )
+  as high_value_orders
+
+
+-- ------------------------------------------------------------
+-- 25. if with null-safety — coalesce pattern via if
+--     Replace null discounts with 0 before applying them.
+-- ------------------------------------------------------------
+
+orders
+  .map(if discount is null { 0 } else { discount } as safe_discount)
+  .map(amount * (1 - safe_discount) as net_amount)
+  as orders_safe_net
+
+
+-- ------------------------------------------------------------
+-- 26. if chained — bucket then aggregate
+--     Count orders per tier using if inside map then aggregate.
+-- ------------------------------------------------------------
+
+orders
+  .map(
+    if amount >= 250 { "high" }
+    else if amount >= 100 { "medium" }
+    else { "low" }
+    as tier
+  )
+  .aggregate(count(*) as n, sum(amount) as total by tier)
+  .sort_by(total desc)
+  as tier_summary
+
+
+-- ------------------------------------------------------------
+-- 27. Nested if — two-level conditional
+--     Active FR customers with high orders get "vip",
+--     active FR with low orders get "regular", others "other".
+-- ------------------------------------------------------------
+
+orders
+  .join(customers on orders.customer_id = customers.id)
+  .map(
+    if customers.country = "FR" {
+      if orders.amount >= 200 { "vip" } else { "regular" }
+    } else { "other" }
+    as segment
+  )
+  as orders_segmented

@@ -648,3 +648,213 @@ fn example_20_full_pipeline() {
         assert!(w[0] >= w[1], "not sorted desc: {revs:?}");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Examples 21-27: if / else if / else
+// ---------------------------------------------------------------------------
+
+#[test]
+fn example_21_if_else_basic() {
+    let mut ex = Executor::new();
+    ex.load("orders", orders_frame());
+
+    run(&mut ex, r#"
+        orders
+          .map(
+            if country = "FR" { amount * 1.2 }
+            else              { amount * 1.1 }
+            as amount_taxed
+          )
+          as orders_taxed
+    "#);
+
+    let f = ex.get("orders_taxed").unwrap();
+    assert_eq!(nrows(f), 6);
+    let taxed  = get_f64(f, "amount_taxed");
+    let amount = get_f64(f, "amount");
+    let country = get_str(f, "country");
+    for i in 0..6 {
+        let expected = if country[i] == "FR" { amount[i] * 1.2 } else { amount[i] * 1.1 };
+        assert!((taxed[i] - expected).abs() < 1e-6,
+            "row {i}: expected {expected}, got {}", taxed[i]);
+    }
+}
+
+#[test]
+fn example_22_if_else_if_else_tier() {
+    let mut ex = Executor::new();
+    ex.load("orders", orders_frame());
+
+    run(&mut ex, r#"
+        orders
+          .map(
+            if amount >= 250 { "high" }
+            else if amount >= 100 { "medium" }
+            else { "low" }
+            as tier
+          )
+          as orders_tiered
+    "#);
+
+    let f = ex.get("orders_tiered").unwrap();
+    assert_eq!(nrows(f), 6);
+    let tiers  = get_str(f, "tier");
+    let amount = get_f64(f, "amount");
+    // amounts: 50→low, 200→medium, 150→medium, 80→low, 300→high, 120→medium
+    let expected = ["low", "medium", "medium", "low", "high", "medium"];
+    for (i, (got, exp)) in tiers.iter().zip(expected.iter()).enumerate() {
+        assert_eq!(got.as_str(), *exp,
+            "row {i}: amount={}, expected tier={exp}, got {got}", amount[i]);
+    }
+}
+
+#[test]
+fn example_23_if_no_else_returns_null() {
+    let mut ex = Executor::new();
+    ex.load("orders", orders_frame());
+
+    run(&mut ex, r#"
+        orders
+          .map(if amount >= 200 { "premium" } as premium_flag)
+          as orders_premium_flag
+    "#);
+
+    let f = ex.get("orders_premium_flag").unwrap();
+    assert_eq!(nrows(f), 6);
+    // amounts: 50, 200, 150, 80, 300, 120
+    // premium_flag: null, "premium", null, null, "premium", null
+    let col = f.columns.iter().find(|c| c.field.name == "premium_flag").unwrap();
+    let is_valid: Vec<bool> = col.chunks.iter()
+        .map(|v| v.validity.first().map(|b| b & 1 == 1).unwrap_or(false))
+        .collect();
+    assert_eq!(is_valid, vec![false, true, false, false, true, false]);
+}
+
+#[test]
+fn example_24_if_in_filter() {
+    let mut ex = Executor::new();
+    ex.load("orders", orders_frame());
+
+    run(&mut ex, r#"
+        orders
+          .filter(
+            if country = "FR" { amount > 100 }
+            else              { amount > 200 }
+          )
+          as high_value_orders
+    "#);
+
+    let f = ex.get("high_value_orders").unwrap();
+    // FR orders: 50(out), 200(in), 300(in) → 2
+    // DE orders: 150(out), 80(out) → 0 (both ≤ 200)
+    // US orders: 120(out) → 0 (120 ≤ 200)
+    assert_eq!(nrows(f), 2);
+    let amounts = get_f64(f, "amount");
+    let country = get_str(f, "country");
+    for i in 0..nrows(f) {
+        assert_eq!(country[i], "FR");
+        assert!(amounts[i] > 100.0);
+    }
+}
+
+#[test]
+fn example_25_if_null_safety() {
+    let mut ex = Executor::new();
+    ex.load("orders", orders_frame());
+
+    run(&mut ex, r#"
+        orders
+          .map(if discount is null { 0 } else { discount } as safe_discount)
+          .map(amount * (1 - safe_discount) as net_amount)
+          as orders_safe_net
+    "#);
+
+    let f = ex.get("orders_safe_net").unwrap();
+    assert_eq!(nrows(f), 6);
+    // No null values in net_amount (nulls replaced by 0)
+    let col = f.columns.iter().find(|c| c.field.name == "net_amount").unwrap();
+    for v in &col.chunks {
+        let valid = v.validity.first().map(|b| b & 1 == 1).unwrap_or(false);
+        assert!(valid, "net_amount should never be null after null-safe discount");
+    }
+    // spot-check: row 0 discount=0.1 → 50*(1-0.1)=45
+    let net = get_f64(f, "net_amount");
+    assert!((net[0] - 45.0).abs() < 1e-6, "row0: {}", net[0]);
+    // row 1 discount=null → 0 → 200*(1-0)=200
+    assert!((net[1] - 200.0).abs() < 1e-6, "row1: {}", net[1]);
+}
+
+#[test]
+fn example_26_if_bucket_then_aggregate() {
+    let mut ex = Executor::new();
+    ex.load("orders", orders_frame());
+
+    run(&mut ex, r#"
+        orders
+          .map(
+            if amount >= 250 { "high" }
+            else if amount >= 100 { "medium" }
+            else { "low" }
+            as tier
+          )
+          .aggregate(count(*) as n, sum(amount) as total by tier)
+          .sort_by(total desc)
+          as tier_summary
+    "#);
+
+    let f = ex.get("tier_summary").unwrap();
+    // tiers: low(50+80=130,n=2), medium(200+150+120=470,n=3), high(300,n=1)
+    assert_eq!(nrows(f), 3);
+    let tiers  = get_str(f, "tier");
+    let totals = get_f64(f, "total");
+    let counts = get_i64(f, "n");
+
+    let idx = |name: &str| tiers.iter().position(|t| t == name)
+        .unwrap_or_else(|| panic!("tier '{name}' not found in {tiers:?}"));
+
+    assert_eq!(counts[idx("high")],   1);
+    assert_eq!(counts[idx("medium")], 3);
+    assert_eq!(counts[idx("low")],    2);
+    assert!((totals[idx("high")]   - 300.0).abs() < 1e-6);
+    assert!((totals[idx("medium")] - 470.0).abs() < 1e-6);
+    assert!((totals[idx("low")]    - 130.0).abs() < 1e-6);
+    // sorted desc by total: medium(470) > high(300) > low(130)
+    for w in totals.windows(2) {
+        assert!(w[0] >= w[1], "not sorted desc: {totals:?}");
+    }
+}
+
+#[test]
+fn example_27_nested_if_segmentation() {
+    let mut ex = Executor::new();
+    ex.load("orders",    orders_frame());
+    ex.load("customers", customers_frame());
+
+    run(&mut ex, r#"
+        orders
+          .join(customers on orders.customer_id = customers.id)
+          .map(
+            if customers.country = "FR" {
+              if orders.amount >= 200 { "vip" } else { "regular" }
+            } else { "other" }
+            as segment
+          )
+          as orders_segmented
+    "#);
+
+    let f = ex.get("orders_segmented").unwrap();
+    assert_eq!(nrows(f), 6); // all orders matched a customer
+    let segs = get_str(f, "segment");
+    // `customers.country` has no prefix in the joined frame, so the resolver finds
+    // `orders.country` first (left columns precede right columns after a join).
+    // orders row-by-row:
+    //   id=1 (cid=10, orders.country=FR, amount=50)  → FR → 50<200  → "regular"
+    //   id=2 (cid=10, orders.country=FR, amount=200) → FR → 200>=200 → "vip"
+    //   id=3 (cid=20, orders.country=DE, amount=150) → DE           → "other"
+    //   id=4 (cid=20, orders.country=DE, amount=80)  → DE           → "other"
+    //   id=5 (cid=30, orders.country=FR, amount=300) → FR → 300>=200 → "vip"
+    //   id=6 (cid=30, orders.country=US, amount=120) → US           → "other"
+    assert_eq!(segs.iter().filter(|s| s.as_str() == "vip").count(),     2);
+    assert_eq!(segs.iter().filter(|s| s.as_str() == "regular").count(), 1);
+    assert_eq!(segs.iter().filter(|s| s.as_str() == "other").count(),   3);
+}

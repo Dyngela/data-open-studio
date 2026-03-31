@@ -770,3 +770,143 @@ fn exec_arithmetic_with_null_propagates() {
     assert!(!is_null_at(f, "c", 2));
     assert_eq!(col_i64(f, "c")[2], 5);
 }
+
+// ---------------------------------------------------------------------------
+// if / else if / else expression
+// ---------------------------------------------------------------------------
+
+#[test]
+fn exec_if_else_basic() {
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![int_series("x", &[-2, 0, 5])]));
+
+    // if x > 0 { x } else { 0 }  → absolute-value-like
+    run(&mut ex, "t.map(if x > 0 { x } else { 0 } as pos) as result");
+
+    let f = ex.get("result").unwrap();
+    assert_eq!(col_i64(f, "pos"), vec![0, 0, 5]);
+}
+
+#[test]
+fn exec_if_no_else_returns_null_when_false() {
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![int_series("x", &[1, 2, 3])]));
+
+    run(&mut ex, "t.map(if x > 2 { x } as big) as result");
+
+    let f = ex.get("result").unwrap();
+    // rows 0 and 1 → null (sentinel i64::MIN), row 2 → 3
+    let vals = col_i64(f, "big");
+    assert_eq!(vals[0], i64::MIN); // null
+    assert_eq!(vals[1], i64::MIN); // null
+    assert_eq!(vals[2], 3);
+}
+
+#[test]
+fn exec_if_else_if_else_grading() {
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![int_series("score", &[95, 75, 55, 30])]));
+
+    run(&mut ex, r#"
+        t.map(
+          if score >= 90 { 4 }
+          else if score >= 70 { 3 }
+          else if score >= 50 { 2 }
+          else { 1 }
+          as grade
+        ) as result
+    "#);
+
+    let f = ex.get("result").unwrap();
+    assert_eq!(col_i64(f, "grade"), vec![4, 3, 2, 1]);
+}
+
+#[test]
+fn exec_if_in_filter() {
+    // if as the filter predicate
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![
+        int_series("x",    &[1, 2, 3, 4]),
+        str_series("kind", &["a", "a", "b", "b"]),
+    ]));
+
+    // Keep rows where: if kind = "a" then x > 1, else x > 3
+    run(&mut ex, r#"t.filter(if kind = "a" { x > 1 } else { x > 3 }) as result"#);
+
+    let f = ex.get("result").unwrap();
+    // (x=1,kind=a) → 1>1=false; (x=2,kind=a) → 2>1=true ✓
+    // (x=3,kind=b) → 3>3=false; (x=4,kind=b) → 4>3=true ✓
+    assert_eq!(row_count(f), 2);
+    let mut xs = col_i64(f, "x");
+    xs.sort_unstable();
+    assert_eq!(xs, vec![2, 4]);
+}
+
+#[test]
+fn exec_if_with_arithmetic_body() {
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![
+        int_series("price",    &[100, 200, 300]),
+        bool_series("premium", &[false, true, true]),
+    ]));
+
+    // premium members get 20 % off, others pay full price
+    run(&mut ex, "t.map(if premium { price * 80 } else { price * 100 } as cents) as result");
+
+    let f = ex.get("result").unwrap();
+    assert_eq!(col_i64(f, "cents"), vec![10000, 16000, 24000]);
+}
+
+#[test]
+fn exec_if_coalesce_pattern() {
+    // Common pattern: if val is null { default } else { val }
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![
+        nullable_int_series("v", &[Some(5), None, Some(3)]),
+    ]));
+
+    run(&mut ex, "t.map(if v is null { 0 } else { v } as safe_v) as result");
+
+    let f = ex.get("result").unwrap();
+    assert_eq!(col_i64(f, "safe_v"), vec![5, 0, 3]);
+}
+
+#[test]
+fn exec_if_chained_with_aggregate() {
+    // Compute a bucketed column then aggregate on it
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![
+        int_series("score", &[10, 50, 80, 90, 45, 70]),
+    ]));
+
+    run(&mut ex, r#"
+        t
+          .map(if score >= 70 { "pass" } else { "fail" } as result_label)
+          .aggregate(count(*) as n by result_label)
+          as grade_counts
+    "#);
+
+    let f = ex.get("grade_counts").unwrap();
+    assert_eq!(row_count(f), 2);
+    let labels = col_str(f, "result_label");
+    let counts = col_i64(f, "n");
+    let pass_n = counts[labels.iter().position(|l| l == "pass").unwrap()];
+    let fail_n = counts[labels.iter().position(|l| l == "fail").unwrap()];
+    assert_eq!(pass_n, 3); // 80, 90, 70
+    assert_eq!(fail_n, 3); // 10, 50, 45
+}
+
+#[test]
+fn exec_nested_if() {
+    let mut ex = Executor::new();
+    ex.load("t", mk_frame("t", vec![
+        int_series("a", &[0, 1, 2]),
+        int_series("b", &[0, 0, 1]),
+    ]));
+
+    // if a > 0 { if b > 0 { 2 } else { 1 } } else { 0 }
+    run(&mut ex, "t.map(if a > 0 { if b > 0 { 2 } else { 1 } } else { 0 } as v) as result");
+
+    let f = ex.get("result").unwrap();
+    assert_eq!(col_i64(f, "v"), vec![0, 1, 2]);
+}

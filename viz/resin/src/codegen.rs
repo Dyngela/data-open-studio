@@ -452,6 +452,26 @@ fn emit_expr(expr: &Expr, ctx: ColCtx) -> String {
         Expr::IsNull(e, _)    => format!("rt_is_null({})",     emit_expr(e, ctx)),
         Expr::IsNotNull(e, _) => format!("rt_is_not_null({})", emit_expr(e, ctx)),
         Expr::Grouped(e, _)   => emit_expr(e, ctx),
+
+        Expr::If(if_expr) => {
+            let mut out = format!(
+                "rt_if({cond}, {then}",
+                cond = emit_expr(&if_expr.condition, ctx),
+                then = emit_expr(&if_expr.then_branch, ctx),
+            );
+            for branch in &if_expr.else_if_branches {
+                out.push_str(&format!(
+                    ", {}, {}",
+                    emit_expr(&branch.condition, ctx),
+                    emit_expr(&branch.body, ctx),
+                ));
+            }
+            let else_part = if_expr.else_branch.as_ref()
+                .map(|e| emit_expr(e, ctx))
+                .unwrap_or_else(|| "DataValue::Null".to_owned());
+            out.push_str(&format!(", {else_part})"));
+            out
+        }
     }
 }
 
