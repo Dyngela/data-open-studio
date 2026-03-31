@@ -10,7 +10,8 @@
       "Bash(grep -v \"^warning\\\\|^  \\\\|^$\\\\|Compiling\\\\|Finished\\\\|Running\\\\|Doc-test\")",
       "Bash(python3:*)",
       "Bash(cargo run:*)",
-      "Bash(grep -A 20 \"error\\\\[E0308\\\\]: \\\\`\\\\?\\\\`\")"
+      "Bash(grep -A 20 \"error\\\\[E0308\\\\]: \\\\`\\\\?\\\\`\")",
+      "Bash(cat \"C:/dev/GO/data-open-studio/viz/resin/test-file/\"*)"
     ]
   }
 }

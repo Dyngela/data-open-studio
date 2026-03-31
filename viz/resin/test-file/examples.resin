@@ -1,0 +1,256 @@
+-- ============================================================
+-- Resin language examples — basic to advanced
+-- ============================================================
+-- Frames are pre-loaded externally (e.g. from connectors).
+-- Each query below is independent and materializes its result
+-- with `as <name>` at the end of the chain.
+-- ============================================================
+
+
+-- ------------------------------------------------------------
+-- 1. Import / alias frames
+-- ------------------------------------------------------------
+
+use orders    from "orders"
+use customers from "customers"
+use products  from "products"
+use returns   from "returns"
+
+
+-- ------------------------------------------------------------
+-- 2. Basic filter
+--    Keep only orders whose amount exceeds 100.
+-- ------------------------------------------------------------
+
+orders
+  .filter(amount > 100)
+  as big_orders
+
+
+-- ------------------------------------------------------------
+-- 3. Filter with compound predicate
+--    Active customers in France.
+-- ------------------------------------------------------------
+
+customers
+  .filter(active = true and country = "FR")
+  as fr_active_customers
+
+
+-- ------------------------------------------------------------
+-- 4. Null handling in filter
+--    Rows with a known email only.
+-- ------------------------------------------------------------
+
+customers
+  .filter(email is not null)
+  as customers_with_email
+
+
+-- ------------------------------------------------------------
+-- 5. Select — project columns
+-- ------------------------------------------------------------
+
+orders
+  .select(id, customer_id, amount)
+  as orders_slim
+
+
+-- ------------------------------------------------------------
+-- 6. Map — computed column
+--    Add VAT (20 %) to every order amount.
+-- ------------------------------------------------------------
+
+orders
+  .map(amount * 1.2 as amount_vat)
+  as orders_with_vat
+
+
+-- ------------------------------------------------------------
+-- 7. Map — coalesce for null-safe computation
+--    Treat missing discount as 0 before applying it.
+-- ------------------------------------------------------------
+
+orders
+  .map(coalesce(discount, 0) as safe_discount)
+  .map(amount * (1 - safe_discount) as net_amount)
+  as orders_net
+
+
+-- ------------------------------------------------------------
+-- 8. Aggregate — global
+--    Total revenue and order count across all orders.
+-- ------------------------------------------------------------
+
+orders
+  .aggregate(sum(amount) as total_revenue, count(*) as order_count)
+  as revenue_summary
+
+
+-- ------------------------------------------------------------
+-- 9. Aggregate — grouped
+--    Revenue per country, only countries with more than 5 orders.
+-- ------------------------------------------------------------
+
+orders
+  .aggregate(sum(amount) as revenue, count(*) as n by country)
+  .filter(n > 5)
+  .sort_by(revenue desc)
+  as revenue_by_country
+
+
+-- ------------------------------------------------------------
+-- 10. Distinct
+--     Unique (country, category) pairs seen in orders.
+-- ------------------------------------------------------------
+
+orders
+  .select(country, category)
+  .distinct()
+  as country_category_pairs
+
+
+-- ------------------------------------------------------------
+-- 11. Sort + limit + offset  (pagination)
+--     Page 2 of top orders (10 per page).
+-- ------------------------------------------------------------
+
+orders
+  .sort_by(amount desc)
+  .offset(10)
+  .limit(10)
+  as orders_page_2
+
+
+-- ------------------------------------------------------------
+-- 12. Inner join
+--     Enrich orders with product details.
+-- ------------------------------------------------------------
+
+orders
+  .join(products on orders.product_id = products.id)
+  .select(orders.id, orders.amount, products.name, products.category)
+  as orders_with_product
+
+
+-- ------------------------------------------------------------
+-- 13. Left join
+--     All orders, with return reason if one exists.
+-- ------------------------------------------------------------
+
+orders
+  .left_join(returns on orders.id = returns.order_id)
+  .map(coalesce(returns.reason, "no return") as return_status)
+  .select(orders.id, orders.amount, return_status)
+  as orders_return_status
+
+
+-- ------------------------------------------------------------
+-- 14. Cross join
+--     Cartesian product: all size × color combinations.
+-- ------------------------------------------------------------
+
+use sizes  from "sizes"
+use colors from "colors"
+
+sizes
+  .cross_join(colors)
+  .select(sizes.label, colors.name)
+  as size_color_matrix
+
+
+-- ------------------------------------------------------------
+-- 15. Union / intersect / except
+-- ------------------------------------------------------------
+
+-- All orders from France or Germany (union, deduplicated)
+use orders_fr from "orders_fr"
+use orders_de from "orders_de"
+
+orders_fr
+  .union(orders_de)
+  as all_orders_eu
+
+-- Orders that appear in both datasets
+orders_fr
+  .intersect(orders_de)
+  as orders_in_both
+
+-- Orders only in France dataset
+orders_fr
+  .except(orders_de)
+  as orders_fr_only
+
+
+-- ------------------------------------------------------------
+-- 16. Window — row_number per customer
+--     Rank each order within its customer by date.
+-- ------------------------------------------------------------
+
+orders
+  .window(
+    row_number() over (partition_by customer_id sort_by date asc) as order_rank
+  )
+  as orders_ranked
+
+
+-- ------------------------------------------------------------
+-- 17. Window — running sum
+--     Cumulative revenue per country, sorted by date.
+-- ------------------------------------------------------------
+
+orders
+  .window(
+    sum(amount) over (
+      partition_by country
+      sort_by date asc
+      rows between unbounded_preceding and current_row
+    ) as running_revenue
+  )
+  as orders_running_revenue
+
+
+-- ------------------------------------------------------------
+-- 18. Window — lag (compare to previous order)
+--     Difference between current order and previous one.
+-- ------------------------------------------------------------
+
+orders
+  .sort_by(customer_id asc, date asc)
+  .window(lag(amount, 1, 0) over (partition_by customer_id sort_by date asc) as prev_amount)
+  .map(amount - prev_amount as delta)
+  as orders_delta
+
+
+-- ------------------------------------------------------------
+-- 19. Dimension (frame block) — materialized join
+--     Build a denormalized sales dimension once; reuse it
+--     in all downstream queries without re-joining.
+-- ------------------------------------------------------------
+
+frame (
+  relate orders -> customers
+    on orders.customer_id = customers.id
+    as customer_info
+
+  relate orders -> products
+    on orders.product_id = products.id
+    as product_info
+    where products.active = true
+) as sales_dim
+
+
+-- ------------------------------------------------------------
+-- 20. Full pipeline — advanced
+--     Top 5 product categories by net revenue for active
+--     customers, using the dimension built above.
+-- ------------------------------------------------------------
+
+sales_dim
+  .filter(customer_info.active = true and product_info.category is not null)
+  .map(coalesce(customer_info.discount, 0) as disc)
+  .map(orders.amount * (1 - disc) as net)
+  .aggregate(sum(net) as net_revenue, count(*) as sales_count by product_info.category)
+  .sort_by(net_revenue desc)
+  .limit(5)
+  as top_categories
