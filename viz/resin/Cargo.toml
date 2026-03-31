@@ -1,0 +1,8 @@
+[package]
+name = "resin"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+df-store.workspace = true

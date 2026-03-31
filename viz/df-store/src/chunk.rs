@@ -1,7 +1,6 @@
 use crate::data_type::DataValue;
 
 #[derive(Debug)]
-
 pub struct Value {
     pub data: DataValue,
     pub validity: Vec<u8>,  // 1 bit par élément, packed dans des octets

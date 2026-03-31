@@ -11,8 +11,6 @@ use df_store::connectors::csv::{csv_to_frame, CsvConfig};
 use df_store::connectors::postgres::{postgres_to_frame, PostgresConfig};
 use df_store::data_type::{DataType, DataValue};
 use df_store::frame::Frame;
-use df_store::query::relationship::Relationship;
-use df_store::query::resolver::resolve_frame;
 use df_store::store::Series;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -26,14 +24,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 #[derive(Clone)]
 struct AppState {
     frames:        Arc<RwLock<HashMap<String, Frame>>>,
-    relationships: Arc<RwLock<Vec<Relationship>>>,
 }
 
 impl AppState {
     fn new() -> Self {
         Self {
             frames:        Arc::new(RwLock::new(HashMap::new())),
-            relationships: Arc::new(RwLock::new(Vec::new())),
         }
     }
 }

@@ -4,10 +4,9 @@
 //! with basic CRUD and query helpers.
 
 pub mod store;
-mod chunk;
+pub mod chunk;
 mod time;
 pub mod data_type;
 pub mod connectors;
 pub mod frame;
 pub mod cedrus;
-pub mod query;
