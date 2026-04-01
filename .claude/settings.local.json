@@ -19,7 +19,8 @@
       "Bash(go vet:*)",
       "Bash(npx ng build:*)",
       "Bash(ls:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

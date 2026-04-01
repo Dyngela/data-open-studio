@@ -11,3 +11,4 @@ mod example_tests;
 pub use lexer::{Lexer, LexError, Token, TokenKind};
 pub use parser::{parse, ParseError};
 pub use ast::Program;
+pub use executor::FrameExt;

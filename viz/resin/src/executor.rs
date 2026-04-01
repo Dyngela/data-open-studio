@@ -229,7 +229,7 @@ impl Default for Executor {
 // ---------------------------------------------------------------------------
 
 /// Clone a Frame under a new name (shallow clone of all series).
-trait FrameExt {
+pub trait FrameExt {
     fn clone_with_name(&self, name: &str) -> Frame;
 }
 
