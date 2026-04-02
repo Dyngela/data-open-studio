@@ -32,7 +32,7 @@ async fn main() {
         .init();
 
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/data_open_studio".into());
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5433/data-open-studio".into());
 
     let db = PgPoolOptions::new()
         .max_connections(10)
@@ -48,23 +48,22 @@ async fn main() {
     let app = Router::new()
         // Workspaces
         .route("/workspaces",     get(list_workspaces).post(create_workspace))
-        .route("/workspaces/:id", get(get_workspace).delete(delete_workspace))
+        .route("/workspaces/{id}", get(get_workspace).delete(delete_workspace))
         // Sources
-        .route("/workspaces/:workspace_id/sources",
+        .route("/workspaces/{workspace_id}/sources",
             get(list_sources).post(create_source))
-        .route("/workspaces/:workspace_id/sources/:source_id",
+        .route("/workspaces/{workspace_id}/sources/{source_id}",
             delete(delete_source))
-        .route("/workspaces/:workspace_id/sources/:source_id/load",
+        .route("/workspaces/{workspace_id}/sources/{source_id}/load",
             post(load_source))
         // Frames (in-memory)
-        .route("/workspaces/:workspace_id/frames",
+        .route("/workspaces/{workspace_id}/frames",
             get(list_frames))
-        .route("/workspaces/:workspace_id/frames/:frame_name/preview",
+        .route("/workspaces/{workspace_id}/frames/{frame_name}/preview",
             get(preview_frame))
         // Execute
-        .route("/workspaces/:workspace_id/execute",
+        .route("/workspaces/{workspace_id}/execute",
             post(handle_execute))
-        .layer(CorsLayer::permissive())
         .with_state(state);
 
     let addr = "0.0.0.0:3030";
