@@ -1,9 +1,6 @@
- /* You can add global styles to this file, and also import other style files */
-
 @import "tailwindcss";
 @import "primeicons/primeicons.css";
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
-
 
 @theme {
   --color-jb-dark: #2b2b2b;

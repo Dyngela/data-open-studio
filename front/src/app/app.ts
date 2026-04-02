@@ -6,16 +6,17 @@ import {MetadataLocalService} from '../core/services/metadata.local.service';
 import {TokenRefreshSchedulerService} from '../core/services/token-refresh-scheduler.service';
 import {Toast} from 'primeng/toast';
 import {Button} from 'primeng/button';
-import {NodePanel} from '../views/graph/node-panel/node-panel';
+import {NodePanel} from '../views/pipeline/graph/node-panel/node-panel';
 import {IconRegistryService} from '../core/services/icon-registry-service';
 import {DOS_ICONS, Icon} from '../core/services/icon';
+import {ConfirmDialog} from 'primeng/confirmdialog';
 
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, Toast, Icon],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, Toast, Icon, ConfirmDialog],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

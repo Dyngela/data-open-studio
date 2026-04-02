@@ -18,6 +18,7 @@ func getEnv(key, fallback string) string {
 }
 
 func newProxy(target string) *httputil.ReverseProxy {
+	log.Printf("Proxying to %s", target)
 	u, err := url.Parse(target)
 	if err != nil {
 		log.Fatalf("invalid upstream URL %s: %v", target, err)

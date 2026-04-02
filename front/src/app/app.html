@@ -1,4 +1,5 @@
 <p-toast />
+<p-confirm-dialog></p-confirm-dialog>
 
 @if (isAuthenticated()) {
   <div class="min-h-screen bg-gray-50">
@@ -53,7 +54,6 @@
               </svg>
               <span class="absolute top-1 right-1 w-2 h-2 bg-vds-orange rounded-full group-hover:bg-vds-blue-muted"></span>
             </button>
-s
             <div class="flex items-center gap-2 pl-4 border-l border-gray-200">
               <div class="w-9 h-9 rounded-full bg-vds-blue text-white flex items-center justify-center">
                 <span class="text-sm font-medium">{{ userInitials() }}</span>
