@@ -9,14 +9,13 @@ use axum::{
     Router,
 };
 use sqlx::postgres::PgPoolOptions;
-use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use routes::{
     execute::handle_execute,
     frames::{list_frames, preview_frame},
     sources::{create_source, delete_source, list_sources, load_source},
-    workspaces::{create_workspace, delete_workspace, get_workspace, list_workspaces},
+    workspaces::{create_workspace, delete_workspace, get_workspace, list_workspaces, update_workspace},
 };
 use state::AppState;
 
@@ -48,7 +47,7 @@ async fn main() {
     let app = Router::new()
         // Workspaces
         .route("/workspaces",     get(list_workspaces).post(create_workspace))
-        .route("/workspaces/{id}", get(get_workspace).delete(delete_workspace))
+        .route("/workspaces/{id}", get(get_workspace).patch(update_workspace).delete(delete_workspace))
         // Sources
         .route("/workspaces/{workspace_id}/sources",
             get(list_sources).post(create_source))

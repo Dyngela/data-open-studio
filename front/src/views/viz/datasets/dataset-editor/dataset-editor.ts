@@ -11,16 +11,19 @@ import { Tag } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
 import { Toast } from 'primeng/toast';
 import { ProgressSpinner } from 'primeng/progressspinner';
+import { Dialog } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 
 import { DatasetService } from '../../../../core/api/dataset.service';
 import { MetadataService } from '../../../../core/api/metadata.service';
+import { VizService } from '../../../../core/api/viz.service';
 import {
   DatasetWithDetails,
   DatasetColumn,
   UpdateDatasetRequest,
   DatasetPreviewResult,
 } from '../../../../core/api/dataset.type';
+import { Workspace } from '../../../../core/api/viz.type';
 
 @Component({
   selector: 'app-dataset-editor',
@@ -38,6 +41,7 @@ import {
     TabsModule,
     Toast,
     ProgressSpinner,
+    Dialog,
   ],
   providers: [MessageService],
   templateUrl: './dataset-editor.html',
@@ -48,6 +52,7 @@ export class DatasetEditor implements OnInit {
   private router = inject(Router);
   private datasetService = inject(DatasetService);
   private metadataService = inject(MetadataService);
+  private vizService = inject(VizService);
   private fb = inject(FormBuilder);
   private messageService = inject(MessageService);
 
@@ -71,6 +76,20 @@ export class DatasetEditor implements OnInit {
 
   previewMutation = signal<ReturnType<typeof this.datasetService.preview> | null>(null);
   isPreviewing = computed(() => this.previewMutation()?.isLoading() ?? false);
+
+  // Load-as-frame dialog
+  showFrameDialog = signal(false);
+  selectedWorkspaceId = signal<string | null>(null);
+  workspacesResult = signal<ReturnType<typeof this.vizService.listWorkspaces> | null>(null);
+  workspaces = computed<Workspace[]>(() => this.workspacesResult()?.data()?.workspaces ?? []);
+  isLoadingWorkspaces = computed(() => this.workspacesResult()?.isLoading() ?? false);
+  loadAsFrameMutation = signal<ReturnType<typeof this.datasetService.loadAsFrame> | null>(null);
+  isLoadingFrame = computed(() => this.loadAsFrameMutation()?.isLoading() ?? false);
+
+  frameName = computed(() => {
+    const name = this.dataset()?.name ?? '';
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'frame';
+  });
 
   editForm = this.fb.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -195,6 +214,39 @@ export class DatasetEditor implements OnInit {
       case 'boolean': return 'success';
       default: return 'secondary';
     }
+  }
+
+  openFrameDialog() {
+    this.selectedWorkspaceId.set(null);
+    const result = this.vizService.listWorkspaces();
+    this.workspacesResult.set(result);
+    this.showFrameDialog.set(true);
+  }
+
+  confirmLoadAsFrame() {
+    const workspaceId = this.selectedWorkspaceId();
+    if (!workspaceId) return;
+
+    const mutation = this.datasetService.loadAsFrame(
+      this.datasetId(),
+      (result) => {
+        this.showFrameDialog.set(false);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Frame loaded',
+          detail: `Frame "${result.frame_name}" is ready in the workspace`,
+        });
+      },
+      (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Load failed',
+          detail: err?.error?.message || 'Failed to load frame',
+        });
+      }
+    );
+    this.loadAsFrameMutation.set(mutation);
+    mutation.execute({ workspaceId });
   }
 
   goBack() {

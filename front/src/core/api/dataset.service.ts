@@ -11,6 +11,8 @@ import {
   DatasetQueryRequest,
   DatasetQueryResult,
   DeleteResponse,
+  LoadAsFrameRequest,
+  LoadAsFrameResult,
 } from './dataset.type';
 
 @Injectable({ providedIn: 'root' })
@@ -71,5 +73,13 @@ export class DatasetService {
     onError?: (error: any) => void
   ): ApiMutation<DatasetQueryResult, DatasetQueryRequest> {
     return this.api.post<DatasetQueryResult, DatasetQueryRequest>(`${this.basePath}/${id}/query`, onSuccess, onError);
+  }
+
+  loadAsFrame(
+    id: number,
+    onSuccess?: (data: LoadAsFrameResult) => void,
+    onError?: (error: any) => void
+  ): ApiMutation<LoadAsFrameResult, LoadAsFrameRequest> {
+    return this.api.post<LoadAsFrameResult, LoadAsFrameRequest>(`${this.basePath}/${id}/load-as-frame`, onSuccess, onError);
   }
 }

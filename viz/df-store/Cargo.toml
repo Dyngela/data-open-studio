@@ -8,6 +8,9 @@ name = "df_store"
 path = "src/lib.rs"
 
 [dependencies]
-postgres  = { version = "0.19", features = ["with-chrono-0_4"] }
-chrono    = "0.4"
-serde     = { version = "1", features = ["derive"] }
+postgres     = { version = "0.19", features = ["with-chrono-0_4", "with-uuid-1", "with-serde_json-1"] }
+chrono       = "0.4"
+serde        = { version = "1", features = ["derive"] }
+rust_decimal = { version = "1", features = ["db-postgres"] }
+uuid         = "1"
+serde_json   = "1"

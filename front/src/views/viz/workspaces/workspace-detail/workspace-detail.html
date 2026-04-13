@@ -1,0 +1,138 @@
+<p-toast />
+
+@if (isLoadingWorkspace() && !workspace()) {
+  <div class="flex items-center justify-center h-64">
+    <p-progressSpinner />
+  </div>
+} @else {
+  <div class="p-6 max-w-6xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-6">
+      <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" (onClick)="goBack()" />
+      <div class="flex-1">
+        <h1 class="text-xl font-semibold text-gray-900">{{ workspace()?.name ?? '…' }}</h1>
+        <p class="text-sm text-gray-500 mt-0.5">{{ frames().length }} frame{{ frames().length !== 1 ? 's' : '' }} loaded</p>
+      </div>
+      <p-button
+        label="Refresh"
+        icon="pi pi-sync"
+        severity="secondary"
+        (onClick)="refresh()"
+        [loading]="isLoadingFrames()"
+      />
+    </div>
+
+    <!-- Frames -->
+    @if (isLoadingFrames() && frames().length === 0) {
+      <div class="flex items-center justify-center py-16">
+        <p-progressSpinner [style]="{ width: '40px', height: '40px' }" />
+      </div>
+    } @else if (frames().length === 0) {
+      <div class="bg-white rounded-xl border border-gray-200 py-16 text-center text-gray-400">
+        <i class="pi pi-table text-4xl mb-3 block"></i>
+        <p class="text-sm">No frames in this workspace yet.</p>
+        <p class="text-xs mt-1">Use "Load as Frame" on a dataset to populate this workspace.</p>
+      </div>
+    } @else {
+      <div class="flex flex-col gap-3">
+        @for (frame of frames(); track frame.name) {
+          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+            <!-- Frame header row -->
+            <div
+              class="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 transition"
+              (click)="togglePreview(frame)"
+            >
+              <i class="pi pi-table text-gray-400"></i>
+              <div class="flex-1">
+                <span class="font-mono font-medium text-gray-900">{{ frame.name }}</span>
+              </div>
+              <div class="flex items-center gap-4 text-sm text-gray-500">
+                <span>{{ frame.row_count | number }} rows</span>
+                <span>{{ frame.columns.length }} cols</span>
+                <div class="flex flex-wrap gap-1 max-w-xs">
+                  @for (col of frame.columns.slice(0, 5); track col.name) {
+                    <p-tag [value]="col.name" severity="secondary" styleClass="text-xs font-mono" />
+                  }
+                  @if (frame.columns.length > 5) {
+                    <span class="text-xs text-gray-400">+{{ frame.columns.length - 5 }} more</span>
+                  }
+                </div>
+              </div>
+              <i class="pi text-gray-400" [class.pi-chevron-down]="!isExpanded(frame.name)" [class.pi-chevron-up]="isExpanded(frame.name)"></i>
+            </div>
+
+            <!-- Expanded: schema + preview -->
+            @if (isExpanded(frame.name)) {
+              <div class="border-t border-gray-100">
+
+                <!-- Schema -->
+                <div class="px-5 pt-4 pb-2">
+                  <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Schema</h3>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    @for (col of frame.columns; track col.name) {
+                      <div class="bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+                        <p class="font-mono text-xs font-medium text-gray-800 truncate" [title]="col.name">{{ col.name }}</p>
+                        <p-tag [value]="col.dtype" [severity]="dtypeSeverity(col.dtype)" styleClass="text-xs mt-1" />
+                        @if (col.null_count > 0) {
+                          <p class="text-xs text-gray-400 mt-0.5">{{ col.null_count }} nulls</p>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Preview data -->
+                <div class="px-5 pb-5 pt-3">
+                  <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Preview (first 100 rows)</h3>
+
+                  @if (isPreviewLoading(frame.name)) {
+                    <div class="flex items-center justify-center py-8">
+                      <p-progressSpinner [style]="{ width: '32px', height: '32px' }" />
+                    </div>
+                  } @else if (previewData(frame.name); as data) {
+                    <div class="overflow-x-auto rounded-lg border border-gray-200">
+                      <p-table
+                        [value]="previewRows(data)"
+                        styleClass="p-datatable-sm"
+                        [scrollable]="true"
+                        scrollHeight="280px"
+                      >
+                        <ng-template pTemplate="header">
+                          <tr>
+                            @for (col of previewColumns(data); track col) {
+                              <th class="font-mono text-xs whitespace-nowrap">{{ col }}</th>
+                            }
+                          </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-row>
+                          <tr>
+                            @for (col of previewColumns(data); track col) {
+                              <td class="font-mono text-xs max-w-48 truncate" [title]="row[col]">
+                                @if (row[col] === null || row[col] === undefined) {
+                                  <span class="text-gray-300 italic">null</span>
+                                } @else {
+                                  {{ row[col] }}
+                                }
+                              </td>
+                            }
+                          </tr>
+                        </ng-template>
+                      </p-table>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">
+                      Showing {{ previewRows(data).length }} of {{ frame.row_count | number }} rows
+                    </p>
+                  }
+                </div>
+
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+  </div>
+}

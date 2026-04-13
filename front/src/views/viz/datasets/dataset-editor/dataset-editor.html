@@ -35,6 +35,13 @@
           [loading]="isRefreshing()"
         />
         <p-button
+          label="Load as Frame"
+          icon="pi pi-database"
+          severity="info"
+          (onClick)="openFrameDialog()"
+          [disabled]="ds.status !== 'ready'"
+        />
+        <p-button
           label="Save"
           icon="pi pi-check"
           (onClick)="save()"
@@ -215,5 +222,66 @@
 
       </div>
     </div>
+
+    <!-- Load as Frame dialog -->
+    <p-dialog
+      header="Load as Viz Frame"
+      [visible]="showFrameDialog()"
+      (visibleChange)="showFrameDialog.set($event)"
+      [modal]="true"
+      [style]="{ width: '420px' }"
+      [closable]="true"
+    >
+      <div class="flex flex-col gap-4 py-2">
+
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium text-gray-600">Frame name</label>
+          <div class="px-3 py-2 bg-gray-50 rounded border border-gray-200 font-mono text-sm text-gray-700">
+            {{ frameName() }}
+          </div>
+          <p class="text-xs text-gray-400">Derived from the dataset name (snake_case). An existing frame with this name will be replaced.</p>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium text-gray-600">Workspace</label>
+          @if (isLoadingWorkspaces()) {
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+              <p-progressSpinner [style]="{ width: '16px', height: '16px' }" />
+              Loading workspaces…
+            </div>
+          } @else if (workspaces().length === 0) {
+            <p class="text-sm text-gray-400">No workspaces found. Create one in the Viz section first.</p>
+          } @else {
+            <p-select
+              [options]="workspaces()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select a workspace"
+              [ngModel]="selectedWorkspaceId()"
+              (ngModelChange)="selectedWorkspaceId.set($event)"
+              class="w-full"
+            />
+          }
+        </div>
+
+      </div>
+
+      <ng-template pTemplate="footer">
+        <p-button
+          label="Cancel"
+          severity="secondary"
+          [text]="true"
+          (onClick)="showFrameDialog.set(false)"
+        />
+        <p-button
+          label="Load"
+          icon="pi pi-database"
+          (onClick)="confirmLoadAsFrame()"
+          [loading]="isLoadingFrame()"
+          [disabled]="!selectedWorkspaceId()"
+        />
+      </ng-template>
+    </p-dialog>
+
   </div>
 }

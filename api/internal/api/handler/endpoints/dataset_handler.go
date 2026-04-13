@@ -46,6 +46,7 @@ func DatasetHandler(router *graceful.Graceful) {
 		routes.POST("/:id/refresh", h.refresh)
 		routes.POST("/:id/preview", h.preview)
 		routes.POST("/:id/query", h.query)
+		routes.POST("/:id/load-as-frame", h.loadAsFrame)
 	}
 }
 
@@ -242,6 +243,39 @@ func (h *datasetHandler) preview(c *gin.Context) {
 	result, err := h.datasetService.Preview(uint(id), req.Limit)
 	if err != nil {
 		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to preview dataset")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *datasetHandler) loadAsFrame(c *gin.Context) {
+	userID, ok := pkg.GetUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.APIError{Message: "Invalid ID"})
+		return
+	}
+
+	if !h.checkAccess(c, uint(id), userID) {
+		return
+	}
+
+	var req request.LoadAsFrame
+	if err := pkg.ParseAndValidate(c, &req); err != nil {
+		h.logger.Error().Err(err).Msg("Failed to parse load-as-frame request")
+		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
+		return
+	}
+
+	result, err := h.datasetService.LoadAsFrame(uint(id), req.WorkspaceID, h.config.VizApiURL)
+	if err != nil {
+		h.logger.Error().Err(err).Uint64("id", id).Msg("Failed to load dataset as frame")
 		c.JSON(http.StatusBadRequest, response.APIError{Message: err.Error()})
 		return
 	}

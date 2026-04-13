@@ -9,6 +9,7 @@ pub struct Value {
 
 impl Value {
     /// Check si l'élément à l'index i est null
+    #[warn(dead_code)]
     fn is_null(&self, i: usize) -> bool {
         let byte = self.validity[i / 8];
         let bit = i % 8;
@@ -16,6 +17,8 @@ impl Value {
     }
 
     /// Marquer un index comme null
+    #[warn(dead_code)]
+
     fn set_null(&mut self, i: usize) {
         let byte = &mut self.validity[i / 8];
         let bit = i % 8;

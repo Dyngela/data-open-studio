@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::models::{CreateWorkspace, Workspace};
+use crate::models::{CreateWorkspace, UpdateWorkspace, Workspace};
 use crate::state::AppState;
 
 /// POST /workspaces
@@ -46,6 +46,26 @@ pub async fn get_workspace(
     let ws: Option<Workspace> = sqlx::query_as(
         "SELECT * FROM workspace WHERE id = $1",
     )
+    .bind(id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    match ws {
+        Some(w) => Ok(Json(json!(w))),
+        None    => Err(AppError::not_found(format!("workspace {id} not found"))),
+    }
+}
+
+/// PATCH /workspaces/:id
+pub async fn update_workspace(
+    Path(id): Path<Uuid>,
+    State(state): State<AppState>,
+    Json(body): Json<UpdateWorkspace>,
+) -> Result<Json<Value>, AppError> {
+    let ws: Option<Workspace> = sqlx::query_as(
+        "UPDATE workspace SET name = $1 WHERE id = $2 RETURNING *",
+    )
+    .bind(&body.name)
     .bind(id)
     .fetch_optional(&state.db)
     .await?;

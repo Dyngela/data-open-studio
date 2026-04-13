@@ -8,6 +8,8 @@ import { Login } from '../views/authentication/login/login';
 import { Register } from '../views/authentication/register/register';
 import { DatasetList } from '../views/viz/datasets/dataset-list/dataset-list';
 import { DatasetEditor } from '../views/viz/datasets/dataset-editor/dataset-editor';
+import { WorkspaceList } from '../views/viz/workspaces/workspace-list/workspace-list';
+import { WorkspaceDetail } from '../views/viz/workspaces/workspace-detail/workspace-detail';
 
 export const routes: Routes = [
   // Auth routes (accessible only when not logged in)
@@ -49,6 +51,8 @@ export const routes: Routes = [
   { path: 'jobs', component: Jobs, canActivate: [authGuard] },
   { path: 'datasets', component: DatasetList, canActivate: [authGuard] },
   { path: 'datasets/:id', component: DatasetEditor, canActivate: [authGuard] },
+  { path: 'workspaces', component: WorkspaceList, canActivate: [authGuard] },
+  { path: 'workspaces/:id', component: WorkspaceDetail, canActivate: [authGuard] },
 
   // Fallback
   { path: '**', redirectTo: 'jobs' }

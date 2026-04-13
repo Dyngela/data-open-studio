@@ -6,6 +6,7 @@ import { environment } from '../../environments/environment';
 import { ApiError, ApiMutation, ApiResult, MutationSuccess, SearchCriteria } from '../services/base-api.type';
 import {
   CreateWorkspaceRequest,
+  UpdateWorkspaceRequest,
   CreateSourceRequest,
   ExecuteRequest,
   ExecuteResponse,
@@ -41,6 +42,14 @@ export class VizService {
     onError?: (error: ApiError) => void,
   ): ApiMutation<Workspace, CreateWorkspaceRequest> {
     return this.mutate<Workspace, CreateWorkspaceRequest>('POST', '/workspaces', onSuccess, onError);
+  }
+
+  updateWorkspace(
+    id: string,
+    onSuccess?: (data: Workspace) => void,
+    onError?: (error: ApiError) => void,
+  ): ApiMutation<Workspace, UpdateWorkspaceRequest> {
+    return this.mutate<Workspace, UpdateWorkspaceRequest>('PATCH', `/workspaces/${id}`, onSuccess, onError);
   }
 
   deleteWorkspace(
@@ -161,7 +170,7 @@ export class VizService {
   }
 
   private mutate<TResponse, TBody = void>(
-    method: 'POST' | 'PUT' | 'DELETE',
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     onSuccess?: (data: TResponse) => void,
     onError?: (error: ApiError) => void,

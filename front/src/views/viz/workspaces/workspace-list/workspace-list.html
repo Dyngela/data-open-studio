@@ -1,0 +1,115 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="p-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900">Workspaces</h1>
+      <p class="text-sm text-gray-500 mt-1">Workspaces hold in-memory frames that can be queried and visualised</p>
+    </div>
+    <p-button label="New Workspace" icon="pi pi-plus" (onClick)="openCreateDialog()" />
+  </div>
+
+  <!-- Table -->
+  <p-table
+    [value]="workspaces()"
+    [loading]="isLoading()"
+    [paginator]="workspaces().length > 15"
+    [rows]="15"
+    styleClass="p-datatable-sm"
+    [rowHover]="true"
+  >
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Name</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-ws>
+      <tr class="cursor-pointer" (click)="openWorkspace(ws)">
+        <td>
+          <span class="font-medium text-gray-900 hover:text-blue-600">{{ ws.name }}</span>
+        </td>
+        <td class="text-sm text-gray-500">
+          {{ ws.created_at | date: 'short' }}
+        </td>
+        <td class="text-right">
+          <div class="flex items-center justify-end gap-1">
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              [text]="true"
+              size="small"
+              (onClick)="openRenameDialog(ws)"
+              (click)="$event.stopPropagation()"
+              pTooltip="Rename"
+            />
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              [text]="true"
+              size="small"
+              (onClick)="confirmDelete($event, ws)"
+              (click)="$event.stopPropagation()"
+              pTooltip="Delete"
+            />
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="3" class="text-center py-12 text-gray-400">
+          <i class="pi pi-objects-column text-4xl mb-3 block"></i>
+          <p>No workspaces yet. Create one to start loading frames.</p>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<!-- Create Workspace Dialog -->
+<p-dialog
+  header="New Workspace"
+  [(visible)]="showCreateDialog"
+  [modal]="true"
+  [style]="{ width: '400px' }"
+  [closable]="!isCreating()"
+>
+  <form [formGroup]="createForm" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="name" placeholder="e.g. Sales Dashboard" class="w-full" autofocus />
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="showCreateDialog.set(false)" [disabled]="isCreating()" />
+    <p-button label="Create" icon="pi pi-check" (onClick)="submitCreate()" [loading]="isCreating()" [disabled]="createForm.invalid" />
+  </ng-template>
+</p-dialog>
+
+<!-- Rename Workspace Dialog -->
+<p-dialog
+  header="Rename Workspace"
+  [(visible)]="showRenameDialog"
+  [modal]="true"
+  [style]="{ width: '400px' }"
+  [closable]="!isRenaming()"
+>
+  <form [formGroup]="renameForm" class="flex flex-col gap-4 pt-2">
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
+      <input pInputText formControlName="name" class="w-full" />
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" severity="secondary" [text]="true" (onClick)="showRenameDialog.set(false)" [disabled]="isRenaming()" />
+    <p-button label="Save" icon="pi pi-check" (onClick)="submitRename()" [loading]="isRenaming()" [disabled]="renameForm.invalid" />
+  </ng-template>
+</p-dialog>

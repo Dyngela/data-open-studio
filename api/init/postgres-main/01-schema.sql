@@ -194,3 +194,26 @@ CREATE TABLE IF NOT EXISTS trigger_execution (
 );
 
 CREATE INDEX IF NOT EXISTS idx_trigger_execution_trigger_id ON trigger_execution(trigger_id);
+
+-- ============================================================
+-- Datasets
+-- ============================================================
+CREATE TABLE IF NOT EXISTS dataset (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    creator_id BIGINT NOT NULL,
+    metadata_database_id BIGINT NOT NULL,
+    query TEXT NOT NULL DEFAULT '',
+    schema JSONB,
+    status VARCHAR(20) DEFAULT 'draft',
+    last_refreshed_at TIMESTAMPTZ,
+    last_error TEXT DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    deleted_at TIMESTAMPTZ,
+    CONSTRAINT fk_dataset_creator FOREIGN KEY (creator_id) REFERENCES users(id),
+    CONSTRAINT fk_dataset_metadata_db FOREIGN KEY (metadata_database_id) REFERENCES metadata_database(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dataset_deleted_at ON dataset(deleted_at);

@@ -52,7 +52,7 @@ impl Connector for ConnectorType {
                 csv::load_csv(config, store)
 
             }
-            ConnectorType::Excel(config) => {
+            ConnectorType::Excel(_config) => {
                 // Excel loading logic
                 todo!()
             }

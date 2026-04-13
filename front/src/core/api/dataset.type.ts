@@ -91,3 +91,12 @@ export interface DeleteResponse {
   id: number;
   deleted: boolean;
 }
+
+export interface LoadAsFrameRequest {
+  workspaceId: string;
+}
+
+export interface LoadAsFrameResult {
+  loaded: Record<string, unknown>;
+  frame_name: string;
+}

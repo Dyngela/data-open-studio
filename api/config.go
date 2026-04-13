@@ -24,6 +24,7 @@ import (
 type AppConfig struct {
 	Mode               string
 	ApiPort            string
+	VizApiURL          string
 	OllamaHost         string
 	OllamaMessageLimit int
 	LogConfig          struct {
@@ -81,6 +82,7 @@ func InitConfig(envfile string) {
 	config = AppConfig{
 		Mode:               getEnvOrPanic("RUN_MODE"),
 		ApiPort:            getEnvOrPanic("API_PORT"),
+		VizApiURL:          GetEnv("VIZ_API_URL", "http://localhost:3030"),
 		OllamaHost:         getEnvOrPanic("OLLAMA_HOST"),
 		OllamaMessageLimit: getIntEnvOrPanic("OLLAMA_MESSAGE_LIMIT"),
 		SMTP: struct {

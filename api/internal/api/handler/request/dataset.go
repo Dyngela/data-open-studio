@@ -33,3 +33,8 @@ type DatasetQuery struct {
 	Filters []DatasetQueryFilter `json:"filters"`
 	Limit   int                  `json:"limit"` // defaults to 1000, max 10000
 }
+
+// LoadAsFrame is the request for loading a dataset as a viz frame
+type LoadAsFrame struct {
+	WorkspaceID string `json:"workspaceId" validate:"required"`
+}

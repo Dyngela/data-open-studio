@@ -1,5 +1,8 @@
 use chrono::NaiveDate;
 use postgres::types::Type;
+use rust_decimal::Decimal;
+use serde_json::Value as JsonValue;
+use uuid::Uuid;
 
 use crate::cedrus::Cedrus;
 use crate::connectors::ConnectorError;
@@ -73,8 +76,9 @@ fn pg_type_to_dtype(t: &Type) -> DataType {
         Type::INT4                                                          => DataType::Int32,
         Type::INT8                                                          => DataType::Int64,
         Type::FLOAT4                                                        => DataType::Float32,
-        Type::FLOAT8 | Type::NUMERIC                                        => DataType::Float64,
-        Type::TEXT | Type::VARCHAR | Type::BPCHAR | Type::NAME | Type::UUID => DataType::String,
+        Type::FLOAT8 | Type::NUMERIC                                                          => DataType::Float64,
+        Type::TEXT | Type::VARCHAR | Type::BPCHAR | Type::NAME | Type::UUID
+        | Type::JSON | Type::JSONB                                                            => DataType::String,
         Type::DATE                                                          => DataType::Date,
         Type::TIMESTAMP | Type::TIMESTAMPTZ                                 => DataType::Datetime,
         Type::BYTEA                                                         => DataType::Binary,
@@ -91,8 +95,22 @@ fn pg_to_data_value(row: &postgres::Row, idx: usize, t: &Type) -> Result<Option<
         Type::INT4   => row.try_get::<_, Option<i32>>(idx).map_err(e)?.map(DataValue::Int32),
         Type::INT8   => row.try_get::<_, Option<i64>>(idx).map_err(e)?.map(DataValue::Int64),
         Type::FLOAT4 => row.try_get::<_, Option<f32>>(idx).map_err(e)?.map(DataValue::Float32),
-        Type::FLOAT8 | Type::NUMERIC => {
-            row.try_get::<_, Option<f64>>(idx).map_err(e)?.map(DataValue::Float64)
+        Type::FLOAT8 => row.try_get::<_, Option<f64>>(idx).map_err(e)?.map(DataValue::Float64),
+        Type::NUMERIC => {
+            // f64::from_sql only accepts FLOAT8; use Decimal as an intermediary.
+            row.try_get::<_, Option<Decimal>>(idx)
+                .map_err(e)?
+                .map(|d| DataValue::Float64(d.to_string().parse::<f64>().unwrap_or(f64::NAN)))
+        }
+        Type::UUID => {
+            row.try_get::<_, Option<Uuid>>(idx)
+                .map_err(e)?
+                .map(|u| DataValue::String(u.to_string()))
+        }
+        Type::JSON | Type::JSONB => {
+            row.try_get::<_, Option<JsonValue>>(idx)
+                .map_err(e)?
+                .map(|v| DataValue::String(v.to_string()))
         }
         Type::DATE => {
             let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
@@ -113,6 +131,9 @@ fn pg_to_data_value(row: &postgres::Row, idx: usize, t: &Type) -> Result<Option<
         Type::BYTEA => {
             row.try_get::<_, Option<Vec<u8>>>(idx).map_err(e)?.map(DataValue::Binary)
         }
-        _ => row.try_get::<_, Option<String>>(idx).map_err(e)?.map(DataValue::String),
+        // Unknown type: try String, silently null-out if the type can't be cast.
+        _ => row.try_get::<_, Option<String>>(idx)
+                .unwrap_or(None)
+                .map(DataValue::String),
     })
 }
