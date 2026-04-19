@@ -43,14 +43,14 @@ coverage.txt
 coverage.html
 
 # Environment / secrets
-api/.env
+.env
 **/.env.local
 **/.env.*.local
 
 # ============================================================
-# Rust / viz
+# Rust / api
 # ============================================================
-viz/target/
+services/api/target/
 **/*.rs.bk
 # Cargo.lock is committed for binary crates (api); omit only for pure libraries
 

@@ -1,0 +1,62 @@
+[workspace]
+members = [
+    "df-store",
+    "api",
+    "resin",
+    "pipeline",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+# DataFrame / data processing
+polars = { version = "0.46", features = ["lazy", "csv", "parquet", "json", "dtype-full", "streaming"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# OpenAPI
+utoipa = { version = "4", features = ["axum_extras", "uuid", "chrono"] }
+
+# Credential encryption
+aes-gcm = "0.10"
+base64  = "0.22"
+
+# Async trait helpers
+async-trait = "0.1"
+
+# Concurrency
+dashmap = "6"
+async-channel = "2"
+
+# NATS
+async-nats = "0.38"
+
+# Process monitoring
+sysinfo = "0.32"
+
+# mmap metrics file
+memmap2 = "0.9"
+
+# Regex
+regex = "1"
+
+# Inter-crate
+df-store = { path = "df-store" }
+resin    = { path = "resin" }
+pipeline = { path = "pipeline" }

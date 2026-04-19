@@ -1,3 +1,5 @@
+claude --resume "unify-go-rust-apis"
+
 # Data Open Studio
 
 A self-hosted data engineering platform combining a **visual pipeline builder** and a **columnar visualization engine**. It lets users design ETL workflows as node graphs, execute them, automate them with triggers, and feed results into an in-memory analytics layer.
@@ -212,7 +214,7 @@ cd api && go run cmd/main.go
 cd front && npm install && ng serve        # http://localhost:4200
 
 # Viz API
-cd viz && cargo run -p api
+cd api && cargo run -p api
 
 # Gateway
 cd gateway && go run main.go

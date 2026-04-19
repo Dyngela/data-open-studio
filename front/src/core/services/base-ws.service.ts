@@ -2,7 +2,7 @@ import { inject, Injectable, NgZone, OnDestroy, signal } from '@angular/core';
 import { AuthService } from '../api/auth.service';
 import { environment } from '../../environments/environment';
 
-/** Matches the Go lib.Progress struct published via NATS */
+/** Matches the ProgressEvent struct published via NATS */
 export interface JobProgress {
   nodeId: number;
   nodeName: string;
@@ -132,7 +132,7 @@ export class JobRealtimeService implements OnDestroy {
 
   private sendSubscribe(jobId: number): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ action: 'subscribe', jobId }));
+      this.ws.send(JSON.stringify({ type: 'subscribe', job_id: jobId }));
     }
   }
 

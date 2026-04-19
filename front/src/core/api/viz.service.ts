@@ -102,6 +102,15 @@ export class VizService {
     return this.fetch<FrameListResponse>(`/workspaces/${workspaceId}/frames`, undefined, onSuccess);
   }
 
+  deleteFrame(
+    workspaceId: string,
+    frameName: string,
+    onSuccess?: () => void,
+    onError?: (error: ApiError) => void,
+  ): ApiMutation<null, void> {
+    return this.mutate<null, void>('DELETE', `/workspaces/${workspaceId}/frames/${encodeURIComponent(frameName)}`, onSuccess as any, onError);
+  }
+
   previewFrame(
     workspaceId: string,
     frameName: string,
@@ -218,7 +227,7 @@ export class VizService {
   private toApiError(err: any): ApiError {
     return {
       status: err.status,
-      // viz API returns { error: "..." }, pipeline API returns { message: "..." }
+      // api API returns { error: "..." }, pipeline API returns { message: "..." }
       message: err.error?.error ?? err.error?.message ?? 'Unknown error',
       raw: err,
     };

@@ -21,7 +21,7 @@ export const authGuard: CanActivateFn = (route, state) => {
 };
 
 /**
- * Guest guard to redirect authenticated users away from auth pages
+ * Guest guard to redirect authenticated users away from auth_util pages
  */
 export const guestGuard: CanActivateFn = () => {
   const authService = inject(AuthService);

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep \"\\\\.go$\")",
+      "Read(//c/dev/GO/data-open-studio/viz/**)",
+      "Bash(cargo check *)"
+    ]
+  }
+}

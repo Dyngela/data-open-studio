@@ -86,7 +86,6 @@ export class Playground implements OnInit, AfterViewInit, AfterViewChecked, OnDe
   constructor() {
     // React to every progress message: update node visual status and track completion
     this.unsubProgress = this.realtime.onProgress((progress) => {
-      // nodeId === 0 is a job-level message (handled by Console), skip node updates
       if (progress.nodeId === 0) return;
 
       const nodeStatus = progress.status === 'running' ? 'running'

@@ -1,0 +1,73 @@
+[package]
+name = "api"
+version.workspace = true
+edition = "2021"
+
+[[bin]]
+name = "api"
+path = "src/main.rs"
+
+[dependencies]
+df-store.workspace    = true
+resin.workspace       = true
+pipeline.workspace    = true
+tokio.workspace       = true
+thiserror.workspace   = true
+anyhow.workspace      = true
+serde.workspace       = true
+serde_json.workspace  = true
+tracing.workspace     = true
+tracing-subscriber.workspace = true
+utoipa.workspace      = true
+aes-gcm.workspace     = true
+base64.workspace      = true
+dashmap.workspace     = true
+async-channel.workspace = true
+async-nats.workspace  = true
+sysinfo.workspace     = true
+memmap2.workspace     = true
+regex.workspace       = true
+
+# HTTP server
+axum = { version = "0.8", features = ["ws", "macros"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower = "0.5"
+
+# Database (async postgres)
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+
+# UUIDs
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Auth
+jsonwebtoken = "9"
+bcrypt = "0.15"
+
+# Env loading
+dotenvy = "0.15"
+
+# HTTP client (Ollama, external APIs)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# Direct Postgres connections (metadata test, introspection, pipeline nodes)
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4", "with-uuid-1"] }
+
+# Email (SMTP + IMAP)
+lettre = { version = "0.11", features = ["tokio1-native-tls", "smtp-transport", "builder"] }
+async-imap = "0.9"
+async-native-tls = "0.5"
+
+# Cron parsing
+cron = "0.12"
+
+# Stream utilities (NATS bridge)
+futures-util = "0.3"
+
+# CLI (server / worker modes)
+clap = { version = "4", features = ["derive"] }
+
+# Model → DTO mapping
+o2o = "0.4"

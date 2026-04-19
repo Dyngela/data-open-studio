@@ -108,7 +108,7 @@ export class AuthService {
   }
 
   /**
-   * Initialize auth state from storage
+   * Initialize auth_util state from storage
    */
   initializeAuth(): void {
     const token = this.getAccessToken();

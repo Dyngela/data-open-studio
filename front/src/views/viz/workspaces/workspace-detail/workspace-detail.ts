@@ -7,7 +7,8 @@ import { Tag } from 'primeng/tag';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { PanelModule } from 'primeng/panel';
 import { Toast } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 import { VizService } from '../../../../core/api/viz.service';
 import { FrameSchema, FrameData, Workspace } from '../../../../core/api/viz.type';
@@ -23,8 +24,9 @@ import { FrameSchema, FrameData, Workspace } from '../../../../core/api/viz.type
     ProgressSpinner,
     PanelModule,
     Toast,
+    ConfirmDialog,
   ],
-  providers: [MessageService],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './workspace-detail.html',
 })
 export class WorkspaceDetail implements OnInit {
@@ -32,6 +34,7 @@ export class WorkspaceDetail implements OnInit {
   private router = inject(Router);
   private vizService = inject(VizService);
   private messageService = inject(MessageService);
+  private confirmationService = inject(ConfirmationService);
 
   workspaceId = signal('');
 
@@ -132,6 +135,26 @@ export class WorkspaceDetail implements OnInit {
     if (['Boolean'].includes(dtype)) return 'success';
     if (['Date','Datetime','Time','Duration'].includes(dtype)) return 'warn';
     return 'secondary';
+  }
+
+  confirmDeleteFrame(frame: FrameSchema, event: Event) {
+    event.stopPropagation();
+    this.confirmationService.confirm({
+      message: `Delete frame <strong>${frame.name}</strong>? This cannot be undone.`,
+      header: 'Delete Frame',
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: () => {
+        this.vizService.deleteFrame(
+          this.workspaceId(),
+          frame.name,
+          () => {
+            this.messageService.add({ severity: 'success', summary: 'Deleted', detail: `Frame '${frame.name}' removed` });
+            this.framesResult()?.refresh();
+          },
+        ).execute();
+      },
+    });
   }
 
   goBack() {

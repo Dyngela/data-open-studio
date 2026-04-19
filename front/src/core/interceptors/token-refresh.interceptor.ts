@@ -15,7 +15,7 @@ export const tokenRefreshInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (req.url.includes('/auth/')) {
+  if (req.url.includes('/auth_util/')) {
     return next(req);
   }
 

@@ -1,0 +1,140 @@
+services:
+  # ── Application database ────────────────────────────────────────────────────
+  postgres:
+    image: postgres:18
+    container_name: data-open-studio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB:       ${DB_NAME}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./init/postgres-main:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ── Test database (sample data for development/testing) ────────────────────
+  postgres-test:
+    image: postgres:18
+    container_name: data-open-studio-pg-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB:       testdb
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql
+      - ./init/postgres-test:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ── SQL Server (sample data for connector testing) ──────────────────────────
+#  sqlserver:
+#    image: mcr.microsoft.com/mssql/server:2022-latest
+#    container_name: data-open-studio-sqlserver
+#    restart: unless-stopped
+#    environment:
+#      ACCEPT_EULA:       "Y"
+#      MSSQL_SA_PASSWORD: "TestPass123!"
+#      MSSQL_PID:         "Developer"
+#    ports:
+#      - "1433:1433"
+#    volumes:
+#      - sqlserver_data:/var/opt/mssql
+#      - ./init/sqlserver:/docker-entrypoint-initdb.d
+#    healthcheck:
+#      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "TestPass123!" -C -Q "SELECT 1" || exit 1
+#      interval: 30s
+#      timeout: 10s
+#      retries: 5
+#    command: >
+#      /bin/bash -c "
+#        /opt/mssql/bin/sqlservr &
+#        sleep 30 &&
+#        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'TestPass123!' -C
+#          -i /docker-entrypoint-initdb.d/init.sql &&
+#        wait
+#      "
+
+  # ── NATS (pipeline progress events → WebSocket hub) ────────────────────────
+  nats:
+    image: nats:2.10-alpine
+    container_name: data-open-studio-nats
+    restart: unless-stopped
+    ports:
+      - "4222:4222"   # client
+      - "8222:8222"   # HTTP monitoring
+    command: ["--http_port", "8222"]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (caching / session store) ────────────────────────────────────────
+  redis:
+    image: redis:8.4-alpine
+    container_name: data-open-studio-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # ── Gateway (CORS proxy → Rust API) ────────────────────────────────────────
+  gateway:
+    build:
+      context: services/gateway
+      dockerfile: Dockerfile
+    container_name: data-open-studio-gateway
+    restart: unless-stopped
+    environment:
+      API_URL:      http://host.docker.internal:8030
+      GATEWAY_PORT: ":8000"
+    ports:
+      - "8000:8000"
+#    depends_on:
+#      - api
+
+  # ── Rust API (unified backend) ──────────────────────────────────────────────
+#  api:
+#    build:
+#      context: ./api
+#      dockerfile: Dockerfile
+#    container_name: data-open-studio-api
+#    restart: unless-stopped
+#    environment:
+#      DATABASE_URL: postgres://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+#      JWT_SECRET:   ${JWT_SECRET}
+#      NATS_URL:     nats://nats:4222
+#      OLLAMA_HOST:  ${OLLAMA_HOST:-http://host.docker.internal:11434}
+#      API_PORT:     "3030"
+#    ports:
+#      - "3030:3030"
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#      nats:
+#        condition: service_healthy
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  sqlserver_data:
+  redis_data:

@@ -1,4 +1,5 @@
 <p-toast />
+<p-confirmDialog />
 
 @if (isLoadingWorkspace() && !workspace()) {
   <div class="flex items-center justify-center h-64">
@@ -60,6 +61,14 @@
                   }
                 </div>
               </div>
+              <p-button
+                icon="pi pi-trash"
+                [text]="true"
+                severity="danger"
+                size="small"
+                (onClick)="confirmDeleteFrame(frame, $event)"
+                [title]="'Delete ' + frame.name"
+              />
               <i class="pi text-gray-400" [class.pi-chevron-down]="!isExpanded(frame.name)" [class.pi-chevron-up]="isExpanded(frame.name)"></i>
             </div>
 

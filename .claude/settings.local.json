@@ -20,7 +20,24 @@
       "Bash(npx ng build:*)",
       "Bash(ls:*)",
       "Bash(cargo check:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(cargo build *)",
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(python3 -c \"import os; print\\(os.listdir\\(''C:/dev/GO/data-open-studio/viz/test-files''\\)\\)\")",
+      "Bash(grep -v \"^warning\\\\|^  \\\\|^$\\\\|running\\\\|Doc-test\\\\|Finished\\\\|Compiling\")",
+      "Bash(python3 \"C:/dev/GO/data-open-studio/viz/gen_cedrus_read.py\")",
+      "Bash(python3 gen_cedrus_read.py)",
+      "Bash(grep -v \"^warning\\\\|^  \\\\|^$\\\\|Compiling\\\\|Finished\\\\|Running\\\\|Doc-test\")",
+      "Bash(python3:*)",
+      "Bash(cargo run:*)",
+      "Bash(grep -A 20 \"error\\\\[E0308\\\\]: \\\\`\\\\?\\\\`\")",
+      "Bash(cat \"C:/dev/GO/data-open-studio/viz/resin/test-file/\"*)",
+      "Bash(xargs cat *)",
+      "Bash(docker compose *)",
+      "Bash(git -C /c/dev/GO/data-open-studio/.claude/worktrees/agent-af05a604 diff HEAD --name-only)",
+      "Bash(git -C /c/dev/GO/data-open-studio branch -vv)",
+      "Bash(git *)"
     ]
   }
 }

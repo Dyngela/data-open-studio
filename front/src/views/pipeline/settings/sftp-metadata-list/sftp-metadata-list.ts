@@ -102,7 +102,7 @@ export class SftpMetadataList {
 
   switchAuthMode(mode: 'password' | 'key') {
     this.authMode.set(mode);
-    // Clear the other auth field when switching
+    // Clear the other auth_util field when switching
     if (mode === 'password') {
       this.form.patchValue({ privateKey: '' });
     } else {
